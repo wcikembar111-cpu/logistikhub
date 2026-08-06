@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-arabic: 'Amiri', serif;
+  
+  /* Brand colors */
+  --color-glass-orange: #f97316;
+  --color-glass-blue: #0ea5e9;
+  --color-glass-white: rgba(255, 255, 255, 0.7);
+
+  --animate-marquee: marquee 25s linear infinite;
+  --animate-marquee-slow: marquee 60s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee, .animate-marquee-slow {
+  will-change: transform;
+}
+
+@layer utilities {
+  .glass-box {
+    @apply bg-white/40 backdrop-blur-md border border-white/50 shadow-xl shadow-black/5 text-slate-800 rounded-3xl;
+  }
+  .glass-btn {
+    @apply bg-white/50 backdrop-blur-md border border-white/60 shadow-md shadow-black/5 text-slate-800 font-bold uppercase py-2 px-4 cursor-pointer inline-flex items-center justify-center gap-2 no-underline text-xs transition-all hover:-translate-y-0.5 hover:shadow-lg hover:bg-white/70 active:translate-y-0 rounded-2xl;
+  }
+  .glass-badge {
+    @apply bg-white/60 text-slate-800 backdrop-blur-md border border-white/60 shadow-sm rounded-full inline-flex items-center justify-center text-[0.65rem] font-bold w-5 h-5;
+  }
+}
+
+body {
+  /* Soft glassmorphism background: abstract mesh gradient with orange, blue, and white */
+  background: radial-gradient(circle at 15% 50%, rgba(249, 115, 22, 0.15), transparent 25%),
+              radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.15), transparent 25%),
+              linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  background-attachment: fixed;
+  color: #1e293b;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100vh;
+}
+
+/* Hide scrollbar for main content */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.3);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 233, 0.5);
+}

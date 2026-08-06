@@ -1,0 +1,195 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../supabase';
+import { LinkData, TodoData, AnnouncementData } from '../types';
+
+export function useLinks() {
+  const [links, setLinks] = useState<LinkData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchLinks = async () => {
+    try {
+      const { data, error } = await supabase.from('links').select('*').order('created_at', { ascending: false });
+      if (!error && data) setLinks(data as LinkData[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLinks();
+  }, []);
+
+  const addLink = async (link: Omit<LinkData, 'id'>) => {
+    const tempId = crypto.randomUUID();
+    const newLink = { ...link, id: tempId, created_at: new Date().toISOString() } as LinkData;
+    setLinks(prev => [newLink, ...prev]);
+    await supabase.from('links').insert([link]);
+    fetchLinks();
+  };
+
+  const updateLink = async (id: string, link: Partial<Omit<LinkData, 'id'>>) => {
+    setLinks(prev => prev.map(l => l.id === id ? { ...l, ...link } : l));
+    await supabase.from('links').update(link).eq('id', id);
+    fetchLinks();
+  };
+
+  const deleteLink = async (id: string) => {
+    setLinks(prev => prev.filter(l => l.id !== id));
+    await supabase.from('links').delete().eq('id', id);
+  };
+
+  return { links, loading, addLink, updateLink, deleteLink };
+}
+
+export function useTodos() {
+  const [todos, setTodos] = useState<TodoData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTodos = async () => {
+    try {
+      const { data, error } = await supabase.from('todos').select('*').order('created_at', { ascending: false });
+      if (!error && data) setTodos(data as TodoData[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  const addTodo = async (task: string) => {
+    const tempId = crypto.randomUUID();
+    const newTodo = { id: tempId, task, status: 'no', created_at: new Date().toISOString() } as TodoData;
+    setTodos(prev => [newTodo, ...prev]);
+    const { error } = await supabase.from('todos').insert([{ task, status: 'no' }]);
+    if (error) {
+      alert(`Gagal menyimpan tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS (Row Level Security) di tabel "todos" pada Supabase agar public dapat menambah data.`);
+      setTodos(prev => prev.filter(t => t.id !== tempId));
+    } else {
+      fetchTodos();
+    }
+  };
+
+  const updateTodoStatus = async (id: string, status: TodoData['status']) => {
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+    const { error } = await supabase.from('todos').update({ status }).eq('id', id);
+    if (error) {
+      alert(`Gagal mengubah status. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+    } else {
+      fetchTodos();
+    }
+  };
+
+  const deleteTodo = async (id: string) => {
+    setTodos(prev => prev.filter(t => t.id !== id));
+    const { error } = await supabase.from('todos').delete().eq('id', id);
+    if (error) {
+      alert(`Gagal menghapus tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+    }
+  };
+
+  return { todos, loading, addTodo, updateTodoStatus, deleteTodo };
+}
+
+export function useAnnouncements() {
+  const [messages, setMessages] = useState<string[]>([]);
+  
+  const fetchAnnouncements = async () => {
+    try {
+      const { data, error } = await supabase.from('settings').select('messages').eq('id', 'announcements').single();
+      if (!error && data) setMessages(data.messages || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const updateMessages = async (newMessages: string[]) => {
+    setMessages(newMessages);
+    await supabase.from('settings').upsert({ id: 'announcements', messages: newMessages });
+    fetchAnnouncements();
+  };
+
+  return { messages, updateMessages };
+}
+
+export function useAuth() {
+  const [user, setUser] = useState<{email: string} | null>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const saved = localStorage.getItem('user');
+      setUser(saved ? JSON.parse(saved) : null);
+    };
+    window.addEventListener('storage', handleAuthChange);
+    window.addEventListener('userChange', handleAuthChange);
+    return () => {
+      window.removeEventListener('storage', handleAuthChange);
+      window.removeEventListener('userChange', handleAuthChange);
+    };
+  }, []);
+
+  const login = async (email: string, password: string): Promise<void> => {
+    try {
+      // Hardcoded fallback for immediate access
+      if (email === 'admin@admin.com' && password === 'Kino.2026') {
+        const u = { email };
+        setUser(u);
+        localStorage.setItem('user', JSON.stringify(u));
+        window.dispatchEvent(new Event('userChange'));
+        return;
+      }
+
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        throw new Error("Kredensial Supabase (URL/KEY) belum diisi di Environment Variables.");
+      }
+
+      // Coba autentikasi menggunakan tabel users
+      const { data, error } = await supabase
+        .from('users')
+        .select('email, password')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+           throw new Error('Email atau password salah (atau data tidak ditemukan).');
+        }
+        if (error.code === '42P01') {
+           throw new Error('Tabel users belum ada. Jalankan supabase_schema.sql di SQL Editor.');
+        }
+        throw new Error(error.message);
+      }
+
+      if (data) {
+        const u = { email: data.email };
+        setUser(u);
+        localStorage.setItem('user', JSON.stringify(u));
+        window.dispatchEvent(new Event('userChange'));
+        return;
+      }
+    } catch (e: any) {
+      throw new Error(e.message || 'Login gagal terjadi kesalahan.');
+    }
+  };
+
+  const logout = async () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('userChange'));
+  };
+
+  return { user, isAdmin: !!user, login, logout };
+}
