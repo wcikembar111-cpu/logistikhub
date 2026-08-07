@@ -55,7 +55,7 @@ export function Hero({ isAdmin, onLogin, onLogout }: HeroProps) {
           
           <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap mb-4">
             <span className="font-bold text-slate-800 text-lg uppercase">Dede Suparman</span>
-            <span className="bg-sky-500/20 text-sky-700 border border-sky-500/30 text-xs font-bold py-1 px-3 uppercase rounded-full shadow-sm">
+            <span className="bg-blue-900/15 text-blue-900 border border-blue-900/30 text-xs font-bold py-1 px-3 uppercase rounded-full shadow-sm">
               Logistik Supervisor & Developer
             </span>
           </div>
@@ -64,7 +64,7 @@ export function Hero({ isAdmin, onLogin, onLogout }: HeroProps) {
             <a href="https://wa.me/6281911934000" target="_blank" rel="noreferrer" className="glass-btn !bg-orange-500/10 hover:!bg-orange-500/20 text-orange-600">
               081911934000
             </a>
-            <a href="mailto:dede.suparman@kino.co.id" className="glass-btn !bg-sky-500/10 hover:!bg-sky-500/20 text-sky-600">
+            <a href="mailto:dede.suparman@kino.co.id" className="glass-btn !bg-blue-900/10 hover:!bg-blue-900/20 text-blue-900">
               dede.suparman@kino.co.id
             </a>
             <a href="mailto:dedesuparman333@gmail.com" className="glass-btn !bg-indigo-500/10 hover:!bg-indigo-500/20 text-indigo-600">
@@ -78,13 +78,13 @@ export function Hero({ isAdmin, onLogin, onLogout }: HeroProps) {
         <div className="font-bold uppercase text-xs text-orange-700 tracking-widest mb-3 border border-orange-500/30 px-3 py-1 bg-orange-500/10 rounded-full shadow-sm">
           {dateStr || 'MEMUAT...'}
         </div>
-        <div className="font-black text-sky-600 text-5xl leading-none mb-6 tracking-tight max-lg:text-4xl drop-shadow-md">
+        <div className="font-black text-blue-900 text-5xl leading-none mb-6 tracking-tight max-lg:text-4xl drop-shadow-md">
           {time || '--:--:--'}
         </div>
         <div className="flex gap-2 flex-wrap">
           {!isAdmin ? (
             <button onClick={onLogin} className="glass-btn !bg-white/60 hover:!bg-white/80">
-              <LogIn size={18} className="text-sky-600" /> <span className="text-sky-700">LOGIN ADMIN</span>
+              <LogIn size={18} className="text-blue-900" /> <span className="text-blue-900">LOGIN ADMIN</span>
             </button>
           ) : (
             <button onClick={onLogout} className="glass-btn !bg-orange-500/80 hover:!bg-orange-500 text-white border-orange-400">

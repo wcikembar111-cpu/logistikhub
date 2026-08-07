@@ -7,7 +7,7 @@
   
   /* Brand colors */
   --color-glass-orange: #f97316;
-  --color-glass-blue: #0ea5e9;
+  --color-glass-blue: #1e3a8a;
   --color-glass-white: rgba(255, 255, 255, 0.7);
 
   --animate-marquee: marquee 25s linear infinite;
@@ -36,10 +36,10 @@
 }
 
 body {
-  /* Soft glassmorphism background: abstract mesh gradient with orange, blue, and white */
+  /* Soft glassmorphism background: abstract mesh gradient with orange, deep blue, and white */
   background: radial-gradient(circle at 15% 50%, rgba(249, 115, 22, 0.15), transparent 25%),
-              radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.15), transparent 25%),
-              linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+              radial-gradient(circle at 85% 30%, rgba(30, 58, 138, 0.22), transparent 30%),
+              linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
   background-attachment: fixed;
   color: #1e293b;
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -63,9 +63,9 @@ body {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(14, 165, 233, 0.3);
+  background: rgba(30, 58, 138, 0.4);
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(14, 165, 233, 0.5);
+  background: rgba(30, 58, 138, 0.6);
 }

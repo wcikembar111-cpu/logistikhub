@@ -47,7 +47,7 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
-      <div className="glass-box h-12 flex items-stretch overflow-hidden mt-6 !rounded-2xl">
+      <div className="glass-box h-12 flex items-stretch overflow-hidden !rounded-2xl">
         <div className="bg-orange-500/10 text-orange-600 border-r border-white/40 flex items-center justify-center px-4 font-bold text-xs tracking-widest uppercase">
           <span className="w-2.5 h-2.5 bg-orange-500 rounded-full mr-2 animate-pulse shadow-sm"></span> PENGUMUMAN
         </div>
@@ -58,12 +58,12 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </div>
         
-        <div className="bg-sky-500/10 text-sky-700 border-l border-white/40 flex items-center justify-center px-4 font-bold text-sm">
+        <div className="bg-blue-900/15 text-blue-900 border-l border-white/40 flex items-center justify-center px-4 font-bold text-sm">
           {time}
         </div>
         
         {isAdmin && (
-          <button onClick={handleOpenModal} className="bg-white/40 hover:bg-white/60 border-l border-white/40 px-4 cursor-pointer font-bold text-sky-600 transition-colors">
+          <button onClick={handleOpenModal} className="bg-white/40 hover:bg-white/60 border-l border-white/40 px-4 cursor-pointer font-bold text-blue-900 transition-colors">
             <Edit2 size={16} />
           </button>
         )}
@@ -74,7 +74,7 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
           <div className="glass-box w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] !rounded-3xl">
             <div className="border-b border-white/40 px-6 py-4 flex justify-between items-center bg-white/40">
               <h5 className="font-bold text-slate-800 flex items-center gap-2 m-0 text-sm uppercase">
-                <Edit2 size={18} className="text-sky-500" /> EDIT PENGUMUMAN
+                <Edit2 size={18} className="text-blue-900" /> EDIT PENGUMUMAN
               </h5>
               <button onClick={() => setShowModal(false)} className="text-slate-500 hover:text-slate-800 font-black text-xl transition-transform cursor-pointer">✕</button>
             </div>
@@ -86,7 +86,7 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
                     value={msg}
                     onChange={(e) => updateMessageRow(idx, e.target.value)}
                     placeholder="KETIK PESAN..."
-                    className="flex-1 bg-white/50 text-slate-800 border border-white/60 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-sky-400 outline-none transition-all shadow-sm"
+                    className="flex-1 bg-white/50 text-slate-800 border border-white/60 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-sm"
                   />
                   <button onClick={() => removeMessageRow(idx)} className="glass-btn !bg-red-500/10 hover:!bg-red-500/20 text-red-600 !p-0 w-12 h-[46px] flex items-center justify-center shrink-0">
                     <X size={18} />
@@ -99,7 +99,7 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <div className="border-t border-white/40 px-6 py-4 bg-white/40 flex justify-end gap-3">
               <button onClick={() => setShowModal(false)} className="glass-btn !bg-white/60">BATAL</button>
-              <button onClick={handleSave} className="glass-btn !bg-sky-500/80 text-white hover:!bg-sky-500">SIMPAN</button>
+              <button onClick={handleSave} className="glass-btn !bg-blue-900 text-white hover:!bg-blue-800">SIMPAN</button>
             </div>
           </div>
         </div>

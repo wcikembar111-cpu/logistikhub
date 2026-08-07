@@ -25,19 +25,33 @@ export function useLinks() {
     const tempId = crypto.randomUUID();
     const newLink = { ...link, id: tempId, created_at: new Date().toISOString() } as LinkData;
     setLinks(prev => [newLink, ...prev]);
-    await supabase.from('links').insert([link]);
-    fetchLinks();
+    const { error } = await supabase.from('links').insert([link]);
+    if (error) {
+      alert(`Gagal menyimpan ke database Supabase: ${error.message}\n\nSolusi: Pastikan tabel "links" sudah dibuat dan matikan RLS (DISABLE ROW LEVEL SECURITY) atau tambahkan POLICY di Supabase SQL Editor.`);
+      setLinks(prev => prev.filter(l => l.id !== tempId));
+    } else {
+      fetchLinks();
+    }
   };
 
   const updateLink = async (id: string, link: Partial<Omit<LinkData, 'id'>>) => {
     setLinks(prev => prev.map(l => l.id === id ? { ...l, ...link } : l));
-    await supabase.from('links').update(link).eq('id', id);
-    fetchLinks();
+    const { error } = await supabase.from('links').update(link).eq('id', id);
+    if (error) {
+      alert(`Gagal memperbarui aplikasi di Supabase: ${error.message}`);
+      fetchLinks();
+    } else {
+      fetchLinks();
+    }
   };
 
   const deleteLink = async (id: string) => {
     setLinks(prev => prev.filter(l => l.id !== id));
-    await supabase.from('links').delete().eq('id', id);
+    const { error } = await supabase.from('links').delete().eq('id', id);
+    if (error) {
+      alert(`Gagal menghapus aplikasi dari Supabase: ${error.message}`);
+      fetchLinks();
+    }
   };
 
   return { links, loading, addLink, updateLink, deleteLink };
@@ -93,7 +107,23 @@ export function useTodos() {
     }
   };
 
-  return { todos, loading, addTodo, updateTodoStatus, deleteTodo };
+  const deleteCompletedTodos = async () => {
+    const doneCount = todos.filter(t => t.status === 'close').length;
+    if (doneCount === 0) {
+      alert("Tidak ada tugas dengan status Selesai/Done.");
+      return;
+    }
+    if (!confirm(`Hapus masal ${doneCount} tugas yang sudah selesai?`)) return;
+
+    setTodos(prev => prev.filter(t => t.status !== 'close'));
+    const { error } = await supabase.from('todos').delete().eq('status', 'close');
+    if (error) {
+      alert(`Gagal menghapus tugas selesai: ${error.message}`);
+      fetchTodos();
+    }
+  };
+
+  return { todos, loading, addTodo, updateTodoStatus, deleteTodo, deleteCompletedTodos };
 }
 
 export function useAnnouncements() {

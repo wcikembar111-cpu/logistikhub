@@ -11,7 +11,7 @@ interface LinkGridProps {
   onDelete: (id: string) => void;
 }
 
-const BG_COLORS = ['bg-orange-500/20 text-orange-600', 'bg-sky-500/20 text-sky-600', 'bg-white/40 text-slate-700', 'bg-indigo-500/20 text-indigo-600'];
+const BG_COLORS = ['bg-orange-500/20 text-orange-600', 'bg-blue-900/20 text-blue-900', 'bg-white/40 text-slate-700', 'bg-indigo-500/20 text-indigo-600'];
 
 export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: LinkGridProps) {
   const [search, setSearch] = useState('');
@@ -57,7 +57,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
             <button 
               key={cat} 
               onClick={() => setCategory(cat)} 
-              className={`glass-btn !rounded-full ${isActive ? '!bg-sky-500/80 !text-white !border-sky-400' : ''}`}
+              className={`glass-btn !rounded-full ${isActive ? '!bg-blue-900 !text-white !border-blue-800' : ''}`}
             >
               {cat === 'All' ? 'SEMUA' : cat} <span className={`glass-badge ml-2 ${isActive ? '!bg-white/20 !text-white !border-white/30' : ''}`}>{count}</span>
             </button>
@@ -74,7 +74,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
         <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3 m-0 uppercase drop-shadow-sm">
           {category === 'All' ? 'SEMUA APLIKASI' : `${category} APLIKASI`}
         </h2>
-        <div className="bg-white/50 border border-white/60 shadow-sm rounded-full px-5 py-2 font-bold text-xs text-sky-700 uppercase tracking-widest backdrop-blur-sm">
+        <div className="bg-white/50 border border-white/60 shadow-sm rounded-full px-5 py-2 font-bold text-xs text-blue-900 uppercase tracking-widest backdrop-blur-sm">
           {filteredLinks.length} ITEM
         </div>
       </div>
@@ -104,7 +104,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                     <div className="hidden group-hover:flex gap-2 z-10">
                       <button 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
-                        className="glass-btn !p-3 !rounded-xl !bg-sky-500/10 hover:!bg-sky-500/20 !text-sky-600"
+                        className="glass-btn !p-3 !rounded-xl !bg-blue-900/10 hover:!bg-blue-900/20 !text-blue-900"
                       >
                         <Edit2 size={18} />
                       </button>

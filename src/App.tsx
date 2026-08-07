@@ -11,7 +11,7 @@ import { LinkData } from './types';
 
 export default function App() {
   const { links, loading: linksLoading, addLink, updateLink, deleteLink } = useLinks();
-  const { todos, loading: todosLoading, addTodo, updateTodoStatus, deleteTodo } = useTodos();
+  const { todos, loading: todosLoading, addTodo, updateTodoStatus, deleteTodo, deleteCompletedTodos } = useTodos();
   const { isAdmin, logout } = useAuth();
 
   const [showLogin, setShowLogin] = useState(false);
@@ -59,6 +59,11 @@ export default function App() {
           onLogout={logout} 
         />
         
+        {/* Ticker / Pengumuman ditempatkan di atas Pencarian Aplikasi */}
+        <div className="mb-6">
+          <Ticker isAdmin={isAdmin} />
+        </div>
+
         <LinkGrid 
           links={links} 
           loading={linksLoading}
@@ -67,8 +72,6 @@ export default function App() {
           onEdit={handleOpenEditLink}
           onDelete={deleteLink}
         />
-
-        <Ticker isAdmin={isAdmin} />
       </div>
 
       <Sidebar 
@@ -80,6 +83,7 @@ export default function App() {
         onAddTodo={addTodo}
         onUpdateStatus={updateTodoStatus}
         onDeleteTodo={deleteTodo}
+        onDeleteCompletedTodos={deleteCompletedTodos}
         onRefresh={() => {}} // Snapshot is real-time, no manual refresh needed, but we provide button
       />
 

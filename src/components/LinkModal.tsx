@@ -87,20 +87,20 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
         <div className="p-6 overflow-y-auto min-h-0 flex-1 custom-scrollbar bg-white/30">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="text-[11px] font-bold text-sky-700 uppercase tracking-widest mb-2 block">Application Title</label>
+              <label className="text-[11px] font-bold text-blue-900 uppercase tracking-widest mb-2 block">Application Title</label>
               <input 
                 type="text" 
                 value={title} onChange={e => setTitle(e.target.value)}
-                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-sky-400 outline-none transition-all shadow-sm placeholder:text-slate-400" 
+                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-sm placeholder:text-slate-400" 
                 placeholder="e.g. Inventory System" 
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-sky-700 uppercase tracking-widest mb-2 block">Target URL</label>
+              <label className="text-[11px] font-bold text-blue-900 uppercase tracking-widest mb-2 block">Target URL</label>
               <input 
                 type="url" 
                 value={url} onChange={e => setUrl(e.target.value)}
-                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-sky-400 outline-none transition-all shadow-sm placeholder:text-slate-400" 
+                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-sm placeholder:text-slate-400" 
                 placeholder="https://..." 
               />
             </div>
@@ -170,7 +170,7 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
         
         <div className="border-t border-white/40 px-6 py-5 bg-white/40 flex justify-end gap-3 shrink-0">
           <button onClick={onClose} className="glass-btn !bg-white/60">CANCEL</button>
-          <button onClick={handleSave} disabled={loading} className="glass-btn !bg-sky-500/90 text-white hover:!bg-sky-500 border-sky-400">
+          <button onClick={handleSave} disabled={loading} className="glass-btn !bg-blue-900 text-white hover:!bg-blue-800 border-blue-800">
             {loading ? 'SAVING...' : 'SAVE DATA'}
           </button>
         </div>
