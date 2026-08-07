@@ -52,8 +52,8 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
           <span className="w-2.5 h-2.5 bg-orange-500 rounded-full mr-2 animate-pulse shadow-sm"></span> PENGUMUMAN
         </div>
         
-        <div className="flex-1 flex items-center bg-transparent overflow-hidden px-4 text-sm relative">
-          <div className="font-semibold text-slate-700 uppercase animate-marquee whitespace-nowrap absolute min-w-max flex items-center gap-8">
+        <div className="flex-1 flex items-center bg-transparent overflow-hidden px-4 text-sm relative" title="Arahkan kursor ke sini untuk menjeda teks">
+          <div className="font-semibold text-slate-700 uppercase animate-marquee whitespace-nowrap absolute min-w-max flex items-center gap-8 cursor-pointer">
             {messages.length > 0 ? messages.map((m, idx) => <span key={idx}>■ {m}</span>) : <span>MEMUAT PENGUMUMAN...</span>}
           </div>
         </div>

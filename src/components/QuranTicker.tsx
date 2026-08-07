@@ -46,8 +46,8 @@ export function QuranTicker() {
       <div className="bg-sky-500/10 text-sky-600 border-r border-white/40 flex items-center justify-center px-4 font-bold text-xs tracking-wider whitespace-nowrap uppercase">
         <BookOpen size={16} className="mr-2 text-sky-500" /> QURAN
       </div>
-      <div className="flex-1 flex items-center bg-transparent overflow-hidden px-4 text-sm relative">
-        <div className="font-semibold flex items-center py-2 animate-marquee-slow whitespace-nowrap absolute min-w-max">
+      <div className="flex-1 flex items-center bg-transparent overflow-hidden px-4 text-sm relative" title="Arahkan kursor ke sini untuk menjeda bacaan">
+        <div className="font-semibold flex items-center py-2 animate-marquee-slow whitespace-nowrap absolute min-w-max cursor-pointer">
           <div className="inline-flex items-center gap-4">
             <span className="font-bold text-lg text-orange-600 mr-4 font-arabic drop-shadow-sm" dir="rtl">{ayah.text}</span>
             <span className="mr-2 font-medium text-slate-700">"{ayah.translation}"</span>

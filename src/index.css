@@ -10,8 +10,8 @@
   --color-glass-blue: #1e3a8a;
   --color-glass-white: rgba(255, 255, 255, 0.7);
 
-  --animate-marquee: marquee 25s linear infinite;
-  --animate-marquee-slow: marquee 60s linear infinite;
+  --animate-marquee: marquee 65s linear infinite;
+  --animate-marquee-slow: marquee 110s linear infinite;
 }
 
 @keyframes marquee {
@@ -21,6 +21,10 @@
 
 .animate-marquee, .animate-marquee-slow {
   will-change: transform;
+}
+
+.animate-marquee:hover, .animate-marquee-slow:hover {
+  animation-play-state: paused;
 }
 
 @layer utilities {
