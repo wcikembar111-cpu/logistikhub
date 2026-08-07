@@ -145,18 +145,19 @@ export function Hero({ isAdmin, onLogin, onLogout }: HeroProps) {
   ] : [];
 
   return (
-    <div className="glass-box p-0 flex flex-wrap relative overflow-hidden mb-6">
+    <div className="glass-box p-0 flex flex-col lg:flex-row relative overflow-hidden mb-6">
+      {/* Profile Section */}
       <div 
-        className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-6 p-6 sm:p-8 bg-white/20 min-w-[300px]"
+        className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-6 p-6 sm:p-8 bg-white/20"
       >
         <div className="relative z-10 shrink-0">
           <div className="relative">
             <img 
               src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
               alt="Dede Suparman" 
-              className="w-28 h-28 rounded-2xl object-cover border-4 border-white/60 shadow-lg"
+              className="w-36 h-36 sm:w-44 sm:h-44 rounded-3xl object-cover border-4 border-white shadow-xl transition-transform hover:scale-[1.02]"
             />
-            <span className="absolute -bottom-3 -right-3 bg-white/80 backdrop-blur-md border border-white rounded-full w-10 h-10 flex items-center justify-center text-lg shadow-sm">
+            <span className="absolute -bottom-2 -right-2 bg-white/90 backdrop-blur-md border border-white rounded-full w-10 h-10 flex items-center justify-center text-lg shadow-md">
               👋
             </span>
           </div>
@@ -186,34 +187,49 @@ export function Hero({ isAdmin, onLogin, onLogout }: HeroProps) {
         </div>
       </div>
       
-      {/* Right Column: Clock, Date, Login/Logout, and Prayer Times */}
-      <div className="p-6 sm:p-8 flex flex-col justify-between items-end min-w-[320px] bg-white/30 backdrop-blur-lg lg:border-l border-white/50 lg:border-t-0 border-t max-lg:items-start max-lg:w-full z-10 relative">
-        <div className="w-full flex flex-col items-end max-lg:items-start mb-4">
-          <div className="font-bold uppercase text-xs text-orange-700 tracking-widest mb-2 border border-orange-500/30 px-3 py-1 bg-orange-500/10 rounded-full shadow-sm">
-            {dateStr || 'MEMUAT...'}
-          </div>
-          <div className="font-black text-blue-900 text-4xl sm:text-5xl leading-none mb-3 tracking-tight drop-shadow-md">
-            {time || '--:--:--'}
-          </div>
-          <div>
+      {/* Right Section: Clock & Prayer Times Sejajar (Side by Side) */}
+      <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/30 backdrop-blur-lg lg:border-l border-white/50 lg:border-t-0 border-t z-10 relative">
+        
+        {/* Clock & Date Block + Small Login/Logout */}
+        <div className="flex flex-col items-center sm:items-start shrink-0">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap justify-center sm:justify-start">
+            <div className="font-bold uppercase text-[11px] text-orange-700 tracking-widest border border-orange-500/30 px-3 py-0.5 bg-orange-500/10 rounded-full shadow-sm">
+              {dateStr || 'MEMUAT...'}
+            </div>
+            
+            {/* Tombol Login/Logout dibuat lebih kecil dan diskret */}
             {!isAdmin ? (
-              <button onClick={onLogin} className="glass-btn !bg-white/60 hover:!bg-white/80">
-                <LogIn size={18} className="text-blue-900" /> <span className="text-blue-900">LOGIN ADMIN</span>
+              <button 
+                onClick={onLogin} 
+                className="glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-slate-600 hover:text-blue-900 bg-white/50 hover:bg-white/80 border-white/60 opacity-75 hover:opacity-100 flex items-center gap-1 transition-all shadow-xs"
+                title="Login Admin"
+              >
+                <LogIn size={12} className="text-blue-900" />
+                <span>ADMIN LOGIN</span>
               </button>
             ) : (
-              <button onClick={onLogout} className="glass-btn !bg-orange-500/80 hover:!bg-orange-500 text-white border-orange-400">
-                <LogOut size={18} /> LOGOUT
+              <button 
+                onClick={onLogout} 
+                className="glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-red-600 bg-red-500/10 hover:bg-red-500/20 border-red-500/20 flex items-center gap-1 transition-all shadow-xs"
+                title="Logout Admin"
+              >
+                <LogOut size={12} />
+                <span>LOGOUT</span>
               </button>
             )}
           </div>
+
+          <div className="font-black text-blue-900 text-4xl sm:text-5xl leading-none tracking-tight drop-shadow-md">
+            {time || '--:--:--'}
+          </div>
         </div>
 
-        {/* Pengingat Waktu Sholat Sukabumi */}
-        <div className="w-full border-t border-white/40 pt-4 mt-2">
-          <div className="flex items-center justify-between gap-2 mb-3">
+        {/* Jadwal Sholat (Sejajar dengan Jam) */}
+        <div className="flex-1 w-full sm:max-w-[420px]">
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 uppercase tracking-wider">
               <MapPin size={14} className="text-emerald-600" />
-              <span>Jadwal Sholat Kab. Sukabumi</span>
+              <span>Jadwal Sholat Sukabumi</span>
             </div>
             {nextPrayer && (
               <div className="flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
@@ -250,6 +266,7 @@ export function Hero({ isAdmin, onLogin, onLogout }: HeroProps) {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
