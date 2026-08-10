@@ -57,6 +57,8 @@ export default function App() {
           isAdmin={isAdmin} 
           onLogin={() => setShowLogin(true)} 
           onLogout={logout} 
+          todos={todos}
+          onOpenTodo={() => setIsSidebarOpen(true)}
         />
         
         {/* Ticker / Pengumuman ditempatkan di atas Pencarian Aplikasi */}

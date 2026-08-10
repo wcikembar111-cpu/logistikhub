@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ListTodo, X, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2 } from 'lucide-react';
 import { TodoData } from '../types';
 
 interface SidebarProps {
@@ -21,12 +21,48 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
   // Default otomatis tab TODO ('no')
   const [filter, setFilter] = useState<'all' | 'no' | 'onproses' | 'close'>('no');
   const [newTask, setNewTask] = useState('');
+  const [reminderActive, setReminderActive] = useState(false);
 
   const filteredTodos = todos.filter(t => filter === 'all' || t.status === filter).reverse();
   
   const no = todos.filter(t => t.status === 'no').length;
   const onproses = todos.filter(t => t.status === 'onproses').length;
   const close = todos.filter(t => t.status === 'close').length;
+  const pendingCount = no + onproses;
+
+  const playChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const notes = [659.25, 880.00, 1174.66];
+      notes.forEach((freq, index) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        
+        const startTime = ctx.currentTime + index * 0.2;
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.3, startTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.55);
+      });
+    } catch (e) {
+      console.error("Gagal memutar audio todo chime:", e);
+    }
+  };
+
+  const handleTestReminder = () => {
+    playChime();
+    setReminderActive(true);
+    setTimeout(() => setReminderActive(false), 3000);
+  };
 
   const handleAdd = () => {
     if (!newTask.trim()) return;
@@ -50,9 +86,25 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
             <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-600 flex items-center justify-center border border-orange-500/30 shadow-sm"><ListTodo size={20} /></div> 
             Public Todo
           </h5>
-          <button onClick={onToggle} className="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-slate-600 hover:text-slate-900 border border-white/60 shadow-sm hover:scale-105 transition-all cursor-pointer">
-            <X size={20} />
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleTestReminder}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all ${
+                reminderActive 
+                  ? 'bg-orange-500 text-white border-orange-600 scale-105 shadow-md' 
+                  : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 border-orange-500/30'
+              }`}
+              title="Bunyikan Nada Pengingat Todo"
+            >
+              <BellRing size={14} className={reminderActive ? 'animate-bounce' : ''} />
+              <span>{pendingCount} Pending</span>
+            </button>
+
+            <button onClick={onToggle} className="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center text-slate-600 hover:text-slate-900 border border-white/60 shadow-sm hover:scale-105 transition-all cursor-pointer">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="flex p-6 border-b border-white/40 gap-3 bg-transparent">
