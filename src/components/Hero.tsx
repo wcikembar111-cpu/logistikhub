@@ -255,9 +255,11 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
     { label: 'ISYA', time: prayerTimes.isya },
   ] : [];
 
-  const handleTestAlarm = () => {
-    setActiveAlarm({ name: 'TEST SHOLAT', time: time.slice(0, 5) });
-    if (soundEnabled) playPrayerChime();
+  const handleClosePrayerAlarm = () => {
+    setActiveAlarm(null);
+    setTimeout(() => {
+      handleTriggerTodoReminder();
+    }, 350);
   };
 
   return (
@@ -269,7 +271,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
             <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl"></div>
             
             <button 
-              onClick={() => setActiveAlarm(null)}
+              onClick={handleClosePrayerAlarm}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all"
             >
               <X size={18} />
@@ -302,7 +304,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 <Volume2 size={16} /> Bunyikan Nada
               </button>
               <button 
-                onClick={() => setActiveAlarm(null)}
+                onClick={handleClosePrayerAlarm}
                 className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all"
               >
                 Tutup Pengingat
@@ -515,14 +517,6 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 <ListTodo size={12} />
                 <span>REMINDER TODO: {pendingTodos.length} PENDING</span>
               </button>
-              
-              <button
-                onClick={handleTriggerTodoReminder}
-                className="p-1 px-2 rounded-lg text-[9px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 border border-orange-500/20 transition-all"
-                title="Tes alarm pengingat todo"
-              >
-                TES REMINDER TODO
-              </button>
             </div>
           </div>
 
@@ -547,15 +541,6 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 >
                   {soundEnabled ? <Volume2 size={12} /> : <VolumeX size={12} />}
                   <span>{soundEnabled ? 'SUARA ON' : 'MUTE'}</span>
-                </button>
-
-                {/* Tombol Tes Alarm Sholat */}
-                <button
-                  onClick={handleTestAlarm}
-                  className="p-1 px-2 rounded-md text-[10px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 border border-emerald-500/20 transition-all"
-                  title="Uji coba alarm pengingat sholat"
-                >
-                  TES SHOLAT
                 </button>
 
                 {nextPrayer && (
