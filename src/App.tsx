@@ -49,7 +49,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-bg-body text-black">
-      <div className={`flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:mr-[360px] xl:mr-[400px]' : ''}`}>
+      <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
         
         <QuranTicker />
         

@@ -387,29 +387,29 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
         </div>
       )}
 
-      <div className="glass-box p-0 flex flex-col lg:flex-row relative overflow-hidden mb-6">
+      <div className="glass-box p-0 flex flex-col xl:flex-row relative overflow-hidden mb-6">
         {/* Profile Section - Disembunyikan Kontaknya agar area lebih kecil & ringkas */}
-        <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-4 p-5 sm:p-6 bg-white/20">
+        <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 sm:p-5 bg-white/20 min-w-0">
           <div className="relative z-10 shrink-0 group">
             <div className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300">
               <img 
                 src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
                 alt="Dede Suparman" 
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-white shadow-md transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-2xl group-hover:border-blue-300"
+                className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl object-cover border-4 border-white shadow-md transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-2xl group-hover:border-blue-300"
               />
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-900/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              <span className="absolute -bottom-1 -right-1 bg-white/90 backdrop-blur-md border border-white rounded-full w-8 h-8 flex items-center justify-center text-xs shadow-md transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 group-hover:bg-blue-50">
+              <span className="absolute -bottom-1 -right-1 bg-white/90 backdrop-blur-md border border-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-xs shadow-md transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 group-hover:bg-blue-50">
                 👋
               </span>
             </div>
           </div>
 
-          <div className="relative z-10 flex-1 ml-0 sm:ml-2 text-center sm:text-left flex flex-col items-center sm:items-start w-full justify-center">
-            <h1 className="font-extrabold text-slate-800 m-0 mb-0.5 text-xl sm:text-2xl tracking-tight uppercase">{greeting}</h1>
+          <div className="relative z-10 flex-1 min-w-0 ml-0 sm:ml-2 text-center sm:text-left flex flex-col items-center sm:items-start w-full justify-center">
+            <h1 className="font-extrabold text-slate-800 m-0 mb-0.5 text-lg sm:text-xl md:text-2xl tracking-tight uppercase break-words">{greeting}</h1>
             
-            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1.5">
-              <span className="font-black text-slate-800 text-sm sm:text-base uppercase">Dede Suparman</span>
-              <span className="bg-blue-900/15 text-blue-900 border border-blue-900/30 text-[10px] font-bold py-0.5 px-2 uppercase rounded-full shadow-2xs">
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 flex-wrap mb-1.5">
+              <span className="font-black text-slate-800 text-xs sm:text-sm md:text-base uppercase">Dede Suparman</span>
+              <span className="bg-blue-900/15 text-blue-900 border border-blue-900/30 text-[9px] sm:text-[10px] font-bold py-0.5 px-2 uppercase rounded-full shadow-2xs">
                 Logistik Supervisor & Developer
               </span>
             </div>
@@ -469,12 +469,12 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
         </div>
         
         {/* Right Section: Clock & Prayer Times Sejajar (Side by Side) */}
-        <div className="p-5 sm:p-6 flex flex-col md:flex-row items-start justify-between gap-5 bg-white/30 backdrop-blur-lg lg:border-l border-white/50 lg:border-t-0 border-t z-10 relative">
+        <div className="p-4 sm:p-5 flex flex-col md:flex-row xl:flex-col 2xl:flex-row items-stretch md:items-start justify-between gap-4 bg-white/30 backdrop-blur-lg xl:border-l border-white/50 border-t xl:border-t-0 z-10 relative shrink-0 min-w-0">
           
           {/* Clock & Date Block + Small Login/Logout */}
-          <div className="flex flex-col items-center sm:items-start shrink-0">
+          <div className="flex flex-col items-center sm:items-start shrink-0 min-w-0">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap justify-center sm:justify-start">
-              <div className="font-bold uppercase text-[11px] text-orange-700 tracking-widest border border-orange-500/30 px-2.5 py-0.5 bg-orange-500/10 rounded-full shadow-2xs">
+              <div className="font-bold uppercase text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-500/30 px-2.5 py-0.5 bg-orange-500/10 rounded-full shadow-2xs">
                 {dateStr || 'MEMUAT...'}
               </div>
               
@@ -500,12 +500,12 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
               )}
             </div>
 
-            <div className="font-black text-blue-900 text-3xl sm:text-4xl leading-none tracking-tight drop-shadow-md">
+            <div className="font-black text-blue-900 text-2xl sm:text-3xl md:text-4xl leading-none tracking-tight drop-shadow-md">
               {time || '--:--:--'}
             </div>
 
             {/* Badge Reminder Todo di bawah jam */}
-            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
               <button 
                 onClick={handleTriggerTodoReminder}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition-all ${
@@ -522,30 +522,30 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
           </div>
 
           {/* Jadwal Sholat (Sejajar dengan Jam - Mepet Atas) */}
-          <div className="flex-1 w-full sm:max-w-[420px]">
+          <div className="flex-1 w-full min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
               <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 uppercase tracking-wider">
-                <MapPin size={14} className="text-emerald-600 shrink-0" />
+                <MapPin size={13} className="text-emerald-600 shrink-0" />
                 <span>Jadwal Sholat Sukabumi</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {/* Toggle Suara Alarm */}
                 <button 
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className={`p-1 rounded-md text-[11px] font-semibold border transition-all flex items-center gap-1 ${
+                  className={`p-1 rounded-md text-[10px] font-semibold border transition-all flex items-center gap-1 ${
                     soundEnabled 
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
                       : 'bg-slate-100 text-slate-500 border-slate-300 line-through'
                   }`}
                   title={soundEnabled ? "Suara Alarm Aktif" : "Suara Alarm Muted"}
                 >
-                  {soundEnabled ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                  {soundEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
                   <span>{soundEnabled ? 'SUARA ON' : 'MUTE'}</span>
                 </button>
 
                 {nextPrayer && (
-                  <div className="flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                  <div className="flex items-center gap-1 bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
                     <Bell size={10} />
                     <span>Mendatang: {nextPrayer.name} ({nextPrayer.time})</span>
                   </div>
@@ -556,22 +556,22 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
             {loadingPrayer ? (
               <div className="text-xs text-slate-500 font-medium py-1">Memuat Jadwal Sholat...</div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 w-full">
+              <div className="grid grid-cols-3 xs:grid-cols-6 sm:grid-cols-6 gap-1 sm:gap-1.5 w-full min-w-0">
                 {prayerList.map((p) => {
                   const isNext = nextPrayer && nextPrayer.name.toUpperCase().includes(p.label);
                   return (
                     <div 
                       key={p.label}
-                      className={`flex flex-col items-center justify-center p-2 rounded-xl text-center border transition-all ${
+                      className={`flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl text-center border transition-all min-w-0 ${
                         isNext 
                           ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-300 shadow-md scale-105' 
                           : 'bg-white/50 text-slate-700 border-white/60 hover:bg-white/70'
                       }`}
                     >
-                      <span className={`text-[9px] font-black uppercase tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
                         {p.label}
                       </span>
-                      <span className={`text-xs font-extrabold mt-0.5 ${isNext ? 'text-white' : 'text-blue-950'}`}>
+                      <span className={`text-[11px] sm:text-xs font-extrabold mt-0.5 ${isNext ? 'text-white' : 'text-blue-950'}`}>
                         {p.time}
                       </span>
                     </div>

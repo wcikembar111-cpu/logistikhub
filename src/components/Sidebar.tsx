@@ -78,8 +78,15 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
 
   return (
     <>
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-2xs z-[85] lg:hidden transition-opacity duration-300 cursor-pointer"
+          onClick={onToggle}
+          title="Klik untuk menutup Todo sidebar"
+        />
+      )}
       <div 
-        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[400px] lg:w-[360px] xl:w-[400px] bg-white/60 backdrop-blur-xl border-l border-white/40 flex flex-col transition-transform duration-500 ease-in-out z-[90] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[380px] lg:w-[360px] xl:w-[380px] bg-white/70 backdrop-blur-xl border-l border-white/40 flex flex-col transition-transform duration-400 ease-in-out z-[90] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex justify-between items-center p-6 border-b border-white/40 bg-white/40">
           <h5 className="m-0 font-extrabold text-slate-800 flex items-center gap-3 text-base uppercase">
