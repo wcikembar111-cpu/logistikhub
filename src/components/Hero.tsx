@@ -107,8 +107,8 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
   };
 
   useEffect(() => {
-    const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGS', 'SEP', 'OKT', 'NOV', 'DES'];
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 
     const timer = setInterval(() => {
       const now = new Date();
@@ -122,21 +122,21 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
       setDateStr(`${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`);
       
       const hour = now.getHours();
-      let greet = 'SELAMAT MALAM';
-      if (hour < 11) greet = 'SELAMAT PAGI';
-      else if (hour < 15) greet = 'SELAMAT SIANG';
-      else if (hour < 18) greet = 'SELAMAT SORE';
-      setGreeting(`${greet}, REKAN!`);
+      let greet = 'Selamat Malam';
+      if (hour < 11) greet = 'Selamat Pagi';
+      else if (hour < 15) greet = 'Selamat Siang';
+      else if (hour < 18) greet = 'Selamat Sore';
+      setGreeting(`${greet}, Rekan!`);
 
       // Cek apakah waktu sholat tiba (per detik ke-00)
       if (now.getSeconds() === 0 && prayerTimes) {
         const list = [
-          { label: 'IMSAK', time: prayerTimes.imsak },
-          { label: 'SUBUH', time: prayerTimes.subuh },
-          { label: 'DZUHUR', time: prayerTimes.dzuhur },
-          { label: 'ASHAR', time: prayerTimes.ashar },
-          { label: 'MAGHRIB', time: prayerTimes.maghrib },
-          { label: 'ISYA', time: prayerTimes.isya },
+          { label: 'Imsak', time: prayerTimes.imsak },
+          { label: 'Subuh', time: prayerTimes.subuh },
+          { label: 'Dzuhur', time: prayerTimes.dzuhur },
+          { label: 'Ashar', time: prayerTimes.ashar },
+          { label: 'Maghrib', time: prayerTimes.maghrib },
+          { label: 'Isya', time: prayerTimes.isya },
         ];
         
         const matched = list.find(p => p.time === currentHHMM);
@@ -247,12 +247,12 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
   }, [prayerTimes, time]);
 
   const prayerList = prayerTimes ? [
-    { label: 'IMSAK', time: prayerTimes.imsak },
-    { label: 'SUBUH', time: prayerTimes.subuh },
-    { label: 'DZUHUR', time: prayerTimes.dzuhur },
-    { label: 'ASHAR', time: prayerTimes.ashar },
-    { label: 'MAGHRIB', time: prayerTimes.maghrib },
-    { label: 'ISYA', time: prayerTimes.isya },
+    { label: 'Imsak', time: prayerTimes.imsak },
+    { label: 'Subuh', time: prayerTimes.subuh },
+    { label: 'Dzuhur', time: prayerTimes.dzuhur },
+    { label: 'Ashar', time: prayerTimes.ashar },
+    { label: 'Maghrib', time: prayerTimes.maghrib },
+    { label: 'Isya', time: prayerTimes.isya },
   ] : [];
 
   const handleClosePrayerAlarm = () => {
@@ -474,8 +474,8 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
           {/* Clock & Date Block + Small Login/Logout */}
           <div className="flex flex-col items-center sm:items-start shrink-0 min-w-0">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap justify-center sm:justify-start">
-              <div className="font-bold uppercase text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-500/30 px-2.5 py-0.5 bg-orange-500/10 rounded-full shadow-2xs">
-                {dateStr || 'MEMUAT...'}
+              <div className="font-bold text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-500/30 px-2.5 py-0.5 bg-orange-500/10 rounded-full shadow-2xs">
+                {dateStr || 'Memuat...'}
               </div>
               
               {/* Tombol Login/Logout dibuat lebih kecil dan diskret */}
@@ -486,7 +486,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                   title="Login Admin (Kunci)"
                 >
                   <Lock size={11} className="text-blue-900" />
-                  <span>ADMIN LOGIN</span>
+                  <span>Admin Login</span>
                 </button>
               ) : (
                 <button 
@@ -495,7 +495,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                   title="Logout Admin"
                 >
                   <Unlock size={11} />
-                  <span>LOGOUT</span>
+                  <span>Logout</span>
                 </button>
               )}
             </div>
@@ -508,7 +508,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
             <div className="mt-2 flex items-center gap-1.5 flex-wrap">
               <button 
                 onClick={handleTriggerTodoReminder}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold border transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
                   pendingTodos.length > 0
                     ? 'bg-orange-500 text-white border-orange-600 shadow-sm hover:bg-orange-600 active:scale-95'
                     : 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
@@ -516,7 +516,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 title="Klik Lonceng untuk bunyikan nada & tampilkan pesan Pengingat Todo Aktif"
               >
                 <BellRing size={13} className="animate-bounce text-white" />
-                <span>REMINDER TODO: {pendingTodos.length} PENDING</span>
+                <span>Pengingat Todo: {pendingTodos.length} Pending</span>
               </button>
             </div>
           </div>
@@ -524,7 +524,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
           {/* Jadwal Sholat (Sejajar dengan Jam - Mepet Atas) */}
           <div className="flex-1 w-full min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-              <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 tracking-wider">
                 <MapPin size={13} className="text-emerald-600 shrink-0" />
                 <span>Jadwal Sholat Sukabumi</span>
               </div>
@@ -541,7 +541,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                   title={soundEnabled ? "Suara Alarm Aktif" : "Suara Alarm Muted"}
                 >
                   {soundEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
-                  <span>{soundEnabled ? 'SUARA ON' : 'MUTE'}</span>
+                  <span>{soundEnabled ? 'Suara On' : 'Mute'}</span>
                 </button>
 
                 {nextPrayer && (
@@ -562,7 +562,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
             ) : (
               <div className="grid grid-cols-3 xs:grid-cols-6 sm:grid-cols-6 gap-1 sm:gap-1.5 w-full min-w-0">
                 {prayerList.map((p) => {
-                  const isNext = nextPrayer && nextPrayer.name.toUpperCase().includes(p.label);
+                  const isNext = nextPrayer && nextPrayer.name.toLowerCase() === p.label.toLowerCase();
                   return (
                     <div 
                       key={p.label}
@@ -572,10 +572,10 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                           : 'bg-white/50 text-slate-700 border-white/60 hover:bg-white/70'
                       }`}
                     >
-                      <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      <span className={`text-[9px] font-bold tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
                         {p.label}
                       </span>
-                      <span className={`text-[11px] sm:text-xs font-extrabold mt-0.5 ${isNext ? 'text-white' : 'text-blue-950'}`}>
+                      <span className={`text-[11px] sm:text-xs font-bold mt-0.5 ${isNext ? 'text-white' : 'text-blue-950'}`}>
                         {p.time}
                       </span>
                     </div>
