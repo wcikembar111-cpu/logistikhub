@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
+import { useMenuOrder } from '../hooks/useSupabase';
 
 interface LinkGridProps {
   links: LinkData[];
@@ -25,24 +26,10 @@ const NATIVE_ICON_STYLES = [
 
 export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: LinkGridProps) {
   const { showConfirm, showToast } = useNotification();
+  const { menuOrder, saveMenuOrder } = useMenuOrder();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [isReordering, setIsReordering] = useState(false);
-  const [customOrder, setCustomOrder] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('app_link_custom_order');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Sync custom order when new links arrive
-  useEffect(() => {
-    if (links.length > 0 && customOrder.length === 0) {
-      setCustomOrder(links.map(l => l.id));
-    }
-  }, [links]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -57,12 +44,12 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
   }, [links]);
 
   const orderedLinks = useMemo(() => {
-    if (customOrder.length === 0) return links;
+    if (menuOrder.length === 0) return links;
     const map = new Map(links.map(l => [l.id, l]));
     const result: LinkData[] = [];
     
     // Add links in custom order
-    customOrder.forEach(id => {
+    menuOrder.forEach(id => {
       if (map.has(id)) {
         result.push(map.get(id)!);
         map.delete(id);
@@ -72,7 +59,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
     // Append any newly added links not yet in custom order
     map.forEach(l => result.push(l));
     return result;
-  }, [links, customOrder]);
+  }, [links, menuOrder]);
 
   const filteredLinks = useMemo(() => {
     return orderedLinks.filter(l => {
@@ -98,8 +85,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
     newOrder[index] = newOrder[targetIndex];
     newOrder[targetIndex] = temp;
 
-    setCustomOrder(newOrder);
-    localStorage.setItem('app_link_custom_order', JSON.stringify(newOrder));
+    saveMenuOrder(newOrder);
   };
 
   return (

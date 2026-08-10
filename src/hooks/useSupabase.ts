@@ -147,6 +147,45 @@ export function useAnnouncements() {
   return { messages, updateMessages };
 }
 
+export function useMenuOrder() {
+  const [menuOrder, setMenuOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('app_link_custom_order');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const fetchMenuOrder = async () => {
+    try {
+      const { data, error } = await supabase.from('settings').select('order').eq('id', 'menu_order').single();
+      if (!error && data && Array.isArray(data.order)) {
+        setMenuOrder(data.order);
+        localStorage.setItem('app_link_custom_order', JSON.stringify(data.order));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchMenuOrder();
+  }, []);
+
+  const saveMenuOrder = async (newOrder: string[]) => {
+    setMenuOrder(newOrder);
+    localStorage.setItem('app_link_custom_order', JSON.stringify(newOrder));
+    try {
+      await supabase.from('settings').upsert({ id: 'menu_order', order: newOrder });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return { menuOrder, saveMenuOrder };
+}
+
 export function useAuth() {
   const [user, setUser] = useState<{email: string} | null>(() => {
     const saved = localStorage.getItem('user');
