@@ -90,7 +90,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 pb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-5 pb-4">
         {loading ? (
           <div className="col-span-full text-center py-12 glass-box font-bold text-slate-500 uppercase text-sm">
             Memuat Data...
@@ -111,83 +111,74 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                 href={targetUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="glass-box p-4 sm:p-5 flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.01] hover:shadow-xl hover:bg-white/80 hover:border-blue-300/80 cursor-pointer group bg-white/30 overflow-hidden no-underline text-slate-800 block"
+                title={`${l.title} - ${l.category}`}
+                className="glass-box p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[120px] sm:min-h-[135px] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl hover:bg-white/90 hover:border-blue-400 cursor-pointer group bg-white/30 overflow-hidden no-underline text-slate-800 block rounded-2xl sm:rounded-3xl"
               >
                 {/* Visual shine gradient effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/0 via-white/20 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/0 via-white/30 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                <div className="flex justify-between items-start mb-4 relative z-10 pointer-events-none">
-                  <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-md ${nativeStyle} transition-all duration-300 ease-out group-hover:scale-105 group-hover:rotate-2 group-hover:shadow-lg border border-white/40 overflow-hidden`}>
-                    {/* Glossy top-down glass shine overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent pointer-events-none rounded-[18px]" />
-                    <div className="absolute -top-5 -left-5 w-10 h-10 bg-white/35 rounded-full blur-md pointer-events-none" />
-
-                    <span className="relative z-10 drop-shadow-md transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
-                      {isEmoji ? (
-                        <span className="drop-shadow-sm">{l.icon || '📱'}</span>
-                      ) : (
-                        <i className={`${l.icon || 'fas fa-cubes'} text-white text-xl sm:text-2xl drop-shadow-sm`} />
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 pointer-events-auto">
-                    {!isAdmin && (
-                      <div className="w-8 h-8 rounded-lg bg-blue-900/10 text-blue-900 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center group-hover:translate-x-0 group-hover:translate-y-0 translate-x-1 -translate-y-1">
-                        <ExternalLink size={15} />
-                      </div>
-                    )}
-                    
-                    {isAdmin && (
-                      <div className="hidden group-hover:flex gap-1.5 z-10">
-                        <button 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
-                          className="glass-btn !p-2 !rounded-lg !bg-blue-900/10 hover:!bg-blue-900/20 !text-blue-900 transition-transform duration-200 hover:scale-105 cursor-pointer"
-                          title="Edit"
-                        >
-                          <Edit2 size={15} />
-                        </button>
-                        <button 
-                          onClick={(e) => { 
-                            e.preventDefault(); 
-                            e.stopPropagation(); 
-                            showConfirm({
-                              title: 'Hapus Aplikasi',
-                              message: `Apakah Anda yakin ingin menghapus "${l.title}"?`,
-                              confirmText: 'Hapus',
-                              cancelText: 'Batal',
-                              type: 'danger',
-                              onConfirm: () => {
-                                onDelete(l.id);
-                                showToast('Dihapus', `Aplikasi "${l.title}" telah dihapus`, 'info');
-                              }
-                            });
-                          }} 
-                          className="glass-btn !p-2 !rounded-lg !bg-red-500/10 hover:!bg-red-500/20 !text-red-600 transition-transform duration-200 hover:scale-105 cursor-pointer"
-                          title="Hapus"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                {/* Admin Actions or External Link Badge on Hover */}
+                <div className="absolute top-2.5 right-2.5 z-20 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {!isAdmin && (
+                    <div className="w-7 h-7 rounded-lg bg-blue-900/10 text-blue-900 flex items-center justify-center">
+                      <ExternalLink size={14} />
+                    </div>
+                  )}
+                  
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
+                        className="glass-btn !p-1.5 !rounded-lg !bg-blue-900/10 hover:!bg-blue-900 hover:!text-white !text-blue-900 transition-all cursor-pointer"
+                        title="Edit Application"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button 
+                        onClick={(e) => { 
+                          e.preventDefault(); 
+                          e.stopPropagation(); 
+                          showConfirm({
+                            title: 'Hapus Aplikasi',
+                            message: `Apakah Anda yakin ingin menghapus "${l.title}"?`,
+                            confirmText: 'Hapus',
+                            cancelText: 'Batal',
+                            type: 'danger',
+                            onConfirm: () => {
+                              onDelete(l.id);
+                              showToast('Dihapus', `Aplikasi "${l.title}" telah dihapus`, 'info');
+                            }
+                          });
+                        }} 
+                        className="glass-btn !p-1.5 !rounded-lg !bg-red-500/10 hover:!bg-red-600 hover:!text-white !text-red-600 transition-all cursor-pointer"
+                        title="Hapus Application"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex-1 flex flex-col min-w-0 relative z-10 pointer-events-none">
-                  <h4 className="font-extrabold text-sm sm:text-base text-slate-800 m-0 mb-1 uppercase tracking-tight transition-colors duration-300 group-hover:text-blue-900 leading-snug break-words">
+                {/* Main Icon Tile (Always Visible) */}
+                <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-md ${nativeStyle} transition-all duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 group-hover:shadow-lg border border-white/40 overflow-hidden`}>
+                  {/* Glossy top-down glass shine overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent pointer-events-none rounded-[20px]" />
+                  <div className="absolute -top-5 -left-5 w-10 h-10 bg-white/35 rounded-full blur-md pointer-events-none" />
+
+                  <span className="relative z-10 drop-shadow-md flex items-center justify-center">
+                    {isEmoji ? (
+                      <span className="drop-shadow-sm">{l.icon || '📱'}</span>
+                    ) : (
+                      <i className={`${l.icon || 'fas fa-cubes'} text-white text-xl sm:text-2xl drop-shadow-sm`} />
+                    )}
+                  </span>
+                </div>
+
+                {/* Title Info (Directly Visible, Smaller Font, Non-Bold, No Category) */}
+                <div className="w-full text-center mt-2.5 px-1 pointer-events-none">
+                  <h4 className="font-medium text-xs sm:text-[13px] text-slate-800 m-0 uppercase tracking-wide leading-snug break-words group-hover:text-blue-900 transition-colors duration-200">
                     {l.title}
                   </h4>
-                  <p className="text-[11px] font-medium text-slate-500 m-0 mb-3 uppercase tracking-wider transition-colors duration-300 group-hover:text-slate-700 break-words leading-relaxed">
-                    {l.category}
-                  </p>
-                  
-                  <div className="mt-auto pt-1">
-                    {l.subcategory && (
-                      <span className="inline-block px-2.5 py-1 bg-white/60 border border-white/80 text-orange-600 rounded-md text-[9px] font-extrabold uppercase tracking-wider shadow-2xs transition-all duration-300 group-hover:bg-orange-500 group-hover:text-white group-hover:border-orange-400 max-w-full break-words">
-                        {l.subcategory}
-                      </span>
-                    )}
-                  </div>
                 </div>
               </a>
             );
