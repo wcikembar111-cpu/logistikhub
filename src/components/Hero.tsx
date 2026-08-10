@@ -390,14 +390,15 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
       <div className="glass-box p-0 flex flex-col lg:flex-row relative overflow-hidden mb-6">
         {/* Profile Section - Disembunyikan Kontaknya agar area lebih kecil & ringkas */}
         <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-4 p-5 sm:p-6 bg-white/20">
-          <div className="relative z-10 shrink-0">
-            <div className="relative">
+          <div className="relative z-10 shrink-0 group">
+            <div className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300">
               <img 
                 src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
                 alt="Dede Suparman" 
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-white shadow-md transition-transform hover:scale-[1.02]"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-white shadow-md transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-2xl group-hover:border-blue-300"
               />
-              <span className="absolute -bottom-1 -right-1 bg-white/90 backdrop-blur-md border border-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-900/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              <span className="absolute -bottom-1 -right-1 bg-white/90 backdrop-blur-md border border-white rounded-full w-8 h-8 flex items-center justify-center text-xs shadow-md transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 group-hover:bg-blue-50">
                 👋
               </span>
             </div>

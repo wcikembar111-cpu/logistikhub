@@ -53,6 +53,11 @@ export default function App() {
         
         <QuranTicker />
         
+        {/* Ticker / Pengumuman ditempatkan tepat di bawah Quran */}
+        <div className="mb-6">
+          <Ticker isAdmin={isAdmin} />
+        </div>
+        
         <Hero 
           isAdmin={isAdmin} 
           onLogin={() => setShowLogin(true)} 
@@ -60,11 +65,6 @@ export default function App() {
           todos={todos}
           onOpenTodo={() => setIsSidebarOpen(true)}
         />
-        
-        {/* Ticker / Pengumuman ditempatkan di atas Pencarian Aplikasi */}
-        <div className="mb-6">
-          <Ticker isAdmin={isAdmin} />
-        </div>
 
         <LinkGrid 
           links={links} 
