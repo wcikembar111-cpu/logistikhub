@@ -103,16 +103,20 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
           filteredLinks.map((l, index) => {
             const isEmoji = l.icon && !l.icon.startsWith('fa');
             const nativeStyle = NATIVE_ICON_STYLES[index % NATIVE_ICON_STYLES.length];
+            const targetUrl = l.url ? (l.url.startsWith('http://') || l.url.startsWith('https://') ? l.url : `https://${l.url}`) : '#';
             
             return (
-              <div 
+              <a 
                 key={l.id} 
-                className="glass-box p-4 sm:p-5 flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.01] hover:shadow-xl hover:bg-white/80 hover:border-blue-300/80 cursor-pointer group bg-white/30 overflow-hidden"
+                href={targetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-box p-4 sm:p-5 flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-2 hover:scale-[1.01] hover:shadow-xl hover:bg-white/80 hover:border-blue-300/80 cursor-pointer group bg-white/30 overflow-hidden no-underline text-slate-800 block"
               >
                 {/* Visual shine gradient effect on hover */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/0 via-white/20 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="flex justify-between items-start mb-4 relative z-10 pointer-events-none">
                   <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-md ${nativeStyle} transition-all duration-300 ease-out group-hover:scale-105 group-hover:rotate-2 group-hover:shadow-lg border border-white/40 overflow-hidden`}>
                     {/* Glossy top-down glass shine overlay */}
                     <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent pointer-events-none rounded-[18px]" />
@@ -127,7 +131,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 pointer-events-auto">
                     {!isAdmin && (
                       <div className="w-8 h-8 rounded-lg bg-blue-900/10 text-blue-900 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center group-hover:translate-x-0 group-hover:translate-y-0 translate-x-1 -translate-y-1">
                         <ExternalLink size={15} />
@@ -138,7 +142,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                       <div className="hidden group-hover:flex gap-1.5 z-10">
                         <button 
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
-                          className="glass-btn !p-2 !rounded-lg !bg-blue-900/10 hover:!bg-blue-900/20 !text-blue-900 transition-transform duration-200 hover:scale-105"
+                          className="glass-btn !p-2 !rounded-lg !bg-blue-900/10 hover:!bg-blue-900/20 !text-blue-900 transition-transform duration-200 hover:scale-105 cursor-pointer"
                           title="Edit"
                         >
                           <Edit2 size={15} />
@@ -159,7 +163,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                               }
                             });
                           }} 
-                          className="glass-btn !p-2 !rounded-lg !bg-red-500/10 hover:!bg-red-500/20 !text-red-600 transition-transform duration-200 hover:scale-105"
+                          className="glass-btn !p-2 !rounded-lg !bg-red-500/10 hover:!bg-red-500/20 !text-red-600 transition-transform duration-200 hover:scale-105 cursor-pointer"
                           title="Hapus"
                         >
                           <Trash2 size={15} />
@@ -169,7 +173,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col min-w-0 relative z-10">
+                <div className="flex-1 flex flex-col min-w-0 relative z-10 pointer-events-none">
                   <h4 className="font-extrabold text-sm sm:text-base text-slate-800 m-0 mb-1 uppercase tracking-tight transition-colors duration-300 group-hover:text-blue-900 leading-snug break-words">
                     {l.title}
                   </h4>
@@ -185,9 +189,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                     )}
                   </div>
                 </div>
-                
-                <a href={l.url} target="_blank" rel="noreferrer" className="absolute inset-0 z-0 rounded-3xl"></a>
-              </div>
+              </a>
             );
           })
         )}
