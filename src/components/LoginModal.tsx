@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useSupabase';
+import { useNotification } from '../context/NotificationContext';
 
 interface LoginModalProps {
   onClose: () => void;
@@ -12,17 +13,21 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { showToast, showAlert } = useNotification();
 
   const handleLogin = async () => {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
-    if (!trimmedEmail || !trimmedPassword) return alert('ISI KREDENSIAL');
+    if (!trimmedEmail || !trimmedPassword) {
+      return showToast('Isi Kredensial', 'Email dan Password wajib diisi untuk login', 'warning');
+    }
     setLoading(true);
     try {
       await login(trimmedEmail, trimmedPassword);
+      showToast('Login Berhasil', 'Anda sekarang masuk sebagai Admin', 'success');
       onSuccess();
     } catch (e: any) {
-      alert(e.message || 'Login Gagal');
+      showAlert('Gagal Login', e.message || 'Kredensial tidak valid', 'error');
     } finally {
       setLoading(false);
     }

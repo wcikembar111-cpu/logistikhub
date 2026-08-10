@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Edit2, Plus, X } from 'lucide-react';
 import { useAnnouncements } from '../hooks/useSupabase';
+import { useNotification } from '../context/NotificationContext';
 
 export function Ticker({ isAdmin }: { isAdmin: boolean }) {
   const { messages, updateMessages } = useAnnouncements();
+  const { showToast } = useNotification();
   const [time, setTime] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editMessages, setEditMessages] = useState<string[]>([]);
@@ -24,10 +26,11 @@ export function Ticker({ isAdmin }: { isAdmin: boolean }) {
   const handleSave = async () => {
     const validMessages = editMessages.filter(m => m.trim() !== '');
     if (validMessages.length === 0) {
-      alert('Minimal 1 pesan');
+      showToast('Perhatian', 'Minimal 1 pesan pengumuman harus diisi', 'warning');
       return;
     }
     await updateMessages(validMessages);
+    showToast('Berhasil', 'Pengumuman telah diperbarui', 'success');
     setShowModal(false);
   };
 

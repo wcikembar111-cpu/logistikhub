@@ -109,16 +109,12 @@ export function useTodos() {
 
   const deleteCompletedTodos = async () => {
     const doneCount = todos.filter(t => t.status === 'close').length;
-    if (doneCount === 0) {
-      alert("Tidak ada tugas dengan status Selesai/Done.");
-      return;
-    }
-    if (!confirm(`Hapus masal ${doneCount} tugas yang sudah selesai?`)) return;
+    if (doneCount === 0) return;
 
     setTodos(prev => prev.filter(t => t.status !== 'close'));
     const { error } = await supabase.from('todos').delete().eq('status', 'close');
     if (error) {
-      alert(`Gagal menghapus tugas selesai: ${error.message}`);
+      console.error(`Gagal menghapus tugas selesai: ${error.message}`);
       fetchTodos();
     }
   };

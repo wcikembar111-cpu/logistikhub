@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Edit, PlusCircle } from 'lucide-react';
 import { LinkData } from '../types';
+import { useNotification } from '../context/NotificationContext';
 
 interface LinkModalProps {
   link: LinkData | null;
@@ -37,6 +38,7 @@ const ICON_LIST = [
 ];
 
 export function LinkModal({ link, existingCategories, onClose, onSave }: LinkModalProps) {
+  const { showToast } = useNotification();
   const [title, setTitle] = useState(link?.title || '');
   const [url, setUrl] = useState(link?.url || '');
   const [category, setCategory] = useState(link?.category || '');
@@ -54,9 +56,13 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
   }, [link, existingCategories]);
 
   const handleSave = async () => {
-    if (!title || !url) return alert('Judul dan URL wajib diisi');
+    if (!title || !url) {
+      return showToast('Data Tidak Lengkap', 'Judul Aplikasi dan Target URL wajib diisi', 'warning');
+    }
     const finalCat = category === '__NEW__' ? newCategory : category;
-    if (!finalCat) return alert('Kategori wajib diisi');
+    if (!finalCat) {
+      return showToast('Data Tidak Lengkap', 'Kategori wajib dipilih atau diisi', 'warning');
+    }
     setLoading(true);
     await onSave({
       title,
@@ -65,6 +71,7 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
       subcategory,
       icon
     });
+    showToast('Tersimpan', link ? 'Aplikasi berhasil diperbarui' : 'Aplikasi baru berhasil ditambahkan', 'success');
     setLoading(false);
   };
 

@@ -504,18 +504,18 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
               {time || '--:--:--'}
             </div>
 
-            {/* Badge Reminder Todo di bawah jam */}
+            {/* Badge Reminder Todo di bawah jam dengan icon lonceng */}
             <div className="mt-2 flex items-center gap-1.5 flex-wrap">
               <button 
                 onClick={handleTriggerTodoReminder}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold border transition-all cursor-pointer ${
                   pendingTodos.length > 0
-                    ? 'bg-orange-500 text-white border-orange-600 shadow-xs hover:bg-orange-600 animate-pulse'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    ? 'bg-orange-500 text-white border-orange-600 shadow-sm hover:bg-orange-600 active:scale-95'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
                 }`}
-                title="Klik untuk membuka pengingat Todo"
+                title="Klik Lonceng untuk bunyikan nada & tampilkan pesan Pengingat Todo Aktif"
               >
-                <ListTodo size={12} />
+                <BellRing size={13} className="animate-bounce text-white" />
                 <span>REMINDER TODO: {pendingTodos.length} PENDING</span>
               </button>
             </div>
@@ -545,10 +545,14 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 </button>
 
                 {nextPrayer && (
-                  <div className="flex items-center gap-1 bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
-                    <Bell size={10} />
+                  <button 
+                    onClick={handleTriggerTodoReminder}
+                    className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 cursor-pointer transition-all text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-2xs active:scale-95"
+                    title="Klik Lonceng untuk bunyikan nada & tampilkan pengingat Todo aktif"
+                  >
+                    <Bell size={11} className="animate-bounce" />
                     <span>Mendatang: {nextPrayer.name} ({nextPrayer.time})</span>
-                  </div>
+                  </button>
                 )}
               </div>
             </div>

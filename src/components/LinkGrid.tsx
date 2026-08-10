@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import { LinkData } from '../types';
+import { useNotification } from '../context/NotificationContext';
 
 interface LinkGridProps {
   links: LinkData[];
@@ -23,6 +24,7 @@ const NATIVE_ICON_STYLES = [
 ];
 
 export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: LinkGridProps) {
+  const { showConfirm, showToast } = useNotification();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
 
@@ -142,7 +144,21 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                           <Edit2 size={15} />
                         </button>
                         <button 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(l.id); }} 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            showConfirm({
+                              title: 'Hapus Aplikasi',
+                              message: `Apakah Anda yakin ingin menghapus "${l.title}"?`,
+                              confirmText: 'Hapus',
+                              cancelText: 'Batal',
+                              type: 'danger',
+                              onConfirm: () => {
+                                onDelete(l.id);
+                                showToast('Dihapus', `Aplikasi "${l.title}" telah dihapus`, 'info');
+                              }
+                            });
+                          }} 
                           className="glass-btn !p-2 !rounded-lg !bg-red-500/10 hover:!bg-red-500/20 !text-red-600 transition-transform duration-200 hover:scale-105"
                           title="Hapus"
                         >
@@ -154,16 +170,16 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                 </div>
 
                 <div className="flex-1 flex flex-col min-w-0 relative z-10">
-                  <h4 className="font-extrabold text-sm sm:text-base text-slate-800 m-0 mb-0.5 truncate uppercase tracking-tight transition-colors duration-300 group-hover:text-blue-900">
+                  <h4 className="font-extrabold text-sm sm:text-base text-slate-800 m-0 mb-1 uppercase tracking-tight transition-colors duration-300 group-hover:text-blue-900 leading-snug break-words">
                     {l.title}
                   </h4>
-                  <p className="text-[11px] font-medium text-slate-500 m-0 mb-3 truncate uppercase tracking-wider transition-colors duration-300 group-hover:text-slate-700">
+                  <p className="text-[11px] font-medium text-slate-500 m-0 mb-3 uppercase tracking-wider transition-colors duration-300 group-hover:text-slate-700 break-words leading-relaxed">
                     {l.category}
                   </p>
                   
                   <div className="mt-auto pt-1">
                     {l.subcategory && (
-                      <span className="inline-block px-2.5 py-1 bg-white/60 border border-white/80 text-orange-600 rounded-md text-[9px] font-extrabold uppercase tracking-wider shadow-2xs transition-all duration-300 group-hover:bg-orange-500 group-hover:text-white group-hover:border-orange-400 max-w-full truncate">
+                      <span className="inline-block px-2.5 py-1 bg-white/60 border border-white/80 text-orange-600 rounded-md text-[9px] font-extrabold uppercase tracking-wider shadow-2xs transition-all duration-300 group-hover:bg-orange-500 group-hover:text-white group-hover:border-orange-400 max-w-full break-words">
                         {l.subcategory}
                       </span>
                     )}

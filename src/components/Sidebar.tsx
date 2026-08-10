@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2 } from 'lucide-react';
 import { TodoData } from '../types';
+import { useNotification } from '../context/NotificationContext';
 
 interface SidebarProps {
   todos: TodoData[];
@@ -18,10 +19,12 @@ interface SidebarProps {
 const STATUS_CYCLE: TodoData['status'][] = ['no', 'onproses', 'close'];
 
 export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, onUpdateStatus, onDeleteTodo, onDeleteCompletedTodos, onRefresh }: SidebarProps) {
+  const { showConfirm, showToast } = useNotification();
   // Default otomatis tab TODO ('no')
   const [filter, setFilter] = useState<'all' | 'no' | 'onproses' | 'close'>('no');
   const [newTask, setNewTask] = useState('');
   const [reminderActive, setReminderActive] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
 
   const filteredTodos = todos.filter(t => filter === 'all' || t.status === filter).reverse();
   
@@ -61,12 +64,17 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
   const handleTestReminder = () => {
     playChime();
     setReminderActive(true);
+    setShowReminderModal(true);
     setTimeout(() => setReminderActive(false), 3000);
   };
 
   const handleAdd = () => {
-    if (!newTask.trim()) return;
+    if (!newTask.trim()) {
+      showToast('Perhatian', 'Silakan ketik isi tugas terlebih dahulu', 'warning');
+      return;
+    }
     onAddTodo(newTask.trim());
+    showToast('Tersimpan', 'Tugas baru berhasil ditambahkan', 'success');
     setNewTask('');
   };
 
@@ -181,7 +189,19 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
           <div className="flex gap-2 items-center">
             {close > 0 && onDeleteCompletedTodos && (
               <button 
-                onClick={onDeleteCompletedTodos}
+                onClick={() => {
+                  showConfirm({
+                    title: 'Hapus Tugas Selesai',
+                    message: `Hapus masal ${close} tugas yang sudah berstatus DONE/Selesai?`,
+                    confirmText: 'Hapus Semua Done',
+                    cancelText: 'Batal',
+                    type: 'danger',
+                    onConfirm: async () => {
+                      await onDeleteCompletedTodos();
+                      showToast('Selesai', 'Tugas selesai berhasil dibersihkan', 'info');
+                    }
+                  });
+                }}
                 title="Hapus masal semua tugas yang sudah selesai (DONE)"
                 className="glass-btn !bg-red-500/10 hover:!bg-red-500/20 !text-red-600 !py-1.5 !px-2.5 !rounded-lg flex items-center gap-1 text-[10px] font-bold border border-red-500/20"
               >
@@ -234,7 +254,19 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                     </button>
 
                     <button 
-                      onClick={() => onDeleteTodo(t.id)}
+                      onClick={() => {
+                        showConfirm({
+                          title: 'Hapus Tugas',
+                          message: 'Apakah Anda yakin ingin menghapus tugas ini?',
+                          confirmText: 'Hapus',
+                          cancelText: 'Batal',
+                          type: 'danger',
+                          onConfirm: () => {
+                            onDeleteTodo(t.id);
+                            showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
+                          }
+                        });
+                      }}
                       className="glass-btn !bg-red-500/10 hover:!bg-red-500/20 text-red-600 !p-1.5 !rounded-lg"
                       title="Hapus tugas ini"
                     >
@@ -247,6 +279,108 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
           )}
         </div>
       </div>
+
+      {/* Modal Pengingat Todo Aktif dari Lonceng */}
+      {showReminderModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="glass-box !bg-white/95 p-6 sm:p-7 rounded-3xl max-w-lg w-full shadow-2xl border border-orange-400 relative overflow-hidden text-left">
+            <button 
+              onClick={() => setShowReminderModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-14 h-14 bg-orange-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg animate-bounce">
+              <BellRing size={28} />
+            </div>
+
+            <div className="text-center mb-4">
+              <span className="text-[10px] font-black tracking-widest text-orange-700 uppercase bg-orange-100 px-3 py-1 rounded-full border border-orange-300 inline-block mb-1">
+                PENGINGAT TODO AKTIF
+              </span>
+              <h3 className="text-xl font-black text-slate-800 m-0 uppercase">
+                {pendingCount > 0 ? `ADA ${pendingCount} TUGAS PENDING` : 'SEMUA TUGAS SELESAI'}
+              </h3>
+              <p className="text-xs font-semibold text-slate-600 mt-1 m-0">
+                Bunyi pengingat aktif. Tambah tugas baru atau lihat daftar tugas Anda:
+              </p>
+            </div>
+
+            {/* Quick Form Tambah Task */}
+            <div className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                placeholder="+ Tambah tugas pengingat cepat..." 
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAdd();
+                  }
+                }}
+                className="glass-input flex-1 !text-xs !py-2.5 !px-3"
+              />
+              <button 
+                onClick={handleAdd}
+                className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs uppercase shadow-md transition-all shrink-0 cursor-pointer"
+              >
+                Tambah
+              </button>
+            </div>
+
+            {/* List Tugas Pending */}
+            <div className="max-h-52 overflow-y-auto my-3 space-y-2 pr-1 custom-scrollbar">
+              {todos.filter(t => t.status !== 'close').length === 0 ? (
+                <div className="text-center py-6 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-xl border border-emerald-200">
+                  🎉 Tidak ada tugas pending saat ini.
+                </div>
+              ) : (
+                todos.filter(t => t.status !== 'close').map(t => (
+                  <div key={t.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <button 
+                        onClick={() => cycleStatus(t)}
+                        className={`mt-0.5 shrink-0 w-5 h-5 rounded-md flex items-center justify-center border font-black text-[10px] transition-all ${
+                          t.status === 'onproses' 
+                            ? 'bg-blue-900 text-white border-blue-900' 
+                            : 'bg-white text-orange-500 border-orange-400 hover:bg-orange-50'
+                        }`}
+                        title="Klik untuk ubah status"
+                      >
+                        {t.status === 'onproses' ? 'P' : 'T'}
+                      </button>
+                      <span className="text-xs text-slate-800 font-medium leading-relaxed break-words">
+                        {t.task}
+                      </span>
+                    </div>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 ${
+                      t.status === 'onproses' ? 'bg-blue-100 text-blue-900 border-blue-300' : 'bg-orange-100 text-orange-700 border-orange-300'
+                    }`}>
+                      {t.status === 'onproses' ? 'PROSES' : 'TODO'}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex gap-2.5 justify-center mt-5">
+              <button 
+                onClick={playChime}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Volume2 size={15} /> Bunyikan Nada
+              </button>
+              <button 
+                onClick={() => setShowReminderModal(false)}
+                className="px-6 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white text-xs font-extrabold uppercase shadow-md transition-all cursor-pointer"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div 
         className={`fixed top-1/2 -translate-y-1/2 z-[95] transition-all duration-500 ease-in-out ${isOpen ? 'right-[100vw] sm:right-[400px] lg:right-[360px] xl:right-[400px]' : 'right-0'}`}
