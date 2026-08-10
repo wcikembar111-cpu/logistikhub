@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LogIn, LogOut, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { TodoData } from '../types';
 
 interface HeroProps {
@@ -483,9 +483,9 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 <button 
                   onClick={onLogin} 
                   className="glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-slate-600 hover:text-blue-900 bg-white/50 hover:bg-white/80 border-white/60 opacity-80 hover:opacity-100 flex items-center gap-1 transition-all shadow-2xs"
-                  title="Login Admin"
+                  title="Login Admin (Kunci)"
                 >
-                  <LogIn size={11} className="text-blue-900" />
+                  <Lock size={11} className="text-blue-900" />
                   <span>ADMIN LOGIN</span>
                 </button>
               ) : (
@@ -494,7 +494,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                   className="glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-red-600 bg-red-500/10 hover:bg-red-500/20 border-red-500/20 flex items-center gap-1 transition-all shadow-2xs"
                   title="Logout Admin"
                 >
-                  <LogOut size={11} />
+                  <Unlock size={11} />
                   <span>LOGOUT</span>
                 </button>
               )}

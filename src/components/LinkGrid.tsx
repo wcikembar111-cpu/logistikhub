@@ -11,7 +11,16 @@ interface LinkGridProps {
   onDelete: (id: string) => void;
 }
 
-const BG_COLORS = ['bg-orange-500/20 text-orange-600', 'bg-blue-900/20 text-blue-900', 'bg-white/40 text-slate-700', 'bg-indigo-500/20 text-indigo-600'];
+const NATIVE_ICON_STYLES = [
+  'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-900 text-white shadow-blue-600/35 ring-1 ring-blue-400/30',
+  'bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 text-white shadow-orange-500/35 ring-1 ring-orange-400/30',
+  'bg-gradient-to-br from-emerald-400 via-teal-600 to-emerald-800 text-white shadow-emerald-600/35 ring-1 ring-emerald-400/30',
+  'bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-900 text-white shadow-purple-600/35 ring-1 ring-purple-400/30',
+  'bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-700 text-white shadow-sky-500/35 ring-1 ring-sky-400/30',
+  'bg-gradient-to-br from-rose-400 via-pink-500 to-rose-700 text-white shadow-pink-500/35 ring-1 ring-pink-400/30',
+  'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-950 text-amber-300 shadow-slate-900/35 ring-1 ring-slate-600/30',
+  'bg-gradient-to-br from-cyan-400 via-teal-500 to-blue-700 text-white shadow-cyan-500/35 ring-1 ring-cyan-400/30',
+];
 
 export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: LinkGridProps) {
   const [search, setSearch] = useState('');
@@ -91,7 +100,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
         ) : (
           filteredLinks.map((l, index) => {
             const isEmoji = l.icon && !l.icon.startsWith('fa');
-            const iconBg = BG_COLORS[index % BG_COLORS.length];
+            const nativeStyle = NATIVE_ICON_STYLES[index % NATIVE_ICON_STYLES.length];
             
             return (
               <div 
@@ -102,8 +111,18 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/0 via-white/20 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                 <div className="flex justify-between items-start mb-5 relative z-10">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shrink-0 shadow-sm backdrop-blur-md border border-white/60 ${iconBg} transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-md`}>
-                    {isEmoji ? <span className="drop-shadow-sm transition-transform duration-300 group-hover:scale-110">{l.icon}</span> : <i className={`${l.icon || 'fas fa-link'} transition-transform duration-300 group-hover:scale-110`} />}
+                  <div className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-[22px] flex items-center justify-center text-3xl sm:text-4xl shrink-0 shadow-lg ${nativeStyle} transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl border border-white/40 overflow-hidden`}>
+                    {/* Glossy top-down glass shine overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent pointer-events-none rounded-[22px]" />
+                    <div className="absolute -top-6 -left-6 w-12 h-12 bg-white/35 rounded-full blur-md pointer-events-none" />
+
+                    <span className="relative z-10 drop-shadow-md transition-transform duration-300 group-hover:scale-110 flex items-center justify-center">
+                      {isEmoji ? (
+                        <span className="drop-shadow-sm">{l.icon || '📱'}</span>
+                      ) : (
+                        <i className={`${l.icon || 'fas fa-cubes'} text-white text-2xl sm:text-3xl drop-shadow-sm`} />
+                      )}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2">
