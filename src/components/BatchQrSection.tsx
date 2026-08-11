@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import JSZip from 'jszip';
-import { Download, Printer, Trash2, Search, Copy, Check, QrCode, ExternalLink } from 'lucide-react';
+import { Download, Printer, Trash2, Search, Copy, Check, QrCode, ExternalLink, Settings, X, Tag } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 
 export interface QrItem {
@@ -21,6 +21,14 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isZipping, setIsZipping] = useState(false);
+
+  // Honeywell PM42 Thermal Printing State
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [labelSize, setLabelSize] = useState<'50x30' | '70x40' | '100x50' | 'a4grid'>('50x30');
+  const [orgHeader, setOrgHeader] = useState('PEMKAB SUKABUMI');
+  const [showItemLabel, setShowItemLabel] = useState(true);
+  const [showItemValue, setShowItemValue] = useState(true);
+  const [singlePrintItem, setSinglePrintItem] = useState<QrItem | null>(null);
 
   if (!items || items.length === 0) return null;
 
@@ -77,9 +85,14 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleExecutePrint = (singleItem?: QrItem) => {
+    setSinglePrintItem(singleItem || null);
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
+
+  const printItemsList = singlePrintItem ? [singlePrintItem] : filteredItems;
 
   return (
     <div className="mt-10 pt-8 border-t-2 border-dashed border-blue-300/80 scroll-mt-6" id="qr-batch-results">
@@ -100,7 +113,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
                 </span>
               </div>
               <p className="text-xs text-blue-200 mt-1 m-0">
-                Ukuran QR Code cukup besar & jernih agar mudah dipindai oleh scanner hp/barcode reader
+                Ukuran QR Code jernih untuk scanner & siap cetak Stiker Thermal Honeywell PM42
               </p>
             </div>
           </div>
@@ -116,11 +129,15 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
             </button>
 
             <button
-              onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              onClick={() => {
+                setSinglePrintItem(null);
+                setShowPrintModal(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              title="Cetak Stiker Label Honeywell PM42"
             >
               <Printer size={15} />
-              <span>Cetak / Print</span>
+              <span>Cetak Honeywell PM42</span>
             </button>
 
             <button
@@ -199,47 +216,284 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
               </div>
 
               {/* Card Actions */}
-              <div className="w-full flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="w-full flex items-center justify-between gap-1.5 pt-2 border-t border-slate-100 flex-wrap">
                 <button
                   type="button"
                   onClick={() => handleCopyText(item.value, item.id)}
-                  className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                   title="Salin Teks"
                 >
                   {copiedId === item.id ? (
-                    <>
-                      <Check size={13} className="text-emerald-600" />
-                      <span className="text-emerald-700">Tersalin</span>
-                    </>
+                    <Check size={13} className="text-emerald-600" />
                   ) : (
-                    <>
-                      <Copy size={13} />
-                      <span>Salin Teks</span>
-                    </>
+                    <Copy size={13} />
                   )}
+                  <span>{copiedId === item.id ? 'Tersalin' : 'Salin'}</span>
                 </button>
 
-                {isUrl && (
-                  <a
-                    href={item.value}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg transition-all"
-                    title="Buka Link di Tab Baru"
-                  >
-                    <ExternalLink size={14} />
-                  </a>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleExecutePrint(item);
+                  }}
+                  className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer border border-emerald-200"
+                  title="Cetak Stiker ke Printer Honeywell PM42"
+                >
+                  <Printer size={13} />
+                  <span>Cetak Stiker</span>
+                </button>
 
                 <button
                   type="button"
                   onClick={() => handleDownloadSingle(item)}
-                  className="flex-1 py-1.5 px-2 bg-blue-900 hover:bg-blue-950 text-white rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                  className="py-1.5 px-2 bg-blue-900 hover:bg-blue-950 text-white rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs ml-auto"
+                  title="Unduh PNG"
                 >
                   <Download size={13} />
-                  <span>Unduh PNG</span>
+                  <span>PNG</span>
                 </button>
               </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* HONEYWELL PM42 PRINT OPTION MODAL */}
+      {showPrintModal && (
+        <div className="fixed inset-0 z-[230] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="glass-box !bg-white/95 p-6 rounded-3xl max-w-xl w-full shadow-2xl border border-emerald-300 relative text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                  <Printer size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 m-0">Pengaturan Cetak Honeywell PM42</h3>
+                  <p className="text-[11px] text-slate-500 m-0">Format stiker thermal khusus printer barcode PM42/Zebra</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPrintModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4 text-xs">
+              {/* Size Preset */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Ukuran Label / Stiker Thermal:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLabelSize('50x30')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      labelSize === '50x30'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-2 ring-emerald-500/30'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Tag size={13} className="text-emerald-600" />
+                      <span>50 x 30 mm</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Stiker PM42 Standar / Barang</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLabelSize('70x40')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      labelSize === '70x40'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-2 ring-emerald-500/30'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Tag size={13} className="text-emerald-600" />
+                      <span>70 x 40 mm</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Stiker PM42 Sedang / Arsip</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLabelSize('100x50')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      labelSize === '100x50'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-2 ring-emerald-500/30'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Tag size={13} className="text-emerald-600" />
+                      <span>100 x 50 mm</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Stiker PM42 Besar / Shipping</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLabelSize('a4grid')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      labelSize === 'a4grid'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-2 ring-emerald-500/30'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Printer size={13} className="text-emerald-600" />
+                      <span>Kertas A4 Grid</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">3 x 8 Stiker per Lembar A4</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Header Label Text */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Header KOP / Instansi Stiker:
+                </label>
+                <input 
+                  type="text" 
+                  value={orgHeader} 
+                  onChange={(e) => setOrgHeader(e.target.value)}
+                  placeholder="Contoh: PEMKAB SUKABUMI / DISKOMINFO"
+                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+
+              {/* Toggles */}
+              <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={showItemLabel} 
+                    onChange={(e) => setShowItemLabel(e.target.checked)} 
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="font-semibold text-slate-700">Cetak Judul Item</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={showItemValue} 
+                    onChange={(e) => setShowItemValue(e.target.checked)} 
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="font-semibold text-slate-700">Cetak Teks/URL</span>
+                </label>
+              </div>
+
+              {/* Sample Sticker Preview */}
+              <div className="p-3 bg-slate-100 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Simulasi Hasil Stiker Honeywell PM42:</span>
+                <div className="bg-white border-2 border-slate-900 rounded-lg p-2.5 max-w-[220px] mx-auto text-center shadow-xs">
+                  {orgHeader && (
+                    <div className="text-[10px] font-black tracking-wider uppercase border-b border-slate-800 pb-1 mb-1">
+                      {orgHeader}
+                    </div>
+                  )}
+                  {items[0] && (
+                    <div className="flex flex-col items-center">
+                      <img src={items[0].dataUrl} alt="Preview" className="w-24 h-24 object-contain" />
+                      {showItemLabel && (
+                        <div className="font-extrabold text-[10px] mt-1 text-slate-900 truncate max-w-full">
+                          {items[0].label}
+                        </div>
+                      )}
+                      {showItemValue && (
+                        <div className="font-mono text-[9px] text-slate-700 break-all leading-tight max-w-full line-clamp-1">
+                          {items[0].value}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShowPrintModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPrintModal(false);
+                  handleExecutePrint();
+                }}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Printer size={15} />
+                <span>Cetak ({printItemsList.length} Stiker)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRINT-ONLY AREA FOR HONEYWELL PM42 THERMAL PRINTER */}
+      <div id="printable-thermal-area" className="hidden print:block">
+        {printItemsList.map((item, index) => {
+          let stickerStyleClass = "w-[50mm] h-[30mm]";
+          let qrSizeClass = "w-[20mm] h-[20mm]";
+          let fontSizeClass = "text-[8px]";
+
+          if (labelSize === '70x40') {
+            stickerStyleClass = "w-[70mm] h-[40mm]";
+            qrSizeClass = "w-[28mm] h-[28mm]";
+            fontSizeClass = "text-[10px]";
+          } else if (labelSize === '100x50') {
+            stickerStyleClass = "w-[100mm] h-[50mm]";
+            qrSizeClass = "w-[38mm] h-[38mm]";
+            fontSizeClass = "text-[11px]";
+          } else if (labelSize === 'a4grid') {
+            stickerStyleClass = "w-[65mm] h-[35mm] inline-block m-1";
+            qrSizeClass = "w-[22mm] h-[22mm]";
+            fontSizeClass = "text-[9px]";
+          }
+
+          return (
+            <div 
+              key={`print-${item.id}-${index}`} 
+              className={`thermal-sticker-label ${stickerStyleClass} flex flex-col items-center justify-between text-center bg-white text-black p-1.5 border border-black overflow-hidden font-sans`}
+            >
+              {orgHeader && (
+                <div className="w-full text-center font-black uppercase text-[8px] tracking-wider border-b border-black pb-0.5 mb-0.5 leading-none">
+                  {orgHeader}
+                </div>
+              )}
+
+              <div className="flex-1 flex items-center justify-center w-full my-0.5">
+                <img 
+                  src={item.dataUrl} 
+                  alt={item.label} 
+                  className={`${qrSizeClass} object-contain`}
+                />
+              </div>
+
+              {showItemLabel && item.label && (
+                <div className={`w-full font-bold uppercase truncate leading-none ${fontSizeClass}`}>
+                  {item.label}
+                </div>
+              )}
+
+              {showItemValue && (
+                <div className="w-full font-mono text-[7px] break-all line-clamp-1 leading-none mt-0.5">
+                  {item.value}
+                </div>
+              )}
             </div>
           );
         })}
@@ -247,3 +501,4 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
     </div>
   );
 }
+

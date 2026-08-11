@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import JSZip from 'jszip';
-import { QrCode, Download, Upload, X, Copy, Check, Layers, RefreshCw, Eye } from 'lucide-react';
+import { QrCode, Download, Upload, X, Copy, Check, Layers, RefreshCw, Eye, Eraser, Trash2 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { QrItem } from './BatchQrSection';
 
@@ -28,6 +28,17 @@ export function QrGeneratorModal({ isOpen, onClose, onSetBatchItems, existingBat
   const [batchItems, setBatchItems] = useState<QrItem[]>([]);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
+
+  const handleClearSingle = () => {
+    setSingleText('');
+    showToast('Bersih', 'Teks QR Code dibersihkan', 'info');
+  };
+
+  const handleClearBatch = () => {
+    setBatchText('');
+    setBatchItems([]);
+    showToast('Bersih', 'Area teks batch dan hasil preview dibersihkan', 'info');
+  };
 
   // Generate Single QR Code (high res for scanner readability)
   useEffect(() => {
@@ -286,16 +297,41 @@ export function QrGeneratorModal({ isOpen, onClose, onSetBatchItems, existingBat
           {activeTab === 'single' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Teks / Link URL:
-                </label>
-                <input 
-                  type="text" 
-                  value={singleText}
-                  onChange={(e) => setSingleText(e.target.value)}
-                  placeholder="Ketik teks, nomor WA, atau link https://..."
-                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-inner"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Teks / Link URL:
+                  </label>
+                  {singleText && (
+                    <button
+                      type="button"
+                      onClick={handleClearSingle}
+                      className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                      title="Bersihkan Teks"
+                    >
+                      <Eraser size={13} />
+                      <span>Bersihkan Teks</span>
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={singleText}
+                    onChange={(e) => setSingleText(e.target.value)}
+                    placeholder="Ketik teks, nomor WA, atau link https://..."
+                    className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-inner"
+                  />
+                  {singleText && (
+                    <button
+                      type="button"
+                      onClick={handleClearSingle}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-600 p-1 rounded-full hover:bg-slate-200 transition-all cursor-pointer"
+                      title="Hapus / Clear"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Preview Box - Large & Scanner Friendly */}
@@ -347,32 +383,58 @@ export function QrGeneratorModal({ isOpen, onClose, onSetBatchItems, existingBat
           {activeTab === 'batch' && (
             <div className="space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
                   <label className="text-xs font-bold text-slate-700">
                     Daftar Teks / Link (1 Item Per Baris):
                   </label>
-                  <label className="text-[11px] text-blue-700 font-bold hover:underline cursor-pointer flex items-center gap-1">
-                    <Upload size={13} />
-                    <span>Import File TXT/CSV</span>
-                    <input 
-                      type="file" 
-                      accept=".txt,.csv" 
-                      onChange={handleFileUpload}
-                      className="hidden" 
-                    />
-                  </label>
+                  <div className="flex items-center gap-3">
+                    {batchText && (
+                      <button
+                        type="button"
+                        onClick={handleClearBatch}
+                        className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                        title="Bersihkan Area Teks"
+                      >
+                        <Trash2 size={13} />
+                        <span>Bersihkan Teks</span>
+                      </button>
+                    )}
+                    <label className="text-[11px] text-blue-700 font-bold hover:underline cursor-pointer flex items-center gap-1">
+                      <Upload size={13} />
+                      <span>Import File TXT/CSV</span>
+                      <input 
+                        type="file" 
+                        accept=".txt,.csv" 
+                        onChange={handleFileUpload}
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
                 </div>
                 <p className="text-[10px] text-slate-500 mb-1">
                   Format: <code>Judul, URL/Teks</code> atau langsung <code>URL/Teks</code> per baris.
                 </p>
-                <textarea 
-                  rows={4}
-                  value={batchText}
-                  onChange={(e) => setBatchText(e.target.value)}
-                  placeholder="Website Pemkab, https://sukabumikab.go.id&#10;Dokumen SPPD, https://example.com/sppd&#10;https://nomor-surat-123"
-                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-inner"
-                />
+                <div className="relative">
+                  <textarea 
+                    rows={4}
+                    value={batchText}
+                    onChange={(e) => setBatchText(e.target.value)}
+                    placeholder="Website Pemkab, https://sukabumikab.go.id&#10;Dokumen SPPD, https://example.com/sppd&#10;https://nomor-surat-123"
+                    className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-inner"
+                  />
+                  {batchText && (
+                    <button
+                      type="button"
+                      onClick={handleClearBatch}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-slate-200 transition-all cursor-pointer bg-slate-100/80 border border-slate-300/80"
+                      title="Bersihkan Teks"
+                    >
+                      <Eraser size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
+
 
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700">
