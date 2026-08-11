@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, ChevronLeft, ChevronRight, Pause, Play, RotateCw } from 'lucide-react';
 
 interface AyahItem {
@@ -23,34 +23,8 @@ export function QuranTicker() {
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load current surah number from localStorage or pick a random surah 1..114
-  const [surahNumber, setSurahNumber] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('quran_current_surah');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (parsed >= 1 && parsed <= 114) return parsed;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return Math.floor(Math.random() * 114) + 1;
-  });
-
-  // Load current ayah index from localStorage
-  useEffect(() => {
-    try {
-      const savedIdx = localStorage.getItem('quran_current_ayah');
-      if (savedIdx) {
-        const parsedIdx = parseInt(savedIdx, 10);
-        if (!isNaN(parsedIdx) && parsedIdx >= 0) {
-          setCurrentAyahIndex(parsedIdx);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [surahNumber]);
+  // Pick a random surah 1..114 on start
+  const [surahNumber, setSurahNumber] = useState<number>(() => Math.floor(Math.random() * 114) + 1);
 
   // Fetch complete Surah data when surahNumber changes
   const fetchSurah = async (sNum: number) => {
@@ -81,14 +55,7 @@ export function QuranTicker() {
           numberOfAyahs: arSurah.numberOfAyahs,
           ayahs: ayahsList
         });
-
-        // Ensure currentAyahIndex is valid for this surah
-        setCurrentAyahIndex(prevIdx => {
-          if (prevIdx >= ayahsList.length) {
-            return 0;
-          }
-          return prevIdx;
-        });
+        setCurrentAyahIndex(0);
       } else {
         setErrorMsg('Gagal memuat data Surah');
       }
@@ -104,17 +71,14 @@ export function QuranTicker() {
     fetchSurah(surahNumber);
   }, [surahNumber]);
 
-  // Save progress to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('quran_current_surah', surahNumber.toString());
-      localStorage.setItem('quran_current_ayah', currentAyahIndex.toString());
-    } catch (e) {
-      console.error(e);
+  const pickNewSurah = () => {
+    let nextNum = Math.floor(Math.random() * 114) + 1;
+    if (nextNum === surahNumber) {
+      nextNum = (surahNumber % 114) + 1;
     }
-  }, [surahNumber, currentAyahIndex]);
+    setSurahNumber(nextNum);
+  };
 
-  // Next Ayah logic (sequential within surah, random next surah when complete)
   const handleNextAyah = () => {
     if (!surahData || surahData.ayahs.length === 0) return;
 
@@ -128,20 +92,9 @@ export function QuranTicker() {
 
   const handlePrevAyah = () => {
     if (!surahData || surahData.ayahs.length === 0) return;
-
     if (currentAyahIndex > 0) {
       setCurrentAyahIndex(prev => prev - 1);
     }
-  };
-
-  const pickNewSurah = () => {
-    let nextNum = Math.floor(Math.random() * 114) + 1;
-    // Avoid picking the exact same surah if possible
-    if (nextNum === surahNumber) {
-      nextNum = (surahNumber % 114) + 1;
-    }
-    setSurahNumber(nextNum);
-    setCurrentAyahIndex(0);
   };
 
   // Timer auto advance every 20 seconds unless paused
@@ -150,10 +103,10 @@ export function QuranTicker() {
 
     const interval = setInterval(() => {
       handleNextAyah();
-    }, 20000); // 20 detik per ayat
+    }, 20000);
 
     return () => clearInterval(interval);
-  }, [isPaused, loading, surahData, currentAyahIndex, surahNumber]);
+  }, [isPaused, loading, surahData, currentAyahIndex]);
 
   if (loading) {
     return (
@@ -215,7 +168,7 @@ export function QuranTicker() {
         </div>
       </div>
 
-      {/* Controls: Prev, Play/Pause, Next, Change Surah */}
+      {/* Controls */}
       <div className="flex items-center justify-end gap-1 px-3 border-t md:border-t-0 md:border-l border-white/40 shrink-0 py-1 bg-white/20 md:bg-transparent">
         <button
           onClick={handlePrevAyah}
