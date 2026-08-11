@@ -4,6 +4,9 @@ import { Ticker } from './components/Ticker';
 import { QuranTicker } from './components/QuranTicker';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
+import { ToolsGrid } from './components/ToolsGrid';
+import { QrGeneratorModal } from './components/QrGeneratorModal';
+import { BatchQrSection, QrItem } from './components/BatchQrSection';
 import { Sidebar } from './components/Sidebar';
 import { LoginModal } from './components/LoginModal';
 import { LinkModal } from './components/LinkModal';
@@ -16,6 +19,8 @@ export default function App() {
 
   const [showLogin, setShowLogin] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
   const existingCategories = useMemo(() => {
@@ -74,6 +79,16 @@ export default function App() {
           onEdit={handleOpenEditLink}
           onDelete={deleteLink}
         />
+
+        <ToolsGrid 
+          onOpenQrGenerator={() => setShowQrModal(true)} 
+        />
+
+        <BatchQrSection 
+          items={batchQrItems} 
+          onClear={() => setBatchQrItems([])} 
+          onOpenModal={() => setShowQrModal(true)} 
+        />
       </div>
 
       <Sidebar 
@@ -88,6 +103,13 @@ export default function App() {
         onDeleteTodo={deleteTodo}
         onDeleteCompletedTodos={deleteCompletedTodos}
         onRefresh={() => {}} // Snapshot is real-time, no manual refresh needed, but we provide button
+      />
+
+      <QrGeneratorModal 
+        isOpen={showQrModal} 
+        onClose={() => setShowQrModal(false)} 
+        onSetBatchItems={(items) => setBatchQrItems(items)}
+        existingBatchCount={batchQrItems.length}
       />
 
       {showLogin && (

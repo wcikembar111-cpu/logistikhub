@@ -18,12 +18,11 @@ interface SurahData {
 
 export function QuranTicker() {
   const [surahData, setSurahData] = useState<SurahData | null>(null);
-  const [currentAyahIndex, setCurrentAyahIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Pick a random surah 1..114 on start
+  // Random surah 1..114 on start
   const [surahNumber, setSurahNumber] = useState<number>(() => Math.floor(Math.random() * 114) + 1);
 
   // Fetch complete Surah data when surahNumber changes
@@ -55,7 +54,6 @@ export function QuranTicker() {
           numberOfAyahs: arSurah.numberOfAyahs,
           ayahs: ayahsList
         });
-        setCurrentAyahIndex(0);
       } else {
         setErrorMsg('Gagal memuat data Surah');
       }
@@ -79,34 +77,13 @@ export function QuranTicker() {
     setSurahNumber(nextNum);
   };
 
-  const handleNextAyah = () => {
-    if (!surahData || surahData.ayahs.length === 0) return;
-
-    if (currentAyahIndex + 1 < surahData.ayahs.length) {
-      setCurrentAyahIndex(prev => prev + 1);
-    } else {
-      // Surah completed! Pick a new random surah
-      pickNewSurah();
-    }
+  const handleNextSurah = () => {
+    setSurahNumber(prev => (prev < 114 ? prev + 1 : 1));
   };
 
-  const handlePrevAyah = () => {
-    if (!surahData || surahData.ayahs.length === 0) return;
-    if (currentAyahIndex > 0) {
-      setCurrentAyahIndex(prev => prev - 1);
-    }
+  const handlePrevSurah = () => {
+    setSurahNumber(prev => (prev > 1 ? prev - 1 : 114));
   };
-
-  // Timer auto advance every 20 seconds unless paused
-  useEffect(() => {
-    if (isPaused || loading || !surahData) return;
-
-    const interval = setInterval(() => {
-      handleNextAyah();
-    }, 20000);
-
-    return () => clearInterval(interval);
-  }, [isPaused, loading, surahData, currentAyahIndex]);
 
   if (loading) {
     return (
@@ -133,7 +110,10 @@ export function QuranTicker() {
     );
   }
 
-  const currentAyah = surahData.ayahs[currentAyahIndex] || surahData.ayahs[0];
+  const currentAyah = surahData?.ayahs[0];
+  const totalChars = surahData ? surahData.ayahs.reduce((acc, a) => acc + a.arabicText.length + a.translation.length, 0) : 0;
+  // Kecepatan membaca sangat santai dan pelan (sekitar 5 karakter per detik, minimal 160 detik)
+  const dynamicDuration = Math.max(160, Math.round(totalChars / 5));
 
   return (
     <div className="glass-box min-h-[52px] py-1.5 flex flex-col md:flex-row items-stretch md:items-center overflow-hidden mb-6 !rounded-2xl border border-white/60 shadow-xs gap-2 md:gap-0">
@@ -146,35 +126,49 @@ export function QuranTicker() {
 
         <div className="flex items-center gap-1">
           <span className="text-[10px] bg-white/80 border border-sky-200 text-sky-800 px-2 py-0.5 rounded-full font-extrabold tracking-tight">
-            QS. {surahData.englishName.toUpperCase()} : {currentAyah.numberInSurah} / {surahData.numberOfAyahs}
+            QS. {surahData.englishName.toUpperCase()} ({surahData.numberOfAyahs} Ayat)
           </span>
         </div>
       </div>
 
-      {/* Main Text Content */}
-      <div className="flex-1 flex items-center bg-transparent overflow-hidden px-4 text-sm relative group cursor-pointer" title="Persekuensial dari ayat 1 sampai akhir surah">
-        <div className="font-semibold flex items-center py-1.5 animate-marquee-slow whitespace-nowrap min-w-max">
-          <div className="inline-flex items-center gap-3">
-            <span className="font-bold text-lg sm:text-xl text-orange-600 font-arabic drop-shadow-2xs mr-3" dir="rtl">
-              {currentAyah.arabicText}
-            </span>
-            <span className="font-medium text-slate-700 text-xs sm:text-sm">
-              "{currentAyah.translation}"
-            </span>
-            <span className="text-[10px] font-bold text-slate-400 bg-slate-100/70 px-2 py-0.5 rounded-md border border-slate-200">
-              Surah ke-{surahData.number}
-            </span>
+      {/* Main Text Content: Continuously Joined Ayahs from 1 to End */}
+      <div 
+        className="flex-1 flex items-center bg-transparent overflow-hidden px-4 text-sm relative group cursor-pointer" 
+        title="Teks berjalan menyambung dari Ayat 1 sampai akhir Surah (Klik untuk Pause/Play)"
+        onClick={() => setIsPaused(!isPaused)}
+      >
+        <div 
+          className="font-semibold flex items-center py-1.5 animate-marquee-slow whitespace-nowrap min-w-max"
+          style={{ 
+            animationDuration: `${dynamicDuration}s`,
+            animationPlayState: isPaused ? 'paused' : 'running' 
+          }}
+        >
+          <div className="inline-flex items-center gap-6">
+            {surahData.ayahs.map((a) => (
+              <div key={a.numberInSurah} className="inline-flex items-center gap-2.5">
+                <span className="text-[10px] font-bold text-sky-700 bg-sky-100/90 px-1.5 py-0.5 rounded-md border border-sky-200 shrink-0">
+                  {a.numberInSurah}
+                </span>
+                <span className="font-bold text-lg sm:text-xl text-orange-600 font-arabic drop-shadow-2xs" dir="rtl">
+                  {a.arabicText}
+                </span>
+                <span className="font-medium text-slate-800 text-xs sm:text-sm">
+                  "{a.translation}"
+                </span>
+                <span className="text-amber-600 font-extrabold text-base mx-1 font-arabic">۝</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Controls: Prev Surah, Play/Pause, Next Surah, Change Surah Random */}
       <div className="flex items-center justify-end gap-1 px-3 border-t md:border-t-0 md:border-l border-white/40 shrink-0 py-1 bg-white/20 md:bg-transparent">
         <button
-          onClick={handlePrevAyah}
-          disabled={currentAyahIndex === 0}
-          className={`p-1.5 rounded-lg text-slate-600 hover:bg-white/80 transition-all ${currentAyahIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:text-sky-700'}`}
-          title="Ayat Sebelumnya"
+          onClick={handlePrevSurah}
+          className="p-1.5 rounded-lg text-slate-600 hover:bg-white/80 transition-all cursor-pointer hover:text-sky-700"
+          title="Surah Sebelumnya"
         >
           <ChevronLeft size={16} />
         </button>
@@ -182,15 +176,15 @@ export function QuranTicker() {
         <button
           onClick={() => setIsPaused(!isPaused)}
           className="p-1.5 rounded-lg text-slate-600 hover:bg-white/80 transition-all cursor-pointer hover:text-sky-700"
-          title={isPaused ? "Lanjutkan Otomatis" : "Jeda (Pause)"}
+          title={isPaused ? "Lanjutkan Teks Berjalan" : "Jeda (Pause)"}
         >
           {isPaused ? <Play size={15} className="text-amber-600 fill-amber-500" /> : <Pause size={15} />}
         </button>
 
         <button
-          onClick={handleNextAyah}
+          onClick={handleNextSurah}
           className="p-1.5 rounded-lg text-slate-600 hover:bg-white/80 transition-all cursor-pointer hover:text-sky-700"
-          title={currentAyahIndex + 1 < surahData.numberOfAyahs ? "Ayat Berikutnya" : "Selesai Surah (Ke Surah Berikutnya)"}
+          title="Surah Berikutnya"
         >
           <ChevronRight size={16} />
         </button>
@@ -198,13 +192,14 @@ export function QuranTicker() {
         <button
           onClick={pickNewSurah}
           className="ml-1 px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-800 text-[10px] font-bold border border-sky-300/40 flex items-center gap-1 transition-all cursor-pointer"
-          title="Ganti ke Surah Lain (Random)"
+          title="Acak Surah Lain"
         >
           <RotateCw size={12} />
-          <span className="hidden sm:inline">Ganti Surah</span>
+          <span className="hidden sm:inline">Acak Surah</span>
         </button>
       </div>
     </div>
   );
 }
+
 

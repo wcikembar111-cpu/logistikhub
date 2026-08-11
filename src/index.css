@@ -10,8 +10,8 @@
   --color-glass-blue: #1e3a8a;
   --color-glass-white: rgba(255, 255, 255, 0.7);
 
-  --animate-marquee: marquee 65s linear infinite;
-  --animate-marquee-slow: marquee 110s linear infinite;
+  --animate-marquee: marquee 90s linear infinite;
+  --animate-marquee-slow: marquee 240s linear infinite;
 }
 
 @keyframes marquee {
