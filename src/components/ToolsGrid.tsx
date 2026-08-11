@@ -15,8 +15,7 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
       category: 'Satuan & Massal',
       icon: <QrCode size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-950 text-white shadow-indigo-600/35 ring-1 ring-indigo-400/30',
-      action: onOpenQrGenerator,
-      badge: 'Cetak Thermal'
+      action: onOpenQrGenerator
     },
     {
       id: 'ed-checker',
@@ -24,8 +23,7 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
       category: 'ED & DOY Calculator',
       icon: <Calendar size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-950 text-white shadow-emerald-600/35 ring-1 ring-emerald-400/30',
-      action: () => onOpenLogisticsTool('ed-checker'),
-      badge: 'Excel .xlsx'
+      action: () => onOpenLogisticsTool('ed-checker')
     },
     {
       id: 'stock-opname',
@@ -33,8 +31,7 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
       category: 'LARGO to SAP & BA SO',
       icon: <Layers size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 text-white shadow-blue-700/35 ring-1 ring-blue-400/30',
-      action: () => onOpenLogisticsTool('stock-opname'),
-      badge: 'SUMIFS'
+      action: () => onOpenLogisticsTool('stock-opname')
     },
     {
       id: 'sn-generator',
@@ -42,8 +39,7 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
       category: 'Unique Anti-Duplicate',
       icon: <Barcode size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-purple-600 via-violet-800 to-slate-950 text-white shadow-purple-600/35 ring-1 ring-purple-400/30',
-      action: () => onOpenLogisticsTool('sn-generator'),
-      badge: 'Inbound'
+      action: () => onOpenLogisticsTool('sn-generator')
     },
     {
       id: 'batch-checker',
@@ -51,8 +47,7 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
       category: 'LARGO vs SAP Compare',
       icon: <ArrowRightLeft size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-amber-600 via-orange-700 to-amber-950 text-white shadow-amber-600/35 ring-1 ring-amber-400/30',
-      action: () => onOpenLogisticsTool('batch-checker'),
-      badge: '5 Status'
+      action: () => onOpenLogisticsTool('batch-checker')
     }
   ];
 
@@ -83,13 +78,6 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
           >
             {/* Visual shine gradient effect on hover */}
             <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/0 via-white/30 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-            {/* Badge Baru */}
-            {t.badge && (
-              <span className="absolute top-2 right-2 bg-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-2xs">
-                {t.badge}
-              </span>
-            )}
 
             {/* Main Icon Tile */}
             <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] flex items-center justify-center shrink-0 shadow-md ${t.style} transition-all duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 group-hover:shadow-lg border border-white/40 overflow-hidden`}>
