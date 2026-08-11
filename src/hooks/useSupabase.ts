@@ -99,6 +99,16 @@ export function useTodos() {
     }
   };
 
+  const updateTodo = async (id: string, updates: Partial<Omit<TodoData, 'id'>>) => {
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    const { error } = await supabase.from('todos').update(updates).eq('id', id);
+    if (error) {
+      alert(`Gagal memperbarui tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+    } else {
+      fetchTodos();
+    }
+  };
+
   const deleteTodo = async (id: string) => {
     setTodos(prev => prev.filter(t => t.id !== id));
     const { error } = await supabase.from('todos').delete().eq('id', id);
@@ -119,7 +129,7 @@ export function useTodos() {
     }
   };
 
-  return { todos, loading, addTodo, updateTodoStatus, deleteTodo, deleteCompletedTodos };
+  return { todos, loading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos };
 }
 
 export function useAnnouncements() {

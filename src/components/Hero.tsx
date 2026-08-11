@@ -504,21 +504,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
               {time || '--:--:--'}
             </div>
 
-            {/* Badge Reminder Todo di bawah jam dengan icon lonceng */}
-            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-              <button 
-                onClick={handleTriggerTodoReminder}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                  pendingTodos.length > 0
-                    ? 'bg-orange-500 text-white border-orange-600 shadow-sm hover:bg-orange-600 active:scale-95'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
-                }`}
-                title="Klik Lonceng untuk bunyikan nada & tampilkan pesan Pengingat Todo Aktif"
-              >
-                <BellRing size={13} className="animate-bounce text-white" />
-                <span>Pengingat Todo: {pendingTodos.length} Pending</span>
-              </button>
-            </div>
+
           </div>
 
           {/* Jadwal Sholat (Sejajar dengan Jam - Mepet Atas) */}

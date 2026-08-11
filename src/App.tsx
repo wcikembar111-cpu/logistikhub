@@ -11,7 +11,7 @@ import { LinkData } from './types';
 
 export default function App() {
   const { links, loading: linksLoading, addLink, updateLink, deleteLink } = useLinks();
-  const { todos, loading: todosLoading, addTodo, updateTodoStatus, deleteTodo, deleteCompletedTodos } = useTodos();
+  const { todos, loading: todosLoading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos } = useTodos();
   const { isAdmin, logout } = useAuth();
 
   const [showLogin, setShowLogin] = useState(false);
@@ -84,6 +84,7 @@ export default function App() {
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         onAddTodo={addTodo}
         onUpdateStatus={updateTodoStatus}
+        onUpdateTodo={updateTodo}
         onDeleteTodo={deleteTodo}
         onDeleteCompletedTodos={deleteCompletedTodos}
         onRefresh={() => {}} // Snapshot is real-time, no manual refresh needed, but we provide button

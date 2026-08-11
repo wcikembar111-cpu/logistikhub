@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2, ChevronLeft } from 'lucide-react';
+import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2, ChevronLeft, Edit2, CheckCircle2, Clock, Circle, Save } from 'lucide-react';
 import { TodoData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 
@@ -11,6 +11,7 @@ interface SidebarProps {
   onToggle: () => void;
   onAddTodo: (task: string) => void;
   onUpdateStatus: (id: string, status: TodoData['status']) => void;
+  onUpdateTodo?: (id: string, updates: Partial<Omit<TodoData, 'id'>>) => void;
   onDeleteTodo: (id: string) => void;
   onDeleteCompletedTodos?: () => void;
   onRefresh: () => void;
@@ -18,7 +19,7 @@ interface SidebarProps {
 
 const STATUS_CYCLE: TodoData['status'][] = ['no', 'onproses', 'close'];
 
-export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, onUpdateStatus, onDeleteTodo, onDeleteCompletedTodos, onRefresh }: SidebarProps) {
+export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, onUpdateStatus, onUpdateTodo, onDeleteTodo, onDeleteCompletedTodos, onRefresh }: SidebarProps) {
   const { showConfirm, showToast } = useNotification();
   // Default otomatis tab TODO ('no')
   const [filter, setFilter] = useState<'all' | 'no' | 'onproses' | 'close'>('no');
@@ -26,6 +27,11 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
   const [reminderActive, setReminderActive] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
+
+  // Modal untuk Edit/View Detail Tugas
+  const [editingTodo, setEditingTodo] = useState<TodoData | null>(null);
+  const [editTaskText, setEditTaskText] = useState('');
+  const [editTaskStatus, setEditTaskStatus] = useState<TodoData['status']>('no');
 
   const filteredTodos = todos.filter(t => filter === 'all' || t.status === filter).reverse();
   
@@ -84,6 +90,27 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
     const idx = STATUS_CYCLE.indexOf(todo.status);
     const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
     onUpdateStatus(todo.id, next);
+  };
+
+  const handleOpenEditModal = (todo: TodoData) => {
+    setEditingTodo(todo);
+    setEditTaskText(todo.task);
+    setEditTaskStatus(todo.status);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingTodo) return;
+    if (!editTaskText.trim()) {
+      showToast('Perhatian', 'Isi tugas tidak boleh kosong', 'warning');
+      return;
+    }
+    if (onUpdateTodo) {
+      onUpdateTodo(editingTodo.id, { task: editTaskText.trim(), status: editTaskStatus });
+    } else {
+      onUpdateStatus(editingTodo.id, editTaskStatus);
+    }
+    showToast('Tersimpan', 'Tugas berhasil diperbarui', 'success');
+    setEditingTodo(null);
   };
 
   return (
@@ -207,53 +234,97 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
           ) : (
             filteredTodos.map(t => {
               const isDone = t.status === 'close';
-              const statusLabel = t.status === 'no' ? 'Todo' : (t.status === 'onproses' ? 'Proses' : 'Done');
-              
-              let statusClasses = '';
-              if (t.status === 'no') statusClasses = 'bg-white/60 text-slate-700 border-white/80';
-              if (t.status === 'onproses') statusClasses = 'bg-blue-900/20 text-blue-900 border-blue-900/30';
-              if (t.status === 'close') statusClasses = 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30';
+              const isProses = t.status === 'onproses';
+              const isTodo = t.status === 'no';
 
               return (
-                <div key={t.id} className={`glass-box p-3.5 mb-3 flex items-start gap-3 transition-all bg-white/40 hover:bg-white/60 ${isDone ? 'opacity-60' : ''}`}>
-                  <div 
-                    onClick={() => cycleStatus(t)} 
-                    className={`w-6 h-6 rounded-lg border flex items-center justify-center cursor-pointer shrink-0 transition-colors shadow-2xs mt-0.5 ${isDone ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white/80 border-white text-transparent'}`}
-                  >
-                    {isDone && <span className="font-bold text-[10px]">✔</span>}
-                  </div>
-                  
-                  <div className={`flex-1 font-medium text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words ${isDone ? 'line-through text-slate-500' : ''}`}>
-                    {t.task}
-                  </div>
-                  
-                  <div className="flex flex-col gap-1 items-end shrink-0">
-                    <button 
-                      onClick={() => cycleStatus(t)}
-                      className={`border px-2 py-0.5 rounded-lg text-[9px] font-bold tracking-wider cursor-pointer shadow-2xs ${statusClasses}`}
+                <div 
+                  key={t.id} 
+                  className={`glass-box p-3.5 mb-3 flex flex-col gap-2.5 transition-all bg-white/50 hover:bg-white/80 border border-white/60 shadow-2xs ${isDone ? 'opacity-70 bg-emerald-50/20' : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div 
+                      onClick={() => handleOpenEditModal(t)}
+                      className={`flex-1 font-medium text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words cursor-pointer hover:text-orange-700 transition-colors ${isDone ? 'line-through text-slate-500' : ''}`}
+                      title="Klik untuk lihat / edit tugas"
                     >
-                      {statusLabel}
-                    </button>
+                      {t.task}
+                    </div>
 
-                    <button 
-                      onClick={() => {
-                        showConfirm({
-                          title: 'Hapus Tugas',
-                          message: 'Apakah Anda yakin ingin menghapus tugas ini?',
-                          confirmText: 'Hapus',
-                          cancelText: 'Batal',
-                          type: 'danger',
-                          onConfirm: () => {
-                            onDeleteTodo(t.id);
-                            showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
-                          }
-                        });
-                      }}
-                      className="glass-btn !bg-red-500/10 hover:!bg-red-500/20 text-red-600 !p-1 !rounded-lg"
-                      title="Hapus tugas ini"
-                    >
-                      <X size={13} />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button 
+                        onClick={() => handleOpenEditModal(t)}
+                        className="p-1 rounded-lg text-slate-500 hover:text-orange-600 hover:bg-orange-100/60 transition-all cursor-pointer"
+                        title="Edit / Detail Tugas"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          showConfirm({
+                            title: 'Hapus Tugas',
+                            message: 'Apakah Anda yakin ingin menghapus tugas ini?',
+                            confirmText: 'Hapus',
+                            cancelText: 'Batal',
+                            type: 'danger',
+                            onConfirm: () => {
+                              onDeleteTodo(t.id);
+                              showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
+                            }
+                          });
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-100/60 transition-all cursor-pointer"
+                        title="Hapus tugas ini"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3 Choice Status Selector directly on card */}
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/50">
+                    <div className="text-[10px] font-bold text-slate-400">Status:</div>
+                    <div className="flex items-center gap-1 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/60">
+                      <button
+                        onClick={() => onUpdateStatus(t.id, 'no')}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          isTodo 
+                            ? 'bg-orange-500 text-white shadow-2xs scale-105' 
+                            : 'text-slate-600 hover:bg-slate-200/60'
+                        }`}
+                        title="Ubah status ke Todo"
+                      >
+                        <Circle size={10} className={isTodo ? 'fill-white' : ''} />
+                        <span>Todo</span>
+                      </button>
+
+                      <button
+                        onClick={() => onUpdateStatus(t.id, 'onproses')}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          isProses 
+                            ? 'bg-blue-900 text-white shadow-2xs scale-105' 
+                            : 'text-slate-600 hover:bg-slate-200/60'
+                        }`}
+                        title="Ubah status ke Proses"
+                      >
+                        <Clock size={10} />
+                        <span>Proses</span>
+                      </button>
+
+                      <button
+                        onClick={() => onUpdateStatus(t.id, 'close')}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          isDone 
+                            ? 'bg-emerald-600 text-white shadow-2xs scale-105' 
+                            : 'text-slate-600 hover:bg-slate-200/60'
+                        }`}
+                        title="Ubah status ke Done (Selesai)"
+                      >
+                        <CheckCircle2 size={10} />
+                        <span>Done</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -261,6 +332,130 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
           )}
         </div>
       </div>
+
+      {/* Modal Form Edit/Detail Tugas Public */}
+      {editingTodo && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="glass-box !bg-white/95 p-6 sm:p-7 rounded-3xl max-w-md w-full shadow-2xl border border-orange-400 relative overflow-hidden text-left">
+            <button 
+              onClick={() => setEditingTodo(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-md">
+                <Edit2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800 m-0">Detail & Edit Tugas</h3>
+                <p className="text-xs text-slate-500 m-0">Publik dapat mengedit isi dan status tugas</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Isi / Deskripsi Tugas:</label>
+                <textarea 
+                  rows={4}
+                  value={editTaskText}
+                  onChange={(e) => setEditTaskText(e.target.value)}
+                  placeholder="Ketik detail tugas..."
+                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[95px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Status Tugas:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskStatus('no')}
+                    className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      editTaskStatus === 'no'
+                        ? 'bg-orange-500/10 border-orange-500 text-orange-800 ring-2 ring-orange-300/60 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Circle size={20} className={editTaskStatus === 'no' ? 'text-orange-600 fill-orange-500' : 'text-slate-400'} />
+                    <span className="text-xs font-bold">Todo</span>
+                    <span className="text-[9px] text-slate-500">Antrean</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskStatus('onproses')}
+                    className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      editTaskStatus === 'onproses'
+                        ? 'bg-blue-900/10 border-blue-900 text-blue-950 ring-2 ring-blue-300/60 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Clock size={20} className={editTaskStatus === 'onproses' ? 'text-blue-900' : 'text-slate-400'} />
+                    <span className="text-xs font-bold">Proses</span>
+                    <span className="text-[9px] text-slate-500">Dikerjakan</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskStatus('close')}
+                    className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      editTaskStatus === 'close'
+                        ? 'bg-emerald-500/15 border-emerald-600 text-emerald-900 ring-2 ring-emerald-300/60 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <CheckCircle2 size={20} className={editTaskStatus === 'close' ? 'text-emerald-600' : 'text-slate-400'} />
+                    <span className="text-xs font-bold">Done</span>
+                    <span className="text-[9px] text-slate-500">Selesai</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    showConfirm({
+                      title: 'Hapus Tugas',
+                      message: 'Apakah Anda yakin ingin menghapus tugas ini?',
+                      confirmText: 'Hapus',
+                      cancelText: 'Batal',
+                      type: 'danger',
+                      onConfirm: () => {
+                        onDeleteTodo(editingTodo.id);
+                        setEditingTodo(null);
+                        showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
+                      }
+                    });
+                  }}
+                  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border border-red-200"
+                >
+                  <Trash2 size={14} /> Hapus
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingTodo(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSaveEdit}
+                    className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Save size={15} /> Simpan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Form Tambah Tugas Baru */}
       {showFormModal && (
