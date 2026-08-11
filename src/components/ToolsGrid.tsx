@@ -1,11 +1,13 @@
 import React from 'react';
-import { QrCode, Wrench, Sparkles, Layers } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft } from 'lucide-react';
+import { LogisticsTab } from './logistics/LogisticsModal';
 
 interface ToolsGridProps {
   onOpenQrGenerator: () => void;
+  onOpenLogisticsTool: (tab: LogisticsTab) => void;
 }
 
-export function ToolsGrid({ onOpenQrGenerator }: ToolsGridProps) {
+export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridProps) {
   const tools = [
     {
       id: 'qr-generator',
@@ -14,7 +16,43 @@ export function ToolsGrid({ onOpenQrGenerator }: ToolsGridProps) {
       icon: <QrCode size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-950 text-white shadow-indigo-600/35 ring-1 ring-indigo-400/30',
       action: onOpenQrGenerator,
-      badge: 'Baru'
+      badge: 'Cetak Thermal'
+    },
+    {
+      id: 'ed-checker',
+      title: 'Cek Expired Date',
+      category: 'ED & DOY Calculator',
+      icon: <Calendar size={26} className="text-white drop-shadow-sm" />,
+      style: 'bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-950 text-white shadow-emerald-600/35 ring-1 ring-emerald-400/30',
+      action: () => onOpenLogisticsTool('ed-checker'),
+      badge: 'Excel .xlsx'
+    },
+    {
+      id: 'stock-opname',
+      title: 'Stock Opname Suite',
+      category: 'LARGO to SAP & BA SO',
+      icon: <Layers size={26} className="text-white drop-shadow-sm" />,
+      style: 'bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 text-white shadow-blue-700/35 ring-1 ring-blue-400/30',
+      action: () => onOpenLogisticsTool('stock-opname'),
+      badge: 'SUMIFS'
+    },
+    {
+      id: 'sn-generator',
+      title: 'Generator Serial No',
+      category: 'Unique Anti-Duplicate',
+      icon: <Barcode size={26} className="text-white drop-shadow-sm" />,
+      style: 'bg-gradient-to-br from-purple-600 via-violet-800 to-slate-950 text-white shadow-purple-600/35 ring-1 ring-purple-400/30',
+      action: () => onOpenLogisticsTool('sn-generator'),
+      badge: 'Inbound'
+    },
+    {
+      id: 'batch-checker',
+      title: 'Batch Checker',
+      category: 'LARGO vs SAP Compare',
+      icon: <ArrowRightLeft size={26} className="text-white drop-shadow-sm" />,
+      style: 'bg-gradient-to-br from-amber-600 via-orange-700 to-amber-950 text-white shadow-amber-600/35 ring-1 ring-amber-400/30',
+      action: () => onOpenLogisticsTool('batch-checker'),
+      badge: '5 Status'
     }
   ];
 

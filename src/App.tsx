@@ -7,6 +7,7 @@ import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
 import { QrGeneratorModal } from './components/QrGeneratorModal';
 import { BatchQrSection, QrItem } from './components/BatchQrSection';
+import { LogisticsModal, LogisticsTab } from './components/logistics/LogisticsModal';
 import { Sidebar } from './components/Sidebar';
 import { LoginModal } from './components/LoginModal';
 import { LinkModal } from './components/LinkModal';
@@ -20,6 +21,8 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showLogisticsModal, setShowLogisticsModal] = useState(false);
+  const [logisticsTab, setLogisticsTab] = useState<LogisticsTab>('ed-checker');
   const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
@@ -82,6 +85,10 @@ export default function App() {
 
         <ToolsGrid 
           onOpenQrGenerator={() => setShowQrModal(true)} 
+          onOpenLogisticsTool={(tab) => {
+            setLogisticsTab(tab);
+            setShowLogisticsModal(true);
+          }}
         />
 
         <BatchQrSection 
@@ -110,6 +117,12 @@ export default function App() {
         onClose={() => setShowQrModal(false)} 
         onSetBatchItems={(items) => setBatchQrItems(items)}
         existingBatchCount={batchQrItems.length}
+      />
+
+      <LogisticsModal
+        isOpen={showLogisticsModal}
+        onClose={() => setShowLogisticsModal(false)}
+        initialTab={logisticsTab}
       />
 
       {showLogin && (

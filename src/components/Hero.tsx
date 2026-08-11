@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink } from 'lucide-react';
 import { TodoData } from '../types';
 
 interface HeroProps {
@@ -30,6 +30,9 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
 
   // Toggle Sembunyikan/Tampilkan Kontak (Default False = Sembunyi agar area lebih kecil)
   const [showContacts, setShowContacts] = useState(false);
+
+  // Modal Perbesar Foto Profil & Detail Kontak
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   // State untuk Alarm Pengingat Sholat
   const [activeAlarm, setActiveAlarm] = useState<{ name: string; time: string } | null>(null);
@@ -387,17 +390,157 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
         </div>
       )}
 
+      {/* Modal Perbesar Foto Profil & Detail Kontak */}
+      {showPhotoModal && (
+        <div 
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/75 backdrop-blur-md p-4 animate-fade-in"
+          onClick={() => setShowPhotoModal(false)}
+        >
+          <div 
+            className="glass-box !bg-white/95 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-blue-400 relative overflow-hidden text-center animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute -top-16 -right-16 w-36 h-36 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+
+            <button 
+              onClick={() => setShowPhotoModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all z-20 cursor-pointer"
+              title="Tutup"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Foto Perbesar */}
+            <div className="relative inline-block mx-auto mb-4 group">
+              <div className="p-1 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-amber-500 shadow-xl">
+                <img 
+                  src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
+                  alt="Dede Suparman" 
+                  className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl object-cover border-4 border-white shadow-inner transition-transform duration-300 hover:scale-105"
+                />
+              </div>
+              <span className="absolute bottom-2 right-2 bg-blue-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md flex items-center gap-1 border border-blue-700">
+                <ZoomIn size={12} /> HD Photo
+              </span>
+            </div>
+
+            {/* Detail Nama & Peran */}
+            <h2 className="text-xl sm:text-2xl font-black text-slate-800 m-0 uppercase tracking-tight">
+              Dede Suparman
+            </h2>
+            <p className="text-xs sm:text-sm font-extrabold text-blue-900 bg-blue-50 border border-blue-200 px-3.5 py-1 rounded-full inline-block mt-2 mb-4 shadow-2xs">
+              Logistik Supervisor & Developer
+            </p>
+
+            {/* Detail Kontak Lengkap */}
+            <div className="space-y-2.5 text-left bg-slate-50/90 p-4 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-700">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-emerald-400 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <MessageCircle size={16} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">WhatsApp / Telp</div>
+                    <div className="font-extrabold text-slate-800 text-xs sm:text-sm">081911934000</div>
+                  </div>
+                </div>
+                <a 
+                  href="https://wa.me/6281911934000" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-2xs"
+                >
+                  Chat <ExternalLink size={11} />
+                </a>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-blue-400 transition-colors">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center shrink-0">
+                    <Mail size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Email Kantor (Kino)</div>
+                    <div className="font-extrabold text-slate-800 text-xs truncate">dede.suparman@kino.co.id</div>
+                  </div>
+                </div>
+                <a 
+                  href="mailto:dede.suparman@kino.co.id" 
+                  className="px-3 py-1.5 rounded-lg bg-blue-900 hover:bg-blue-950 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
+                >
+                  Kirim <ExternalLink size={11} />
+                </a>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-400 transition-colors">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                    <Mail size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Email Pribadi</div>
+                    <div className="font-extrabold text-slate-800 text-xs truncate">dedesuparman333@gmail.com</div>
+                  </div>
+                </div>
+                <a 
+                  href="mailto:dedesuparman333@gmail.com" 
+                  className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
+                >
+                  Kirim <ExternalLink size={11} />
+                </a>
+              </div>
+
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <MapPin size={16} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Lokasi / Wilayah</div>
+                  <div className="font-extrabold text-slate-800 text-xs">Kabupaten Sukabumi, Jawa Barat</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <a 
+                href="https://wa.me/6281911934000" 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+              >
+                <MessageCircle size={15} /> Hubungi WhatsApp
+              </a>
+              <button 
+                onClick={() => setShowPhotoModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="glass-box p-0 flex flex-col xl:flex-row relative overflow-hidden mb-6">
         {/* Profile Section - Disembunyikan Kontaknya agar area lebih kecil & ringkas */}
         <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 sm:p-5 bg-white/20 min-w-0">
           <div className="relative z-10 shrink-0 group">
-            <div className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300">
+            <div 
+              onClick={() => setShowPhotoModal(true)}
+              className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300"
+              title="Klik untuk perbesar foto profil & lihat detail kontak"
+            >
               <img 
                 src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
                 alt="Dede Suparman" 
                 className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl object-cover border-4 border-white shadow-md transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-2xl group-hover:border-blue-300"
               />
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-900/20 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-900/30 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-center justify-center">
+                <span className="bg-slate-900/80 text-white text-[9px] font-bold px-2 py-1 rounded-full backdrop-blur-xs flex items-center gap-1 shadow-md">
+                  <ZoomIn size={10} /> Perbesar
+                </span>
+              </div>
               <span className="absolute -bottom-1 -right-1 bg-white/90 backdrop-blur-md border border-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-xs shadow-md transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 group-hover:bg-blue-50">
                 👋
               </span>
