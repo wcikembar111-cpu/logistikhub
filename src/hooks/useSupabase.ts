@@ -158,16 +158,37 @@ export function useAnnouncements() {
 }
 
 export function useMenuOrder() {
-  const [menuOrder, setMenuOrder] = useState<string[]>([]);
+  const [menuOrder, setMenuOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('menu_order');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   const fetchMenuOrder = async () => {
     try {
-      const { data, error } = await supabase.from('settings').select('order').eq('id', 'menu_order').single();
-      if (!error && data && Array.isArray(data.order)) {
-        setMenuOrder(data.order);
+      const { data, error } = await supabase.from('settings').select('*').eq('id', 'menu_order').single();
+      if (!error && data) {
+        let remoteOrder: string[] | null = null;
+        if (Array.isArray(data.order)) {
+          remoteOrder = data.order;
+        } else if (Array.isArray(data.messages)) {
+          remoteOrder = data.messages;
+        } else if (typeof data.messages === 'string') {
+          try {
+            remoteOrder = JSON.parse(data.messages);
+          } catch {}
+        }
+
+        if (remoteOrder && remoteOrder.length > 0) {
+          setMenuOrder(remoteOrder);
+          localStorage.setItem('menu_order', JSON.stringify(remoteOrder));
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching menu order from database:', e);
     }
   };
 
@@ -178,9 +199,21 @@ export function useMenuOrder() {
   const saveMenuOrder = async (newOrder: string[]) => {
     setMenuOrder(newOrder);
     try {
-      await supabase.from('settings').upsert({ id: 'menu_order', order: newOrder });
+      localStorage.setItem('menu_order', JSON.stringify(newOrder));
     } catch (e) {
-      console.error(e);
+      console.error('Error saving menu_order to localStorage:', e);
+    }
+
+    try {
+      // Try upserting with both 'order' and 'messages' for column compatibility
+      const payload: any = { id: 'menu_order', order: newOrder, messages: newOrder };
+      const { error } = await supabase.from('settings').upsert(payload);
+      if (error) {
+        // Fallback if 'order' column is not present on 'settings'
+        await supabase.from('settings').upsert({ id: 'menu_order', messages: newOrder });
+      }
+    } catch (e) {
+      console.error('Error saving menu_order to Supabase:', e);
     }
   };
 

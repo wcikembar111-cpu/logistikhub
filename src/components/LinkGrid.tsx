@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, DragEvent } from 'react';
 import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
@@ -71,21 +71,73 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
     });
   }, [orderedLinks, category, search]);
 
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
   const moveLinkPosition = (id: string, direction: 'prev' | 'next') => {
-    const currentOrder = orderedLinks.map(l => l.id);
-    const index = currentOrder.indexOf(id);
-    if (index === -1) return;
+    const filteredIndex = filteredLinks.findIndex(l => l.id === id);
+    if (filteredIndex === -1) return;
 
-    const targetIndex = direction === 'prev' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
+    const targetFilteredIndex = direction === 'prev' ? filteredIndex - 1 : filteredIndex + 1;
+    if (targetFilteredIndex < 0 || targetFilteredIndex >= filteredLinks.length) return;
 
-    // Swap
-    const newOrder = [...currentOrder];
-    const temp = newOrder[index];
-    newOrder[index] = newOrder[targetIndex];
-    newOrder[targetIndex] = temp;
+    const currentId = id;
+    const targetId = filteredLinks[targetFilteredIndex].id;
 
-    saveMenuOrder(newOrder);
+    const currentFullOrder = orderedLinks.map(l => l.id);
+    const idx1 = currentFullOrder.indexOf(currentId);
+    const idx2 = currentFullOrder.indexOf(targetId);
+
+    if (idx1 === -1 || idx2 === -1) return;
+
+    // Swap items in full order
+    const newFullOrder = [...currentFullOrder];
+    newFullOrder[idx1] = targetId;
+    newFullOrder[idx2] = currentId;
+
+    saveMenuOrder(newFullOrder);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (!isReordering) return;
+    setDraggedId(id);
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    if (!isReordering || !draggedId || draggedId === id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, id: string) => {
+    if (dragOverId === id) {
+      setDragOverId(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDragOverId(null);
+    if (!isReordering || !draggedId || draggedId === targetId) return;
+
+    const currentFullOrder = orderedLinks.map(l => l.id);
+    const fromIdx = currentFullOrder.indexOf(draggedId);
+    const toIdx = currentFullOrder.indexOf(targetId);
+
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const newFullOrder = [...currentFullOrder];
+      const [movedItem] = newFullOrder.splice(fromIdx, 1);
+      newFullOrder.splice(toIdx, 0, movedItem);
+
+      saveMenuOrder(newFullOrder);
+      showToast('Posisi Dipindahkan', 'Tata letak baru telah disimpan secara permanen', 'success');
+    }
+    setDraggedId(null);
   };
 
   return (
@@ -123,11 +175,12 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
         {isAdmin && (
           <button 
             onClick={() => {
-              setIsReordering(!isReordering);
-              if (!isReordering) {
-                showToast('Atur Tata Letak', 'Gunakan panah kiri/kanan pada icon menu untuk menggeser urutan aplikasi', 'info');
+              const nextReordering = !isReordering;
+              setIsReordering(nextReordering);
+              if (nextReordering) {
+                showToast('Atur Tata Letak', 'Seret & lepas icon atau gunakan tombol panah kiri/kanan untuk menggeser posisi aplikasi', 'info');
               } else {
-                showToast('Tersimpan', 'Tata letak menu aplikasi telah disimpan', 'success');
+                showToast('Tersimpan', 'Tata letak menu aplikasi telah disimpan secara permanen', 'success');
               }
             }} 
             className={`glass-btn !px-4 !rounded-full transition-all duration-300 shadow-sm border ${
@@ -173,15 +226,31 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
             const nativeStyle = NATIVE_ICON_STYLES[index % NATIVE_ICON_STYLES.length];
             const targetUrl = l.url ? (l.url.startsWith('http://') || l.url.startsWith('https://') ? l.url : `https://${l.url}`) : '#';
             
+            const isDraggingThis = draggedId === l.id;
+            const isDragOverThis = dragOverId === l.id;
+
             return (
               <a 
                 key={l.id} 
-                href={targetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={isReordering ? undefined : targetUrl}
+                target={isReordering ? undefined : "_blank"}
+                rel={isReordering ? undefined : "noopener noreferrer"}
                 title={`${l.title} - ${l.category || ''}`}
-                className={`glass-box p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[120px] sm:min-h-[135px] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl hover:bg-white/90 hover:border-blue-400 cursor-pointer group bg-white/30 overflow-hidden no-underline text-slate-800 block rounded-2xl sm:rounded-3xl ${
-                  isReordering ? 'ring-2 ring-orange-400/60 bg-orange-50/20' : ''
+                draggable={isReordering}
+                onDragStart={(e) => handleDragStart(e, l.id)}
+                onDragOver={(e) => handleDragOver(e, l.id)}
+                onDragLeave={(e) => handleDragLeave(e, l.id)}
+                onDrop={(e) => handleDrop(e, l.id)}
+                onClick={(e) => {
+                  if (isReordering) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
+                className={`glass-box p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[120px] sm:min-h-[135px] transition-all duration-300 ease-out group bg-white/30 overflow-hidden no-underline text-slate-800 block rounded-2xl sm:rounded-3xl ${
+                  isReordering ? 'ring-2 ring-orange-400/80 bg-orange-50/30 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl hover:bg-white/90 hover:border-blue-400 cursor-pointer'
+                } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
+                  isDragOverThis ? '!ring-4 !ring-blue-500 !bg-blue-100/50 scale-105 shadow-xl' : ''
                 }`}
               >
                 {/* Visual shine gradient effect on hover */}
