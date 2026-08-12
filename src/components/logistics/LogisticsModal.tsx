@@ -1,11 +1,13 @@
 import React from 'react';
-import { X, Calendar, Layers, Barcode, ArrowRightLeft } from 'lucide-react';
+import { X, Calendar, Layers, Barcode, ArrowRightLeft, PackageCheck, FileText } from 'lucide-react';
 import { EdCheckerModule } from './EdCheckerModule';
 import { StockOpnameModule } from './StockOpnameModule';
 import { SnGeneratorModule } from './SnGeneratorModule';
 import { BatchCheckerModule } from './BatchCheckerModule';
+import { PromosiModule } from './PromosiModule';
+import { SuratJalanModule } from './SuratJalanModule';
 
-export type LogisticsTab = 'ed-checker' | 'stock-opname' | 'sn-generator' | 'batch-checker';
+export type LogisticsTab = 'ed-checker' | 'stock-opname' | 'sn-generator' | 'batch-checker' | 'promosi' | 'surat-jalan';
 
 interface LogisticsModalProps {
   isOpen: boolean;
@@ -44,6 +46,20 @@ export function LogisticsModal({ isOpen, onClose, initialTab = 'ed-checker' }: L
       icon: <ArrowRightLeft size={22} className="text-white" />,
       bgGradient: 'from-amber-600 via-orange-700 to-amber-950',
       component: <BatchCheckerModule />
+    },
+    'promosi': {
+      title: 'Form & Rekap Penerimaan Barang Promosi',
+      subtitle: 'Pencatatan, rekapitulasi data, serta impor & ekspor Excel penerimaan barang promosi inbound gudang',
+      icon: <PackageCheck size={22} className="text-white" />,
+      bgGradient: 'from-orange-600 via-amber-700 to-slate-950',
+      component: <PromosiModule />
+    },
+    'surat-jalan': {
+      title: 'Surat Jalan Studio & Rekapitulasi',
+      subtitle: 'Pembuatan surat jalan pengiriman gudang, cetak A4/Letter, rekapitulasi barang, & master data',
+      icon: <FileText size={22} className="text-white" />,
+      bgGradient: 'from-blue-600 via-indigo-700 to-slate-950',
+      component: <SuratJalanModule />
     }
   };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText } from 'lucide-react';
 import { LogisticsTab } from './logistics/LogisticsModal';
 
 interface ToolsGridProps {
@@ -48,6 +48,22 @@ export function ToolsGrid({ onOpenQrGenerator, onOpenLogisticsTool }: ToolsGridP
       icon: <ArrowRightLeft size={26} className="text-white drop-shadow-sm" />,
       style: 'bg-gradient-to-br from-amber-600 via-orange-700 to-amber-950 text-white shadow-amber-600/35 ring-1 ring-amber-400/30',
       action: () => onOpenLogisticsTool('batch-checker')
+    },
+    {
+      id: 'promosi',
+      title: 'Promosi',
+      category: 'Penerimaan Barang Promosi',
+      icon: <PackageCheck size={26} className="text-white drop-shadow-sm" />,
+      style: 'bg-gradient-to-br from-orange-600 via-amber-600 to-slate-900 text-white shadow-orange-600/35 ring-1 ring-orange-400/30',
+      action: () => onOpenLogisticsTool('promosi')
+    },
+    {
+      id: 'surat-jalan',
+      title: 'Surat Jalan',
+      category: 'Buat, Cetak & Rekap SJ',
+      icon: <FileText size={26} className="text-white drop-shadow-sm" />,
+      style: 'bg-gradient-to-br from-blue-600 via-indigo-700 to-slate-900 text-white shadow-blue-600/35 ring-1 ring-blue-400/30',
+      action: () => onOpenLogisticsTool('surat-jalan')
     }
   ];
 
