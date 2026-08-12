@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   PackageCheck, Save, RefreshCw, Download, Upload, Trash2, Edit, 
-  X, CheckCircle2, FileSpreadsheet, Calendar
+  X, FileSpreadsheet, FileCheck, Database, FileText
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
@@ -29,7 +29,11 @@ export function PromosiModule() {
   const [loading, setLoading] = useState<boolean>(true);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form State matching the exact remix code structure
+  // Preview state for Excel import before saving to database
+  const [previewItems, setPreviewItems] = useState<PromosiData[] | null>(null);
+  const [savingBatch, setSavingBatch] = useState<boolean>(false);
+
+  // Form State
   const [formData, setFormData] = useState({
     nomor: '',
     tgl_terima: new Date().toISOString().split('T')[0],
@@ -49,6 +53,87 @@ export function PromosiModule() {
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
+  };
+
+  // Helper to parse any date format (Excel serial numbers, DD/MM/YYYY, JS Date, etc) to YYYY-MM-DD for PostgreSQL DATE column
+  const formatDateToYYYYMMDD = (val: any): string => {
+    if (val === null || val === undefined || val === '') {
+      return getTodayDate();
+    }
+
+    // 1. Handle JS Date object
+    if (val instanceof Date) {
+      if (isNaN(val.getTime())) return getTodayDate();
+      const yyyy = val.getFullYear();
+      const mm = String(val.getMonth() + 1).padStart(2, '0');
+      const dd = String(val.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // 2. Handle Excel date serial number (e.g., 45123 or "45123")
+    const num = Number(val);
+    if (!isNaN(num) && num > 20000 && num < 60000) {
+      try {
+        const dateObj = XLSX.SSF.parse_date_code(num);
+        if (dateObj && dateObj.y && dateObj.m && dateObj.d) {
+          const yyyy = dateObj.y;
+          const mm = String(dateObj.m).padStart(2, '0');
+          const dd = String(dateObj.d).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    const str = String(val).trim();
+
+    // 3. YYYY-MM-DD or YYYY/MM/DD
+    if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(str)) {
+      const parts = str.split(/[-/]/);
+      const yyyy = parts[0];
+      const mm = parts[1].padStart(2, '0');
+      const dd = parts[2].substring(0, 2).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // 4. DD/MM/YYYY or DD-MM-YYYY
+    if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}/.test(str)) {
+      const parts = str.split(/[-/]/);
+      const dd = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      const yyyy = parts[2].substring(0, 4);
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // 5. Native JS Date parse
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      const yyyy = parsed.getFullYear();
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    return getTodayDate();
+  };
+
+  // Helper to extract value from Excel row regardless of column name casing or spaces
+  const getRowVal = (row: Record<string, any>, keys: string[]): any => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+        return row[k];
+      }
+    }
+    const rowKeys = Object.keys(row);
+    for (const k of keys) {
+      const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const foundKey = rowKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanKey);
+      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+        return row[foundKey];
+      }
+    }
+    return undefined;
   };
 
   const generateNomorPlaceholder = () => {
@@ -73,7 +158,6 @@ export function PromosiModule() {
           setPromosiList(JSON.parse(local));
         }
       } else if (data) {
-        // Map database field names to state format if needed
         const mappedData: PromosiData[] = data.map((item: any) => ({
           id: item.id || crypto.randomUUID(),
           nomor: item.nomor || item.Nomor || '',
@@ -82,7 +166,7 @@ export function PromosiModule() {
           pengirim: item.pengirim || item.Pengirim || '',
           penerima: item.penerima || item.Penerima || '',
           nopol: item.nopol || item.Nopol || '',
-          expedisi: item.expedisi || item.expedisi || item.Expedisi || '',
+          expedisi: item.expedisi || item.Expedisi || '',
           jumlah_ctn: Number(item.jumlah_ctn ?? item.jumlahCtn ?? item['Jumlah CTN'] ?? 0),
           jumlah_pcs: Number(item.jumlah_pcs ?? item.jumlahPcs ?? item['Jumlah PCS'] ?? 0),
           keterangan: item.keterangan || item.Keterangan || '',
@@ -154,7 +238,6 @@ export function PromosiModule() {
     };
 
     if (editingId) {
-      // Update
       const updatedList = promosiList.map(item => item.id === editingId ? { ...item, ...payload } : item);
       setPromosiList(updatedList);
       localStorage.setItem('pbp_global_data', JSON.stringify(updatedList));
@@ -165,13 +248,13 @@ export function PromosiModule() {
           console.warn('Supabase update note:', error.message);
           showToast('Tersimpan Lokal', 'Data diperbarui secara lokal', 'info');
         } else {
-          showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui', 'success');
+          showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui di Database', 'success');
+          fetchPromosiData();
         }
       } catch (e) {
         showToast('Berhasil', 'Data diperbarui di penyimpanan lokal', 'success');
       }
     } else {
-      // Create
       const newId = crypto.randomUUID();
       const newItem: PromosiData = {
         id: newId,
@@ -189,7 +272,8 @@ export function PromosiModule() {
           console.warn('Supabase insert note:', error.message);
           showToast('Tersimpan Lokal', 'Data tersimpan di penyimpanan lokal', 'info');
         } else {
-          showToast('Berhasil', 'Data penerimaan berhasil disimpan', 'success');
+          showToast('Berhasil', 'Data penerimaan berhasil disimpan ke Database', 'success');
+          fetchPromosiData();
         }
       } catch (e) {
         showToast('Berhasil', 'Data penerimaan disimpan di lokal', 'success');
@@ -234,7 +318,43 @@ export function PromosiModule() {
     }
   };
 
-  // Download Excel matching exact remix functionality
+  // 1. DOWNLOAD TEMPLATE EXCEL ACCORDING TO DATABASE STRUCTURE
+  const downloadDatabaseTemplate = () => {
+    const templateRows = [
+      {
+        "Nomor": "PRM-2026-001",
+        "Tgl Terima": getTodayDate(),
+        "Material": "SPINNER KINO BRANDED 2026",
+        "Pengirim": "PT MEDIA PROMOSI INDONESIA",
+        "Penerima": "LOGISTICS WAREHOUSE",
+        "Nopol": "B 9876 CKB",
+        "Expedisi": "EXPEDISI UTAMA",
+        "Jumlah CTN": 50,
+        "Jumlah PCS": 2000,
+        "Keterangan": "Kondisi Segel Utuh"
+      },
+      {
+        "Nomor": "PRM-2026-002",
+        "Tgl Terima": getTodayDate(),
+        "Material": "SPANDUK PROMO DISKON SAMANTHA 3X1M",
+        "Pengirim": "CV GRAPHIC CREATIVE",
+        "Penerima": "LOGISTICS WAREHOUSE",
+        "Nopol": "B 1234 XYZ",
+        "Expedisi": "JNE CARGO",
+        "Jumlah CTN": 10,
+        "Jumlah PCS": 500,
+        "Keterangan": "Kondisi Baik"
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Promosi DB');
+    XLSX.writeFile(wb, 'Template_Impor_Penerimaan_Promosi.xlsx');
+    showToast('Download Sukses', 'Template Excel struktur Database berhasil diunduh', 'success');
+  };
+
+  // 2. DOWNLOAD CURRENT DATA TO EXCEL
   const downloadExcel = () => {
     if (promosiList.length === 0) {
       showToast('Info', 'Tidak ada data penerimaan untuk diunduh', 'info');
@@ -261,59 +381,101 @@ export function PromosiModule() {
     showToast('Sukses', 'File Data_Penerimaan_Promosi.xlsx berhasil diunduh', 'success');
   };
 
-  // Upload Excel matching exact remix upload process
+  // 3. UPLOAD EXCEL & PARSE FOR PREVIEW BEFORE SAVING TO DATABASE
   const handleUploadExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (evt) => {
+    reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
+        const wb = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { raw: false, dateNF: 'yyyy-mm-dd' });
 
         if (rows.length === 0) {
           showToast('Peringatan', 'File Excel kosong atau tidak terbaca', 'danger');
           return;
         }
 
-        const newItems: PromosiData[] = rows.map((r) => ({
-          id: crypto.randomUUID(),
-          nomor: String(r['Nomor'] || r['nomor'] || r['NO'] || generateNomorPlaceholder()).trim(),
-          tgl_terima: String(r['Tgl Terima'] || r['tgl_terima'] || r['Tanggal'] || getTodayDate()).trim(),
-          material: String(r['Material'] || r['material'] || 'Material Promosi').trim(),
-          pengirim: String(r['Pengirim'] || r['pengirim'] || '').trim(),
-          penerima: String(r['Penerima'] || r['penerima'] || '').trim(),
-          nopol: String(r['Nopol'] || r['nopol'] || '').trim(),
-          expedisi: String(r['Expedisi'] || r['expedisi'] || '').trim(),
-          jumlah_ctn: Number(r['Jumlah CTN'] || r['jumlah_ctn'] || r['CTN'] || 0),
-          jumlah_pcs: Number(r['Jumlah PCS'] || r['jumlah_pcs'] || r['PCS'] || 0),
-          keterangan: String(r['Keterangan'] || r['keterangan'] || 'Imported Excel').trim(),
-          created_at: new Date().toISOString()
-        }));
+        const parsedItems: PromosiData[] = rows.map((r, idx) => {
+          const rawNomor = getRowVal(r, ['Nomor', 'nomor', 'NO', 'No', 'no', 'No.']);
+          const rawTgl = getRowVal(r, ['Tgl Terima', 'tgl_terima', 'Tanggal', 'TGL TERIMA', 'Tgl', 'Date']);
+          const rawMaterial = getRowVal(r, ['Material', 'material', 'MATERIAL', 'Barang', 'Nama Barang']);
+          const rawPengirim = getRowVal(r, ['Pengirim', 'pengirim', 'PENGIRIM']);
+          const rawPenerima = getRowVal(r, ['Penerima', 'penerima', 'PENERIMA']);
+          const rawNopol = getRowVal(r, ['Nopol', 'nopol', 'NOPOL', 'No. Pol', 'No Polisi']);
+          const rawExpedisi = getRowVal(r, ['Expedisi', 'expedisi', 'EXPEDISI', 'Ekspedisi']);
+          const rawCtn = getRowVal(r, ['Jumlah CTN', 'jumlah_ctn', 'CTN', 'Ctn', 'Karton']);
+          const rawPcs = getRowVal(r, ['Jumlah PCS', 'jumlah_pcs', 'PCS', 'Pcs']);
+          const rawKet = getRowVal(r, ['Keterangan', 'keterangan', 'KETERANGAN', 'Ket', 'Catatan']);
 
-        const combined = [...newItems, ...promosiList];
-        setPromosiList(combined);
-        localStorage.setItem('pbp_global_data', JSON.stringify(combined));
+          return {
+            id: crypto.randomUUID(),
+            nomor: String(rawNomor || `PRM-${new Date().getFullYear()}-${idx + 100}`).trim(),
+            tgl_terima: formatDateToYYYYMMDD(rawTgl),
+            material: String(rawMaterial || 'Material Promosi').trim(),
+            pengirim: String(rawPengirim || '').trim(),
+            penerima: String(rawPenerima || '').trim(),
+            nopol: String(rawNopol || '').trim(),
+            expedisi: String(rawExpedisi || '').trim(),
+            jumlah_ctn: Number(rawCtn) || 0,
+            jumlah_pcs: Number(rawPcs) || 0,
+            keterangan: String(rawKet || '').trim(),
+            created_at: new Date().toISOString()
+          };
+        });
 
-        try {
-          await supabase.from('promosi').insert(newItems);
-        } catch (err) {
-          console.warn('Batch insert note:', err);
-        }
-
-        showToast('Sukses Impor', `Berhasil mengimpor ${newItems.length} data penerimaan promosi`, 'success');
+        setPreviewItems(parsedItems);
+        showToast('File Dibaca', `Ditemukan ${parsedItems.length} baris data. Silakan klik "Simpan Ke Database"`, 'info');
       } catch (err) {
         console.error('Failed reading Excel:', err);
-        showToast('Gagal Impor', 'Gagal membaca file Excel. Pastikan format file sesuai.', 'danger');
+        showToast('Gagal Impor', 'Gagal membaca file Excel. Pastikan menggunakan format template yang benar.', 'danger');
       } finally {
         e.target.value = '';
       }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  // 4. EXPLICIT BATCH SAVE PREVIEW ITEMS TO SUPABASE DATABASE
+  const handleSavePreviewToDatabase = async () => {
+    if (!previewItems || previewItems.length === 0) return;
+
+    setSavingBatch(true);
+    try {
+      const dbPayload = previewItems.map(item => ({
+        id: item.id,
+        nomor: item.nomor,
+        tgl_terima: formatDateToYYYYMMDD(item.tgl_terima),
+        material: item.material,
+        pengirim: item.pengirim || '',
+        penerima: item.penerima || '',
+        nopol: item.nopol || '',
+        expedisi: item.expedisi || '',
+        jumlah_ctn: Number(item.jumlah_ctn) || 0,
+        jumlah_pcs: Number(item.jumlah_pcs) || 0,
+        keterangan: item.keterangan || ''
+      }));
+
+      const { error } = await supabase.from('promosi').insert(dbPayload);
+
+      if (error) {
+        console.error('Supabase batch insert error:', error);
+        showToast('Gagal Simpan DB', `Gagal menyimpan ke Database Supabase: ${error.message}`, 'danger');
+      } else {
+        showToast('Sukses Database', `${previewItems.length} data barang promosi berhasil disimpan penuh ke Database Supabase!`, 'success');
+        setPreviewItems(null);
+        fetchPromosiData();
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast('Error', e?.message || 'Gagal menyimpan ke database', 'danger');
+    } finally {
+      setSavingBatch(false);
+    }
   };
 
   const formatNumber = (val: number | string) => {
@@ -330,10 +492,95 @@ export function PromosiModule() {
             <span>Penerimaan Barang Promosi</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-semibold m-0 mt-1">
-            Form &amp; Data Penerimaan Barang Promosi (Sheet: PROMOSI)
+            Form &amp; Data Penerimaan Barang Promosi Gudang
           </p>
         </div>
+
+        {/* PROMINENT TOP TEMPLATE & EXCEL ACTION BUTTONS */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={downloadDatabaseTemplate}
+            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-indigo-600/30"
+            title="Unduh file template Excel sesuai struktur database"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Download Template Excel</span>
+          </button>
+        </div>
       </div>
+
+      {/* PREVIEW BANNER & SAVE TO DATABASE MODAL/BAR IF EXCEL UPLOADED */}
+      {previewItems && (
+        <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 sm:p-5 shadow-md space-y-3 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-amber-200">
+            <div className="flex items-center gap-2">
+              <Database size={20} className="text-amber-700 shrink-0" />
+              <div>
+                <h3 className="text-sm font-black text-amber-900 m-0 uppercase">
+                  Pratinjau Impor File Excel ({previewItems.length} Data)
+                </h3>
+                <p className="text-xs text-amber-700 font-semibold m-0">
+                  Data berikut belum masuk database. Klik tombol "Simpan Ke Database" di sebelah kanan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPreviewItems(null)}
+                className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+              >
+                <X size={14} />
+                <span>Batal</span>
+              </button>
+
+              <button
+                onClick={handleSavePreviewToDatabase}
+                disabled={savingBatch}
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Save size={16} className={savingBatch ? 'animate-spin' : ''} />
+                <span>{savingBatch ? 'Menyimpan...' : `Simpan ${previewItems.length} Data Ke Database`}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto max-h-[220px] overflow-y-auto border border-amber-200 rounded-lg bg-white">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-amber-100/70 text-amber-900 font-extrabold uppercase sticky top-0">
+                <tr>
+                  <th className="p-2">Nomor</th>
+                  <th className="p-2">Tgl Terima</th>
+                  <th className="p-2">Material</th>
+                  <th className="p-2">Pengirim</th>
+                  <th className="p-2">Penerima</th>
+                  <th className="p-2">Nopol</th>
+                  <th className="p-2">Expedisi</th>
+                  <th className="p-2 text-right">CTN</th>
+                  <th className="p-2 text-right">PCS</th>
+                  <th className="p-2">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {previewItems.map((r, i) => (
+                  <tr key={i} className="hover:bg-amber-50/50">
+                    <td className="p-2 font-mono font-bold text-amber-800">{r.nomor}</td>
+                    <td className="p-2">{r.tgl_terima}</td>
+                    <td className="p-2 font-bold">{r.material}</td>
+                    <td className="p-2">{r.pengirim || '-'}</td>
+                    <td className="p-2">{r.penerima || '-'}</td>
+                    <td className="p-2 font-mono">{r.nopol || '-'}</td>
+                    <td className="p-2">{r.expedisi || '-'}</td>
+                    <td className="p-2 text-right font-bold">{formatNumber(r.jumlah_ctn)}</td>
+                    <td className="p-2 text-right font-bold">{formatNumber(r.jumlah_pcs)}</td>
+                    <td className="p-2 text-slate-500">{r.keterangan}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* FORM INPUT SECTION (CARD SECTION) */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
@@ -524,7 +771,7 @@ export function PromosiModule() {
               Data Barang Diterima
             </h2>
             <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
-              Sumber: Sheet "PROMOSI"
+              Database Supabase (`public.promosi`)
             </p>
           </div>
 
@@ -533,19 +780,33 @@ export function PromosiModule() {
               onClick={fetchPromosiData}
               disabled={loading}
               className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Refresh data dari database"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               <span>Refresh</span>
             </button>
 
+            {/* BUTTON 1: DOWNLOAD TEMPLATE EXCEL */}
+            <button
+              onClick={downloadDatabaseTemplate}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Unduh Template Excel sesuai struktur Database"
+            >
+              <FileSpreadsheet size={14} />
+              <span>Download Template</span>
+            </button>
+
+            {/* BUTTON 2: DOWNLOAD EXCEL */}
             <button
               onClick={downloadExcel}
               className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Unduh semua data penerimaan ke file Excel"
             >
               <Download size={14} />
               <span>Download Excel</span>
             </button>
 
+            {/* BUTTON 3: UPLOAD EXCEL */}
             <label className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
               <Upload size={14} />
               <span>Upload Excel</span>
@@ -582,7 +843,7 @@ export function PromosiModule() {
                 <tr>
                   <td colSpan={11} className="p-8 text-center text-slate-500 font-semibold">
                     <RefreshCw size={20} className="animate-spin inline-block mr-2 text-blue-600" />
-                    Memuat data penerimaan...
+                    Memuat data penerimaan dari Supabase...
                   </td>
                 </tr>
               ) : promosiList.length === 0 ? (
