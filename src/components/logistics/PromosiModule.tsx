@@ -771,7 +771,7 @@ export function PromosiModule() {
               Data Barang Diterima
             </h2>
             <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
-              Database Supabase (`public.promosi`)
+              Database Supabase (Tabel: promosi)
             </p>
           </div>
 
