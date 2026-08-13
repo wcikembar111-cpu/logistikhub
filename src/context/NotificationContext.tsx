@@ -105,16 +105,33 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  // Set global fallback so any accidental native alert gets redirected to custom popup
+  // Set global fallback so any accidental native alert/confirm gets redirected to custom popup
   useEffect(() => {
     const originalAlert = window.alert;
+    const originalConfirm = window.confirm;
+
     window.alert = (msg?: any) => {
       showAlert('INFORMASI', String(msg ?? ''), 'info');
     };
+
+    window.confirm = (msg?: string) => {
+      // In synchronous contexts, default to true or let showConfirm handle interactive dialogs
+      showConfirm({
+        title: 'Konfirmasi',
+        message: String(msg ?? 'Apakah Anda yakin?'),
+        confirmText: 'Ya',
+        cancelText: 'Batal',
+        type: 'warning',
+        onConfirm: () => {},
+      });
+      return true;
+    };
+
     return () => {
       window.alert = originalAlert;
+      window.confirm = originalConfirm;
     };
-  }, [showAlert]);
+  }, [showAlert, showConfirm]);
 
   return (
     <NotificationContext.Provider value={{ showToast, showAlert, showConfirm }}>

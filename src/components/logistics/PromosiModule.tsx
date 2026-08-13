@@ -23,7 +23,7 @@ export interface PromosiData {
 }
 
 export function PromosiModule() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
 
   const [promosiList, setPromosiList] = useState<PromosiData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -343,32 +343,39 @@ export function PromosiModule() {
     showToast('Mode Edit', `Mengedit data penerimaan nomor ${item.nomor}`, 'info');
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus data penerimaan ini?')) return;
+  const handleDelete = (id: string) => {
+    showConfirm({
+      title: 'Hapus Data Penerimaan',
+      message: 'Yakin ingin menghapus data penerimaan ini dari Database?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        const itemToDelete = promosiList.find(item => item.id === id);
+        const updated = promosiList.filter(item => item.id !== id);
+        setPromosiList(updated);
+        localStorage.setItem('pbp_global_data', JSON.stringify(updated));
 
-    const itemToDelete = promosiList.find(item => item.id === id);
-    const updated = promosiList.filter(item => item.id !== id);
-    setPromosiList(updated);
-    localStorage.setItem('pbp_global_data', JSON.stringify(updated));
+        try {
+          let { error } = await supabase.from('promosi').delete().eq('id', id);
+          if (error && itemToDelete?.nomor) {
+            // Fallback delete by nomor if id was invalid uuid or mismatched
+            const fallbackRes = await supabase.from('promosi').delete().eq('nomor', itemToDelete.nomor);
+            error = fallbackRes.error;
+          }
 
-    try {
-      let { error } = await supabase.from('promosi').delete().eq('id', id);
-      if (error && itemToDelete?.nomor) {
-        // Fallback delete by nomor if id was invalid uuid or mismatched
-        const fallbackRes = await supabase.from('promosi').delete().eq('nomor', itemToDelete.nomor);
-        error = fallbackRes.error;
+          if (error) {
+            console.warn('Supabase delete warning:', error.message);
+            showToast('Peringatan', `Terhapus lokal, catatan Supabase: ${error.message}`, 'info');
+          } else {
+            showToast('Berhasil', 'Data penerimaan berhasil dihapus dari Database', 'success');
+            fetchPromosiData();
+          }
+        } catch (e) {
+          showToast('Berhasil', 'Data dihapus dari penyimpanan lokal', 'info');
+        }
       }
-
-      if (error) {
-        console.warn('Supabase delete warning:', error.message);
-        showToast('Peringatan', `Terhapus lokal, catatan Supabase: ${error.message}`, 'info');
-      } else {
-        showToast('Berhasil', 'Data penerimaan berhasil dihapus dari Database', 'success');
-        fetchPromosiData();
-      }
-    } catch (e) {
-      showToast('Berhasil', 'Data dihapus dari penyimpanan lokal', 'info');
-    }
+    });
   };
 
   // 1. DOWNLOAD TEMPLATE EXCEL ACCORDING TO DATABASE STRUCTURE

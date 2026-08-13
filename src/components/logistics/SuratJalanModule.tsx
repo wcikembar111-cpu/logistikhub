@@ -59,7 +59,7 @@ export interface Pengirim {
 type SJSubTab = 'dashboard' | 'form' | 'rekap' | 'settings' | 'print';
 
 export function SuratJalanModule() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
 
   const [activeTab, setActiveTab] = useState<SJSubTab>('dashboard');
   const [loading, setLoading] = useState<boolean>(true);
@@ -374,26 +374,33 @@ export function SuratJalanModule() {
   };
 
   // Delete Document
-  const handleDeleteDocument = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus dokumen Surat Jalan ini dari Database?')) return;
+  const handleDeleteDocument = (id: string) => {
+    showConfirm({
+      title: 'Hapus Dokumen SJ',
+      message: 'Yakin ingin menghapus dokumen Surat Jalan ini dari Database?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        const updated = documents.filter(d => d.id !== id);
+        setDocuments(updated);
+        localStorage.setItem('sj_docs_fallback', JSON.stringify(updated));
 
-    const updated = documents.filter(d => d.id !== id);
-    setDocuments(updated);
-    localStorage.setItem('sj_docs_fallback', JSON.stringify(updated));
-
-    try {
-      await supabase.from('items').delete().eq('doc_id', id);
-      const { error: delErr } = await supabase.from('documents').delete().eq('id', id);
-      if (delErr) {
-        console.error('Supabase delete doc error:', delErr);
-        showToast('Gagal Hapus DB', delErr.message, 'danger');
-      } else {
-        showToast('Terhapus', 'Dokumen SJ beserta barangnya berhasil dihapus dari Database', 'success');
-        fetchAllData();
+        try {
+          await supabase.from('items').delete().eq('doc_id', id);
+          const { error: delErr } = await supabase.from('documents').delete().eq('id', id);
+          if (delErr) {
+            console.error('Supabase delete doc error:', delErr);
+            showToast('Gagal Hapus DB', delErr.message, 'danger');
+          } else {
+            showToast('Terhapus', 'Dokumen SJ beserta barangnya berhasil dihapus dari Database', 'success');
+            fetchAllData();
+          }
+        } catch (e) {
+          showToast('Terhapus', 'Dokumen dihapus dari lokal', 'info');
+        }
       }
-    } catch (e) {
-      showToast('Terhapus', 'Dokumen dihapus dari lokal', 'info');
-    }
+    });
   };
 
   // Quick Add Tujuan
@@ -492,23 +499,30 @@ export function SuratJalanModule() {
     setJenisForm({ kode: '', nama: '' });
   };
 
-  const handleDeleteJenis = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus Jenis Surat Jalan ini dari Database?')) return;
+  const handleDeleteJenis = (id: string) => {
+    showConfirm({
+      title: 'Hapus Jenis Surat Jalan',
+      message: 'Yakin ingin menghapus Jenis Surat Jalan ini dari Database?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        const updated = jenisList.filter(j => j.id !== id);
+        setJenisList(updated);
 
-    const updated = jenisList.filter(j => j.id !== id);
-    setJenisList(updated);
-
-    try {
-      const { error } = await supabase.from('jenis').delete().eq('id', id);
-      if (error) {
-        showToast('Gagal Hapus DB', error.message, 'danger');
-      } else {
-        showToast('Berhasil', 'Jenis Surat Jalan terhapus dari Database', 'success');
-        fetchAllData();
+        try {
+          const { error } = await supabase.from('jenis').delete().eq('id', id);
+          if (error) {
+            showToast('Gagal Hapus DB', error.message, 'danger');
+          } else {
+            showToast('Berhasil', 'Jenis Surat Jalan terhapus dari Database', 'success');
+            fetchAllData();
+          }
+        } catch (e) {
+          showToast('Terhapus', 'Terhapus dari lokal', 'info');
+        }
       }
-    } catch (e) {
-      showToast('Terhapus', 'Terhapus dari lokal', 'info');
-    }
+    });
   };
 
   // Master Tujuan Handlers
@@ -582,23 +596,30 @@ export function SuratJalanModule() {
     setTujuanForm({ nama: '', alamat: '', kota: '', up: '', noTelpon: '' });
   };
 
-  const handleDeleteTujuanMaster = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus Tujuan Pengiriman ini dari Database?')) return;
+  const handleDeleteTujuanMaster = (id: string) => {
+    showConfirm({
+      title: 'Hapus Tujuan Pengiriman',
+      message: 'Yakin ingin menghapus Tujuan Pengiriman ini dari Database?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        const updated = tujuanList.filter(t => t.id !== id);
+        setTujuanList(updated);
 
-    const updated = tujuanList.filter(t => t.id !== id);
-    setTujuanList(updated);
-
-    try {
-      const { error } = await supabase.from('tujuan').delete().eq('id', id);
-      if (error) {
-        showToast('Gagal Hapus DB', error.message, 'danger');
-      } else {
-        showToast('Berhasil', 'Tujuan Pengiriman terhapus dari Database', 'success');
-        fetchAllData();
+        try {
+          const { error } = await supabase.from('tujuan').delete().eq('id', id);
+          if (error) {
+            showToast('Gagal Hapus DB', error.message, 'danger');
+          } else {
+            showToast('Berhasil', 'Tujuan Pengiriman terhapus dari Database', 'success');
+            fetchAllData();
+          }
+        } catch (e) {
+          showToast('Terhapus', 'Terhapus dari lokal', 'info');
+        }
       }
-    } catch (e) {
-      showToast('Terhapus', 'Terhapus dari lokal', 'info');
-    }
+    });
   };
 
   // Paste Processors
