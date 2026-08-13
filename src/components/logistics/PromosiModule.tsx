@@ -163,10 +163,6 @@ export function PromosiModule() {
 
       if (error) {
         console.warn('Supabase fetch error for promosi:', error.message);
-        const local = localStorage.getItem('pbp_global_data');
-        if (local) {
-          setPromosiList(JSON.parse(local));
-        }
       } else if (data) {
         const mappedData: PromosiData[] = data.map((item: any) => ({
           id: item.id || crypto.randomUUID(),
@@ -183,14 +179,9 @@ export function PromosiModule() {
           created_at: item.created_at
         }));
         setPromosiList(mappedData);
-        localStorage.setItem('pbp_global_data', JSON.stringify(mappedData));
       }
     } catch (e) {
       console.error('Error loading promosi data:', e);
-      const local = localStorage.getItem('pbp_global_data');
-      if (local) {
-        setPromosiList(JSON.parse(local));
-      }
     } finally {
       setLoading(false);
     }
@@ -203,6 +194,17 @@ export function PromosiModule() {
       nomor: generateNomorPlaceholder(),
       tgl_terima: getTodayDate()
     }));
+
+    const channel = supabase
+      .channel('promosi_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'promosi' }, () => {
+        fetchPromosiData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const resetForm = () => {
@@ -263,7 +265,6 @@ export function PromosiModule() {
 
       const updatedList = promosiList.map(item => item.id === editingId ? { ...item, ...dbUpdatePayload } : item);
       setPromosiList(updatedList);
-      localStorage.setItem('pbp_global_data', JSON.stringify(updatedList));
 
       try {
         let { error } = await supabase.from('promosi').update(dbUpdatePayload).eq('id', editingId);
@@ -306,7 +307,6 @@ export function PromosiModule() {
 
       const updatedList = [newItem, ...promosiList];
       setPromosiList(updatedList);
-      localStorage.setItem('pbp_global_data', JSON.stringify(updatedList));
 
       try {
         const { error } = await supabase.from('promosi').insert([dbInsertPayload]);
@@ -354,7 +354,6 @@ export function PromosiModule() {
         const itemToDelete = promosiList.find(item => item.id === id);
         const updated = promosiList.filter(item => item.id !== id);
         setPromosiList(updated);
-        localStorage.setItem('pbp_global_data', JSON.stringify(updated));
 
         try {
           let { error } = await supabase.from('promosi').delete().eq('id', id);

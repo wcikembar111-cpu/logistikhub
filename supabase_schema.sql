@@ -93,6 +93,21 @@ CREATE TABLE IF NOT EXISTS public.promosi (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.rekapan_sj (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    judul VARCHAR(255) NOT NULL,
+    tanggal_rekap TIMESTAMPTZ DEFAULT NOW(),
+    total_sj INT DEFAULT 0,
+    total_item INT DEFAULT 0,
+    total_ctn INT DEFAULT 0,
+    total_pcs INT DEFAULT 0,
+    total_berat NUMERIC(10,2) DEFAULT 0,
+    total_kubikasi NUMERIC(10,3) DEFAULT 0,
+    data_detail JSONB DEFAULT '[]'::jsonb,
+    keterangan TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Insert admin user jika belum ada
 INSERT INTO users (email, password) 
 VALUES ('admin@admin.com', 'Kino.2026') 
@@ -126,5 +141,6 @@ ALTER TABLE public.pengirim DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promosi DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rekapan_sj DISABLE ROW LEVEL SECURITY;
 
 

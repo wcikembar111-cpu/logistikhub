@@ -19,6 +19,16 @@ export function useLinks() {
 
   useEffect(() => {
     fetchLinks();
+    const channel = supabase
+      .channel('links_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'links' }, () => {
+        fetchLinks();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const addLink = async (link: Omit<LinkData, 'id'>) => {
@@ -74,6 +84,16 @@ export function useTodos() {
 
   useEffect(() => {
     fetchTodos();
+    const channel = supabase
+      .channel('todos_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => {
+        fetchTodos();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const addTodo = async (task: string) => {
@@ -146,6 +166,16 @@ export function useAnnouncements() {
 
   useEffect(() => {
     fetchAnnouncements();
+    const channel = supabase
+      .channel('announcements_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
+        fetchAnnouncements();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const updateMessages = async (newMessages: string[]) => {
@@ -158,14 +188,7 @@ export function useAnnouncements() {
 }
 
 export function useMenuOrder() {
-  const [menuOrder, setMenuOrder] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('menu_order');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [menuOrder, setMenuOrder] = useState<string[]>([]);
 
   const fetchMenuOrder = async () => {
     try {
@@ -184,7 +207,6 @@ export function useMenuOrder() {
 
         if (remoteOrder && remoteOrder.length > 0) {
           setMenuOrder(remoteOrder);
-          localStorage.setItem('menu_order', JSON.stringify(remoteOrder));
         }
       }
     } catch (e) {
@@ -194,22 +216,24 @@ export function useMenuOrder() {
 
   useEffect(() => {
     fetchMenuOrder();
+    const channel = supabase
+      .channel('menu_order_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
+        fetchMenuOrder();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const saveMenuOrder = async (newOrder: string[]) => {
     setMenuOrder(newOrder);
     try {
-      localStorage.setItem('menu_order', JSON.stringify(newOrder));
-    } catch (e) {
-      console.error('Error saving menu_order to localStorage:', e);
-    }
-
-    try {
-      // Try upserting with both 'order' and 'messages' for column compatibility
       const payload: any = { id: 'menu_order', order: newOrder, messages: newOrder };
       const { error } = await supabase.from('settings').upsert(payload);
       if (error) {
-        // Fallback if 'order' column is not present on 'settings'
         await supabase.from('settings').upsert({ id: 'menu_order', messages: newOrder });
       }
     } catch (e) {

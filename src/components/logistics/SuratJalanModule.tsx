@@ -3,7 +3,8 @@ import * as XLSX from 'xlsx';
 import { 
   FileText, Plus, Search, Printer, Edit, Trash2, Save, Download, Upload, 
   RefreshCw, ChevronLeft, Building2, User, Phone, MapPin, CheckCircle2, 
-  Settings, Layers, ListFilter, FileSpreadsheet, ArrowLeft, PlusCircle
+  Settings, Layers, ListFilter, FileSpreadsheet, ArrowLeft, PlusCircle,
+  Database, FolderCheck, Eye, X, Sparkles, Calendar
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
@@ -56,6 +57,21 @@ export interface Pengirim {
   telp: string;
 }
 
+export interface SavedRekapSJ {
+  id: string;
+  judul: string;
+  tanggal_rekap?: string;
+  total_sj?: number;
+  total_item?: number;
+  total_ctn?: number;
+  total_pcs?: number;
+  total_berat?: number;
+  total_kubikasi?: number;
+  data_detail: any[];
+  keterangan?: string;
+  created_at?: string;
+}
+
 type SJSubTab = 'dashboard' | 'form' | 'rekap' | 'settings' | 'print';
 
 export function SuratJalanModule() {
@@ -63,6 +79,14 @@ export function SuratJalanModule() {
 
   const [activeTab, setActiveTab] = useState<SJSubTab>('dashboard');
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Saved Rekap State
+  const [savedRekapList, setSavedRekapList] = useState<SavedRekapSJ[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
+  const [rekapTitleInput, setRekapTitleInput] = useState<string>('');
+  const [savingRekap, setSavingRekap] = useState<boolean>(false);
+  const [viewSavedRekap, setViewSavedRekap] = useState<SavedRekapSJ | null>(null);
+  const [showHistorySection, setShowHistorySection] = useState<boolean>(false);
 
   // Master Data
   const [documents, setDocuments] = useState<DocumentSJ[]>([]);
@@ -175,10 +199,6 @@ export function SuratJalanModule() {
           };
         });
         setDocuments(mappedDocs);
-        localStorage.setItem('sj_docs_fallback', JSON.stringify(mappedDocs));
-      } else {
-        const local = localStorage.getItem('sj_docs_fallback');
-        if (local) setDocuments(JSON.parse(local));
       }
 
       // 2. Fetch Jenis
@@ -210,10 +230,22 @@ export function SuratJalanModule() {
           telp: pengirimData.telp || ''
         });
       }
+
+      // 5. Fetch Rekapan SJ
+      try {
+        const { data: rekapData, error: rekapErr } = await supabase
+          .from('rekapan_sj')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!rekapErr && rekapData) {
+          setSavedRekapList(rekapData as SavedRekapSJ[]);
+        }
+      } catch (e) {
+        console.error('Error fetching rekapan_sj:', e);
+      }
     } catch (e) {
       console.error('Error fetching SJ data:', e);
-      const localDocs = localStorage.getItem('sj_docs_fallback');
-      if (localDocs) setDocuments(JSON.parse(localDocs));
     } finally {
       setLoading(false);
     }
@@ -221,6 +253,20 @@ export function SuratJalanModule() {
 
   useEffect(() => {
     fetchAllData();
+
+    const channel = supabase
+      .channel('surat_jalan_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jenis' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tujuan' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengirim' }, () => fetchAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rekapan_sj' }, () => fetchAllData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Generate Nomor SJ Auto Preview
@@ -323,7 +369,6 @@ export function SuratJalanModule() {
     }
 
     setDocuments(updatedDocs);
-    localStorage.setItem('sj_docs_fallback', JSON.stringify(updatedDocs));
 
     // Try Supabase sync
     try {
@@ -384,7 +429,6 @@ export function SuratJalanModule() {
       onConfirm: async () => {
         const updated = documents.filter(d => d.id !== id);
         setDocuments(updated);
-        localStorage.setItem('sj_docs_fallback', JSON.stringify(updated));
 
         try {
           await supabase.from('items').delete().eq('doc_id', id);
@@ -817,6 +861,112 @@ export function SuratJalanModule() {
     XLSX.utils.book_append_sheet(wb, ws, 'Rekapitulasi Barang');
     XLSX.writeFile(wb, `Rekapitulasi_Surat_Jalan_${new Date().toISOString().split('T')[0]}.xlsx`);
     showToast('Sukses Ekspor', 'Data rekapitulasi barang berhasil diunduh', 'success');
+  };
+
+  // Save Rekapan to Database
+  const handleSaveRekapToDatabase = async () => {
+    if (filteredRekapItems.length === 0) {
+      showToast('Kosong', 'Tidak ada data rekapitulasi untuk disimpan', 'info');
+      return;
+    }
+
+    setSavingRekap(true);
+    const defaultTitle = rekapTitleInput.trim() || `Rekapan Surat Jalan - ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    
+    const uniqueSJs = new Set(filteredRekapItems.map(i => i.nomorSJ)).size;
+    const totalItem = filteredRekapItems.length;
+    const totalCtn = filteredRekapItems.reduce((acc, i) => acc + (Number(i.ctn) || 0), 0);
+    const totalPcs = filteredRekapItems.reduce((acc, i) => acc + (Number(i.pcs) || 0), 0);
+    const totalBerat = filteredRekapItems.reduce((acc, i) => acc + (Number(i.berat) || 0), 0);
+    const totalKubikasi = filteredRekapItems.reduce((acc, i) => acc + (Number(i.kubikasi) || 0), 0);
+
+    const newRekapPayload: SavedRekapSJ = {
+      id: crypto.randomUUID(),
+      judul: defaultTitle,
+      tanggal_rekap: new Date().toISOString(),
+      total_sj: uniqueSJs,
+      total_item: totalItem,
+      total_ctn: totalCtn,
+      total_pcs: totalPcs,
+      total_berat: Number(totalBerat.toFixed(2)),
+      total_kubikasi: Number(totalKubikasi.toFixed(3)),
+      data_detail: filteredRekapItems,
+      keterangan: `Disimpan dari Rekapitulasi Barang (${filteredRekapItems.length} baris)`
+    };
+
+    try {
+      const { error } = await supabase.from('rekapan_sj').insert([newRekapPayload]);
+      if (error) {
+        console.warn('Supabase rekapan_sj warning:', error.message);
+        showToast('Disimpan Lokal', `Rekapan tersimpan lokal. Supabase: ${error.message}`, 'info');
+      } else {
+        showToast('Berhasil Disimpan', `Rekapan "${defaultTitle}" berhasil tersimpan ke Database Supabase!`, 'success');
+      }
+
+      const updated = [newRekapPayload, ...savedRekapList];
+      setSavedRekapList(updated);
+      setShowSaveModal(false);
+      setRekapTitleInput('');
+    } catch (e: any) {
+      showToast('Error', e.message || 'Gagal menyimpan rekapan', 'danger');
+    } finally {
+      setSavingRekap(false);
+    }
+  };
+
+  // Delete Saved Rekap
+  const handleDeleteSavedRekap = (id: string, judul: string) => {
+    showConfirm({
+      title: 'Hapus Rekapan Ter simpan',
+      message: `Yakin ingin menghapus rekapan "${judul}" dari Database Supabase?`,
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        const updated = savedRekapList.filter(r => r.id !== id);
+        setSavedRekapList(updated);
+
+        try {
+          const { error } = await supabase.from('rekapan_sj').delete().eq('id', id);
+          if (error) {
+            showToast('Peringatan', `Terhapus lokal, catatan DB: ${error.message}`, 'info');
+          } else {
+            showToast('Terhapus', 'Data rekapan berhasil dihapus dari Database Supabase', 'success');
+            fetchAllData();
+          }
+        } catch (e) {
+          showToast('Terhapus', 'Data rekapan terhapus dari lokal', 'info');
+        }
+      }
+    });
+  };
+
+  // Export Saved Rekap Excel
+  const exportSavedRekapToExcel = (rekap: SavedRekapSJ) => {
+    if (!rekap.data_detail || rekap.data_detail.length === 0) {
+      showToast('Kosong', 'Tidak ada data rincian dalam rekapan ini', 'info');
+      return;
+    }
+
+    const rows = rekap.data_detail.map((it: any) => ({
+      "No Rekap": it.rekapNo,
+      "Nomor SJ": it.nomorSJ,
+      "Tanggal": it.tanggal,
+      "Tujuan": it.tujuan,
+      "Nama Barang": it.namaBarang,
+      "Jumlah CTN": it.ctn,
+      "Jumlah PCS": it.pcs,
+      "Berat (KG)": it.berat,
+      "Kubikasi (M3)": it.kubikasi,
+      "Keterangan": it.keterangan
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekapitulasi Barang');
+    const safeTitle = (rekap.judul || 'Rekapan_SJ').replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `${safeTitle}.xlsx`);
+    showToast('Sukses Ekspor', `File Excel "${rekap.judul}" berhasil diunduh`, 'success');
   };
 
   const formatNum = (n: number | string) => (Number(n) || 0).toLocaleString('id-ID');
@@ -1697,24 +1847,135 @@ export function SuratJalanModule() {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
             <div>
-              <h2 className="text-base font-black text-slate-900 uppercase m-0">Rekapitulasi Barang Pengiriman</h2>
-              <p className="text-xs text-slate-500 font-semibold m-0 mt-0.5">Data seluruh barang dari semua Surat Jalan</p>
+              <h2 className="text-base font-black text-slate-900 uppercase m-0 flex items-center gap-2">
+                <FileSpreadsheet className="text-blue-600" size={20} />
+                <span>Rekapitulasi Barang Pengiriman</span>
+              </h2>
+              <p className="text-xs text-slate-500 font-semibold m-0 mt-0.5">Data seluruh rincian barang dari semua Surat Jalan</p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-200">
                 {filteredRekapItems.length} / {allRekapItems.length} baris
               </span>
 
               <button
+                onClick={() => {
+                  setRekapTitleInput(`Rekapan SJ - ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}`);
+                  setShowSaveModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+                title="Simpan rekapan saat ini ke Database Supabase"
+              >
+                <Database size={15} />
+                <span>Simpan Rekapan DB</span>
+              </button>
+
+              <button
+                onClick={() => setShowHistorySection(!showHistorySection)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  showHistorySection 
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20' 
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                }`}
+              >
+                <FolderCheck size={15} />
+                <span>Riwayat Rekapan DB ({savedRekapList.length})</span>
+              </button>
+
+              <button
                 onClick={exportRekapExcel}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Download size={15} />
                 <span>Ekspor Excel</span>
               </button>
             </div>
           </div>
+
+          {/* RIWAYAT REKAPAN TER SIMPAN DI DATABASE SECTION */}
+          {showHistorySection && (
+            <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-purple-900 font-extrabold text-sm">
+                  <Database size={16} className="text-purple-600" />
+                  <span>Daftar Rekapan Ter simpan di Database Supabase ({savedRekapList.length})</span>
+                </div>
+                <button
+                  onClick={() => setShowHistorySection(false)}
+                  className="text-xs text-purple-600 font-bold hover:underline cursor-pointer"
+                >
+                  Sembunyikan
+                </button>
+              </div>
+
+              {savedRekapList.length === 0 ? (
+                <p className="text-xs text-purple-600 italic m-0">Belum ada rekapan yang tersimpan di database.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
+                  {savedRekapList.map((rk) => (
+                    <div key={rk.id} className="p-3.5 bg-white border border-purple-200 rounded-xl shadow-xs space-y-2 hover:border-purple-300 transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 m-0 uppercase line-clamp-1">{rk.judul}</h4>
+                          <p className="text-[10px] text-slate-400 font-medium m-0 flex items-center gap-1 mt-0.5">
+                            <Calendar size={11} />
+                            <span>{new Date(rk.tanggal_rekap || rk.created_at || '').toLocaleString('id-ID')}</span>
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-extrabold rounded-lg whitespace-nowrap">
+                          {rk.total_item || rk.data_detail?.length || 0} Barang
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1 bg-slate-50 p-2 rounded-lg text-center text-[10px] font-bold text-slate-700">
+                        <div>
+                          <span className="block text-slate-400 text-[9px]">DOC SJ</span>
+                          {rk.total_sj || 0}
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 text-[9px]">CTN</span>
+                          {formatNum(rk.total_ctn || 0)}
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 text-[9px]">PCS</span>
+                          {formatNum(rk.total_pcs || 0)}
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 text-[9px]">KG</span>
+                          {rk.total_berat || 0}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <button
+                          onClick={() => setViewSavedRekap(rk)}
+                          className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Eye size={12} />
+                          <span>Detail</span>
+                        </button>
+                        <button
+                          onClick={() => exportSavedRekapToExcel(rk)}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Download size={12} />
+                          <span>Excel</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSavedRekap(rk.id, rk.judul)}
+                          className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                          title="Hapus Rekapan"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 3 Filter Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2158,6 +2419,199 @@ export function SuratJalanModule() {
               >
                 <Save size={15} />
                 <span>Simpan Ke Database</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL SIMPAN REKAPAN TO DATABASE */}
+      {/* ==================================================================== */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+                  <Database size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase m-0">Simpan Rekapan Ke Database</h3>
+                  <p className="text-[11px] text-slate-500 font-medium m-0">Simpan laporan ringkasan barang saat ini</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-extrabold text-slate-700 uppercase mb-1">
+                  Judul Rekapan / Laporan
+                </label>
+                <input
+                  type="text"
+                  value={rekapTitleInput}
+                  onChange={(e) => setRekapTitleInput(e.target.value)}
+                  placeholder="Contoh: Rekapitulasi SJ Periode Agustus 2026"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1 text-[11px] text-emerald-900 font-semibold">
+                <div className="flex justify-between">
+                  <span>Total Baris Barang:</span>
+                  <span className="font-bold">{filteredRekapItems.length} item</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total CTN:</span>
+                  <span className="font-bold">{formatNum(filteredRekapItems.reduce((acc, i) => acc + (Number(i.ctn) || 0), 0))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total PCS:</span>
+                  <span className="font-bold">{formatNum(filteredRekapItems.reduce((acc, i) => acc + (Number(i.pcs) || 0), 0))}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={savingRekap}
+                onClick={handleSaveRekapToDatabase}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Save size={15} />
+                <span>{savingRekap ? 'Menyimpan...' : 'Simpan Ke Database'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL DETAIL REKAPAN TER SIMPAN */}
+      {/* ==================================================================== */}
+      {viewSavedRekap && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl">
+                  <FileSpreadsheet size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase m-0">{viewSavedRekap.judul}</h3>
+                  <p className="text-[11px] text-slate-500 font-medium m-0 flex items-center gap-1">
+                    <Calendar size={12} />
+                    <span>Disimpan tanggal: {new Date(viewSavedRekap.tanggal_rekap || viewSavedRekap.created_at || '').toLocaleString('id-ID')}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => exportSavedRekapToExcel(viewSavedRekap)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Download size={14} />
+                  <span>Ekspor Excel</span>
+                </button>
+
+                <button
+                  onClick={() => setViewSavedRekap(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center text-xs">
+              <div>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Dokumen SJ</span>
+                <span className="font-mono font-extrabold text-slate-900">{viewSavedRekap.total_sj || 0}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Total Item</span>
+                <span className="font-mono font-extrabold text-slate-900">{viewSavedRekap.total_item || viewSavedRekap.data_detail?.length || 0}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Total CTN</span>
+                <span className="font-mono font-extrabold text-slate-900">{formatNum(viewSavedRekap.total_ctn || 0)}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Total PCS</span>
+                <span className="font-mono font-extrabold text-slate-900">{formatNum(viewSavedRekap.total_pcs || 0)}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Total Berat</span>
+                <span className="font-mono font-extrabold text-slate-900">{(viewSavedRekap.total_berat || 0).toFixed(2)} KG</span>
+              </div>
+            </div>
+
+            {/* Table Detail */}
+            <div className="overflow-x-auto border border-slate-200 rounded-xl flex-1 max-h-[400px]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-100 text-slate-700 font-extrabold uppercase sticky top-0 z-10 border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5 w-12 text-center">No</th>
+                    <th className="p-2.5">Nomor SJ</th>
+                    <th className="p-2.5">Tanggal</th>
+                    <th className="p-2.5">Tujuan</th>
+                    <th className="p-2.5">Nama Barang</th>
+                    <th className="p-2.5 text-right">CTN</th>
+                    <th className="p-2.5 text-right">PCS</th>
+                    <th className="p-2.5 text-right">Berat (KG)</th>
+                    <th className="p-2.5 text-right">Kubikasi (M3)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                  {(!viewSavedRekap.data_detail || viewSavedRekap.data_detail.length === 0) ? (
+                    <tr>
+                      <td colSpan={9} className="p-8 text-center text-slate-400 font-bold">
+                        Tidak ada detail data dalam rekapan ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    viewSavedRekap.data_detail.map((it: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2.5 text-center font-mono text-slate-400">{it.rekapNo || (idx + 1)}</td>
+                        <td className="p-2.5 font-mono font-bold text-amber-600">{it.nomorSJ}</td>
+                        <td className="p-2.5 whitespace-nowrap">{it.tanggal}</td>
+                        <td className="p-2.5 font-semibold text-slate-900">{it.tujuan}</td>
+                        <td className="p-2.5 font-semibold text-slate-900">{it.namaBarang}</td>
+                        <td className="p-2.5 text-right font-mono font-bold">{formatNum(it.ctn)}</td>
+                        <td className="p-2.5 text-right font-mono font-bold">{formatNum(it.pcs)}</td>
+                        <td className="p-2.5 text-right font-mono">{(Number(it.berat) || 0).toFixed(2)}</td>
+                        <td className="p-2.5 text-right font-mono">{(Number(it.kubikasi) || 0).toFixed(3)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setViewSavedRekap(null)}
+                className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+              >
+                Tutup
               </button>
             </div>
           </div>
