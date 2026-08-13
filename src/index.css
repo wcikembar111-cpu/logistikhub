@@ -39,6 +39,58 @@
   }
 }
 
+/* Animasi Kedip Warna Todo Prioritas */
+@keyframes todoBlinkBorder {
+  0%, 100% {
+    border-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.75), inset 0 0 10px rgba(239, 68, 68, 0.2);
+    background-color: rgba(254, 226, 226, 0.95);
+  }
+  50% {
+    border-color: #f59e0b;
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.85), inset 0 0 12px rgba(245, 158, 11, 0.3);
+    background-color: rgba(254, 243, 199, 0.95);
+  }
+}
+
+@keyframes todoBlinkBadge {
+  0%, 100% {
+    background-color: #dc2626;
+    color: #ffffff;
+    box-shadow: 0 0 10px #dc2626;
+    transform: scale(1);
+  }
+  50% {
+    background-color: #d97706;
+    color: #ffffff;
+    box-shadow: 0 0 12px #d97706;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes todoBlinkGlowText {
+  0%, 100% {
+    color: #991b1b;
+    text-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    color: #b45309;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  }
+}
+
+.animate-todo-blink {
+  animation: todoBlinkBorder 1s infinite ease-in-out;
+}
+
+.animate-badge-blink {
+  animation: todoBlinkBadge 0.8s infinite ease-in-out;
+}
+
+.animate-text-blink {
+  animation: todoBlinkGlowText 1s infinite ease-in-out;
+}
+
 body {
   /* Soft glassmorphism background: abstract mesh gradient with orange, deep blue, and white */
   background: radial-gradient(circle at 15% 50%, rgba(249, 115, 22, 0.15), transparent 25%),

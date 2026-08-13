@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import { LinkData, TodoData, AnnouncementData } from '../types';
+import { LinkData, TodoData, TodoPriority, parseTodoTask, formatTodoTask } from '../types';
 
 export function useLinks() {
   const [links, setLinks] = useState<LinkData[]>([]);
@@ -74,7 +74,18 @@ export function useTodos() {
   const fetchTodos = async () => {
     try {
       const { data, error } = await supabase.from('todos').select('*').order('created_at', { ascending: false });
-      if (!error && data) setTodos(data as TodoData[]);
+      if (!error && data) {
+        const parsedTodos = data.map((t: any) => {
+          const parsed = parseTodoTask(t.task, t.priority, t.is_blinking);
+          return {
+            ...t,
+            task: parsed.cleanTask,
+            priority: parsed.priority,
+            is_blinking: parsed.isBlinking
+          };
+        });
+        setTodos(parsedTodos as TodoData[]);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -96,11 +107,21 @@ export function useTodos() {
     };
   }, []);
 
-  const addTodo = async (task: string) => {
+  const addTodo = async (task: string, priority: TodoPriority = 'rendah', isBlinking: boolean = false) => {
+    const formattedTask = formatTodoTask(task, priority, isBlinking);
     const tempId = crypto.randomUUID();
-    const newTodo = { id: tempId, task, status: 'no', created_at: new Date().toISOString() } as TodoData;
+    const newTodo: TodoData = { 
+      id: tempId, 
+      task, 
+      status: 'no', 
+      priority, 
+      is_blinking: isBlinking, 
+      created_at: new Date().toISOString() 
+    } as any;
+    
     setTodos(prev => [newTodo, ...prev]);
-    const { error } = await supabase.from('todos').insert([{ task, status: 'no' }]);
+
+    const { error } = await supabase.from('todos').insert([{ task: formattedTask, status: 'no' }]);
     if (error) {
       alert(`Gagal menyimpan tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS (Row Level Security) di tabel "todos" pada Supabase agar public dapat menambah data.`);
       setTodos(prev => prev.filter(t => t.id !== tempId));
@@ -110,20 +131,51 @@ export function useTodos() {
   };
 
   const updateTodoStatus = async (id: string, status: TodoData['status']) => {
+    const existing = todos.find(t => t.id === id);
     setTodos(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-    const { error } = await supabase.from('todos').update({ status }).eq('id', id);
+
+    const formattedTask = existing ? formatTodoTask(existing.task, existing.priority || 'rendah', !!existing.is_blinking) : undefined;
+    const updatePayload: any = { status };
+    if (formattedTask) {
+      updatePayload.task = formattedTask;
+    }
+
+    const { error } = await supabase.from('todos').update(updatePayload).eq('id', id);
     if (error) {
       alert(`Gagal mengubah status. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+      fetchTodos();
     } else {
       fetchTodos();
     }
   };
 
   const updateTodo = async (id: string, updates: Partial<Omit<TodoData, 'id'>>) => {
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-    const { error } = await supabase.from('todos').update(updates).eq('id', id);
+    const existing = todos.find(t => t.id === id);
+    if (!existing) return;
+
+    const newCleanTask = updates.task !== undefined ? updates.task : existing.task;
+    const newPriority = updates.priority !== undefined ? updates.priority : (existing.priority || 'rendah');
+    const newBlinking = updates.is_blinking !== undefined ? updates.is_blinking : !!existing.is_blinking;
+    const newStatus = updates.status !== undefined ? updates.status : existing.status;
+
+    const formattedTask = formatTodoTask(newCleanTask, newPriority, newBlinking);
+
+    setTodos(prev => prev.map(t => t.id === id ? { 
+      ...t, 
+      task: newCleanTask, 
+      priority: newPriority, 
+      is_blinking: newBlinking, 
+      status: newStatus 
+    } : t));
+
+    const { error } = await supabase.from('todos').update({
+      task: formattedTask,
+      status: newStatus
+    }).eq('id', id);
+
     if (error) {
       alert(`Gagal memperbarui tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+      fetchTodos();
     } else {
       fetchTodos();
     }
@@ -134,6 +186,7 @@ export function useTodos() {
     const { error } = await supabase.from('todos').delete().eq('id', id);
     if (error) {
       alert(`Gagal menghapus tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+      fetchTodos();
     }
   };
 
