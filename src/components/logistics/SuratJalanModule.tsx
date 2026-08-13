@@ -121,37 +121,59 @@ export function SuratJalanModule() {
   const [rekapFilterSJ, setRekapFilterSJ] = useState<string>('');
   const [rekapFilterBarang, setRekapFilterBarang] = useState<string>('');
 
+  // Master Jenis & Tujuan Modals State
+  const [showJenisModal, setShowJenisModal] = useState<boolean>(false);
+  const [editingJenisId, setEditingJenisId] = useState<string | null>(null);
+  const [jenisForm, setJenisForm] = useState<{ kode: string; nama: string }>({ kode: '', nama: '' });
+
+  const [showTujuanModal, setShowTujuanModal] = useState<boolean>(false);
+  const [editingTujuanId, setEditingTujuanId] = useState<string | null>(null);
+  const [tujuanForm, setTujuanForm] = useState<{ nama: string; alamat: string; kota: string; up: string; noTelpon: string }>({
+    nama: '',
+    alamat: '',
+    kota: '',
+    up: '',
+    noTelpon: ''
+  });
+
   // Fetch all data from Supabase or localStorage fallback
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Documents & Items
+      // 1. Fetch Documents & Items separately to ensure reliable joins
       const { data: docsData, error: docsError } = await supabase
         .from('documents')
-        .select('*, items(*)')
+        .select('*')
         .order('created_at', { ascending: false });
 
+      const { data: itemsData } = await supabase
+        .from('items')
+        .select('*');
+
       if (!docsError && docsData) {
-        const mappedDocs: DocumentSJ[] = docsData.map((d: any) => ({
-          id: d.id,
-          nomorSJ: d.nomor_sj || d.nomorSJ || '',
-          jenisId: d.jenis_id || d.jenisId || 'jenis-1',
-          tanggal: d.tanggal || new Date().toISOString().split('T')[0],
-          tujuanId: d.tujuan_id || d.tujuanId || '',
-          up: d.up || '',
-          noTelpon: d.no_telpon || d.noTelpon || '',
-          items: Array.isArray(d.items) ? d.items.map((it: any) => ({
-            id: it.id,
-            doc_id: it.doc_id,
-            rekapNo: Number(it.rekap_no ?? it.rekapNo ?? 1),
-            namaBarang: it.nama_barang || it.namaBarang || '',
-            ctn: Number(it.ctn) || 0,
-            pcs: Number(it.pcs) || 0,
-            berat: Number(it.berat) || 0,
-            kubikasi: Number(it.kubikasi) || 0,
-            keterangan: it.keterangan || ''
-          })) : []
-        }));
+        const mappedDocs: DocumentSJ[] = docsData.map((d: any) => {
+          const matchedItems = (itemsData || []).filter((it: any) => it.doc_id === d.id);
+          return {
+            id: d.id,
+            nomorSJ: d.nomor_sj || d.nomorSJ || '',
+            jenisId: d.jenis_id || d.jenisId || 'jenis-1',
+            tanggal: d.tanggal || new Date().toISOString().split('T')[0],
+            tujuanId: d.tujuan_id || d.tujuanId || '',
+            up: d.up || '',
+            noTelpon: d.no_telpon || d.noTelpon || '',
+            items: matchedItems.map((it: any) => ({
+              id: it.id,
+              doc_id: it.doc_id,
+              rekapNo: Number(it.rekap_no ?? it.rekapNo ?? 1),
+              namaBarang: it.nama_barang || it.namaBarang || '',
+              ctn: Number(it.ctn) || 0,
+              pcs: Number(it.pcs) || 0,
+              berat: Number(it.berat) || 0,
+              kubikasi: Number(it.kubikasi) || 0,
+              keterangan: it.keterangan || ''
+            }))
+          };
+        });
         setDocuments(mappedDocs);
         localStorage.setItem('sj_docs_fallback', JSON.stringify(mappedDocs));
       } else {
@@ -168,7 +190,14 @@ export function SuratJalanModule() {
       // 3. Fetch Tujuan
       const { data: tujuanData } = await supabase.from('tujuan').select('*');
       if (tujuanData && tujuanData.length > 0) {
-        setTujuanList(tujuanData as Tujuan[]);
+        setTujuanList(tujuanData.map((t: any) => ({
+          id: t.id,
+          nama: t.nama || '',
+          alamat: t.alamat || '',
+          kota: t.kota || '',
+          up: t.up || '',
+          noTelpon: t.no_telpon || t.noTelpon || ''
+        })));
       }
 
       // 4. Fetch Pengirim
@@ -301,33 +330,43 @@ export function SuratJalanModule() {
       const docPayload = {
         id: finalDoc.id,
         nomor_sj: finalDoc.nomorSJ,
-        jenis_id: finalDoc.jenisId,
+        jenis_id: finalDoc.jenisId || null,
         tanggal: finalDoc.tanggal,
-        tujuan_id: finalDoc.tujuanId,
-        up: finalDoc.up,
-        no_telpon: finalDoc.noTelpon
+        tujuan_id: finalDoc.tujuanId || null,
+        up: finalDoc.up || '',
+        no_telpon: finalDoc.noTelpon || ''
       };
 
-      await supabase.from('documents').upsert([docPayload]);
+      const { error: docErr } = await supabase.from('documents').upsert([docPayload]);
+      if (docErr) {
+        console.error('Supabase save document error:', docErr);
+        showToast('Peringatan Database', `Dokumen tersimpan di browser, gagal di Supabase: ${docErr.message}`, 'danger');
+      } else {
+        // Delete existing items then re-insert
+        await supabase.from('items').delete().eq('doc_id', finalDoc.id);
 
-      // Delete existing items then re-insert
-      await supabase.from('items').delete().eq('doc_id', finalDoc.id);
+        const itemsPayload = finalDoc.items.map((it, idx) => ({
+          id: crypto.randomUUID(),
+          doc_id: finalDoc.id,
+          rekap_no: idx + 1,
+          nama_barang: it.namaBarang,
+          ctn: Number(it.ctn) || 0,
+          pcs: Number(it.pcs) || 0,
+          berat: Number(it.berat) || 0,
+          kubikasi: Number(it.kubikasi) || 0,
+          keterangan: it.keterangan || ''
+        }));
 
-      const itemsPayload = finalDoc.items.map((it, idx) => ({
-        id: crypto.randomUUID(),
-        doc_id: finalDoc.id,
-        rekap_no: idx + 1,
-        nama_barang: it.namaBarang,
-        ctn: Number(it.ctn) || 0,
-        pcs: Number(it.pcs) || 0,
-        berat: Number(it.berat) || 0,
-        kubikasi: Number(it.kubikasi) || 0,
-        keterangan: it.keterangan || ''
-      }));
-
-      await supabase.from('items').insert(itemsPayload);
-      showToast('Sukses', 'Dokumen Surat Jalan berhasil disimpan ke Database', 'success');
-    } catch (e) {
+        const { error: itemsErr } = await supabase.from('items').insert(itemsPayload);
+        if (itemsErr) {
+          console.error('Supabase save items error:', itemsErr);
+          showToast('Peringatan Barang', `Dokumen tersimpan, tetapi rincian barang error: ${itemsErr.message}`, 'danger');
+        } else {
+          showToast('Sukses', 'Dokumen Surat Jalan berhasil disimpan ke Database Supabase!', 'success');
+        }
+        fetchAllData();
+      }
+    } catch (e: any) {
       showToast('Tersimpan Lokal', 'Dokumen disimpan secara lokal', 'info');
     }
 
@@ -336,15 +375,22 @@ export function SuratJalanModule() {
 
   // Delete Document
   const handleDeleteDocument = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus dokumen Surat Jalan ini?')) return;
+    if (!window.confirm('Yakin ingin menghapus dokumen Surat Jalan ini dari Database?')) return;
 
     const updated = documents.filter(d => d.id !== id);
     setDocuments(updated);
     localStorage.setItem('sj_docs_fallback', JSON.stringify(updated));
 
     try {
-      await supabase.from('documents').delete().eq('id', id);
-      showToast('Terhapus', 'Dokumen SJ berhasil dihapus', 'info');
+      await supabase.from('items').delete().eq('doc_id', id);
+      const { error: delErr } = await supabase.from('documents').delete().eq('id', id);
+      if (delErr) {
+        console.error('Supabase delete doc error:', delErr);
+        showToast('Gagal Hapus DB', delErr.message, 'danger');
+      } else {
+        showToast('Terhapus', 'Dokumen SJ beserta barangnya berhasil dihapus dari Database', 'success');
+        fetchAllData();
+      }
     } catch (e) {
       showToast('Terhapus', 'Dokumen dihapus dari lokal', 'info');
     }
@@ -370,8 +416,15 @@ export function SuratJalanModule() {
     setTujuanList(updatedTujuan);
 
     try {
-      await supabase.from('tujuan').insert([newTujuan]);
-      showToast('Sukses', 'Tujuan baru berhasil ditambahkan', 'success');
+      await supabase.from('tujuan').insert([{
+        id: newTujuan.id,
+        nama: newTujuan.nama,
+        alamat: newTujuan.alamat,
+        kota: newTujuan.kota,
+        up: newTujuan.up,
+        no_telpon: newTujuan.noTelpon
+      }]);
+      showToast('Sukses', 'Tujuan baru berhasil ditambahkan ke Database', 'success');
     } catch (e) {
       showToast('Tersimpan Lokal', 'Tujuan ditambahkan ke lokal', 'info');
     }
@@ -385,6 +438,167 @@ export function SuratJalanModule() {
 
     setQuickAddForm({ nama: '', kota: '', alamat: '', up: '', telp: '' });
     setQuickAddTujuanOpen(false);
+  };
+
+  // Master Jenis Handlers
+  const handleOpenAddJenis = () => {
+    setEditingJenisId(null);
+    setJenisForm({ kode: '', nama: '' });
+    setShowJenisModal(true);
+  };
+
+  const handleOpenEditJenis = (j: JenisSJ) => {
+    setEditingJenisId(j.id);
+    setJenisForm({ kode: j.kode, nama: j.nama });
+    setShowJenisModal(true);
+  };
+
+  const handleSaveJenis = async () => {
+    if (!jenisForm.kode.trim() || !jenisForm.nama.trim()) {
+      showToast('Form Belum Lengkap', 'Kode dan Nama Jenis Surat Jalan wajib diisi', 'danger');
+      return;
+    }
+
+    const payload: JenisSJ = {
+      id: editingJenisId || `jenis-${Date.now()}`,
+      kode: jenisForm.kode.trim().toUpperCase(),
+      nama: jenisForm.nama.trim()
+    };
+
+    let updated: JenisSJ[];
+    if (editingJenisId) {
+      updated = jenisList.map(j => j.id === editingJenisId ? payload : j);
+    } else {
+      updated = [...jenisList, payload];
+    }
+
+    setJenisList(updated);
+
+    try {
+      const { error } = await supabase.from('jenis').upsert([payload]);
+      if (error) {
+        console.warn('Supabase jenis upsert error:', error.message);
+        showToast('Peringatan Database', `Tersimpan lokal. Supabase: ${error.message}`, 'info');
+      } else {
+        showToast('Sukses', `Jenis Surat Jalan ${payload.kode} berhasil disimpan ke Database`, 'success');
+        fetchAllData();
+      }
+    } catch (e: any) {
+      showToast('Sukses Lokal', 'Jenis Surat Jalan disimpan di penyimpanan lokal', 'info');
+    }
+
+    setShowJenisModal(false);
+    setEditingJenisId(null);
+    setJenisForm({ kode: '', nama: '' });
+  };
+
+  const handleDeleteJenis = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus Jenis Surat Jalan ini dari Database?')) return;
+
+    const updated = jenisList.filter(j => j.id !== id);
+    setJenisList(updated);
+
+    try {
+      const { error } = await supabase.from('jenis').delete().eq('id', id);
+      if (error) {
+        showToast('Gagal Hapus DB', error.message, 'danger');
+      } else {
+        showToast('Berhasil', 'Jenis Surat Jalan terhapus dari Database', 'success');
+        fetchAllData();
+      }
+    } catch (e) {
+      showToast('Terhapus', 'Terhapus dari lokal', 'info');
+    }
+  };
+
+  // Master Tujuan Handlers
+  const handleOpenAddTujuanMaster = () => {
+    setEditingTujuanId(null);
+    setTujuanForm({ nama: '', alamat: '', kota: '', up: '', noTelpon: '' });
+    setShowTujuanModal(true);
+  };
+
+  const handleOpenEditTujuanMaster = (t: Tujuan) => {
+    setEditingTujuanId(t.id);
+    setTujuanForm({
+      nama: t.nama,
+      alamat: t.alamat,
+      kota: t.kota,
+      up: t.up,
+      noTelpon: t.noTelpon
+    });
+    setShowTujuanModal(true);
+  };
+
+  const handleSaveTujuanMaster = async () => {
+    if (!tujuanForm.nama.trim()) {
+      showToast('Form Belum Lengkap', 'Nama Tujuan / Perusahaan wajib diisi', 'danger');
+      return;
+    }
+
+    const targetId = editingTujuanId || `tujuan-${Date.now()}`;
+    const localItem: Tujuan = {
+      id: targetId,
+      nama: tujuanForm.nama.trim(),
+      alamat: tujuanForm.alamat.trim(),
+      kota: tujuanForm.kota.trim(),
+      up: tujuanForm.up.trim(),
+      noTelpon: tujuanForm.noTelpon.trim()
+    };
+
+    const dbPayload = {
+      id: targetId,
+      nama: localItem.nama,
+      alamat: localItem.alamat,
+      kota: localItem.kota,
+      up: localItem.up,
+      no_telpon: localItem.noTelpon
+    };
+
+    let updated: Tujuan[];
+    if (editingTujuanId) {
+      updated = tujuanList.map(t => t.id === editingTujuanId ? localItem : t);
+    } else {
+      updated = [...tujuanList, localItem];
+    }
+
+    setTujuanList(updated);
+
+    try {
+      const { error } = await supabase.from('tujuan').upsert([dbPayload]);
+      if (error) {
+        console.warn('Supabase tujuan upsert error:', error.message);
+        showToast('Peringatan Database', `Tersimpan lokal. Supabase: ${error.message}`, 'info');
+      } else {
+        showToast('Sukses', `Tujuan "${localItem.nama}" berhasil disimpan ke Database`, 'success');
+        fetchAllData();
+      }
+    } catch (e: any) {
+      showToast('Sukses Lokal', 'Tujuan disimpan di penyimpanan lokal', 'info');
+    }
+
+    setShowTujuanModal(false);
+    setEditingTujuanId(null);
+    setTujuanForm({ nama: '', alamat: '', kota: '', up: '', noTelpon: '' });
+  };
+
+  const handleDeleteTujuanMaster = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus Tujuan Pengiriman ini dari Database?')) return;
+
+    const updated = tujuanList.filter(t => t.id !== id);
+    setTujuanList(updated);
+
+    try {
+      const { error } = await supabase.from('tujuan').delete().eq('id', id);
+      if (error) {
+        showToast('Gagal Hapus DB', error.message, 'danger');
+      } else {
+        showToast('Berhasil', 'Tujuan Pengiriman terhapus dari Database', 'success');
+        fetchAllData();
+      }
+    } catch (e) {
+      showToast('Terhapus', 'Terhapus dari lokal', 'info');
+    }
   };
 
   // Paste Processors
@@ -1634,27 +1848,74 @@ export function SuratJalanModule() {
 
             {/* Jenis SJ */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-              <h3 className="text-sm font-black uppercase text-slate-900 m-0 pb-2 border-b border-slate-100">
-                Jenis Surat Jalan
-              </h3>
-              <div className="space-y-2">
-                {jenisList.map(j => (
-                  <div key={j.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                    <span className="text-xs font-bold text-slate-800">{j.nama}</span>
-                    <span className="bg-amber-100 text-amber-800 font-mono text-[10px] px-2 py-0.5 rounded border border-amber-200 font-bold">
-                      {j.kode}
-                    </span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="text-sm font-black uppercase text-slate-900 m-0">
+                  Jenis Surat Jalan ({jenisList.length})
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleOpenAddJenis}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                >
+                  <Plus size={14} />
+                  <span>Tambah Jenis SJ</span>
+                </button>
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {jenisList.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Belum ada jenis surat jalan.</p>
+                ) : (
+                  jenisList.map(j => (
+                    <div key={j.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">{j.nama}</span>
+                        <span className="bg-amber-100 text-amber-800 font-mono text-[10px] px-2 py-0.5 rounded border border-amber-200 font-bold inline-block mt-0.5">
+                          {j.kode}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditJenis(j)}
+                          className="p-1.5 rounded bg-white hover:bg-amber-100 text-slate-600 hover:text-amber-700 cursor-pointer border border-slate-200"
+                          title="Edit Jenis"
+                        >
+                          <Edit size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteJenis(j.id)}
+                          className="p-1.5 rounded bg-white hover:bg-red-100 text-slate-600 hover:text-red-700 cursor-pointer border border-slate-200"
+                          title="Hapus Jenis"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
 
           {/* Master Tujuan Table */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <h3 className="text-sm font-black uppercase text-slate-900 m-0 pb-2 border-b border-slate-100">
-              Daftar Tujuan Pengiriman ({tujuanList.length})
-            </h3>
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-black uppercase text-slate-900 m-0">
+                  Daftar Tujuan Pengiriman ({tujuanList.length})
+                </h3>
+                <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
+                  Data tujuan pengiriman yang tersimpan di Database Supabase (`tujuan`)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAddTujuanMaster}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+              >
+                <Plus size={15} />
+                <span>Tambah Tujuan Pengiriman</span>
+              </button>
+            </div>
 
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left text-xs border-collapse">
@@ -1665,20 +1926,218 @@ export function SuratJalanModule() {
                     <th className="p-2.5">Kota</th>
                     <th className="p-2.5">UP</th>
                     <th className="p-2.5">No Telepon</th>
+                    <th className="p-2.5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
-                  {tujuanList.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-50">
-                      <td className="p-2.5 font-bold text-slate-900">{t.nama}</td>
-                      <td className="p-2.5 text-slate-600">{t.alamat || '-'}</td>
-                      <td className="p-2.5 text-slate-700">{t.kota || '-'}</td>
-                      <td className="p-2.5 text-slate-700">{t.up || '-'}</td>
-                      <td className="p-2.5 text-slate-700">{t.noTelpon || '-'}</td>
+                  {tujuanList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-slate-400 font-bold">
+                        Belum ada tujuan pengiriman. Klik "Tambah Tujuan Pengiriman" untuk menambah.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    tujuanList.map(t => (
+                      <tr key={t.id} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-bold text-slate-900">{t.nama}</td>
+                        <td className="p-2.5 text-slate-600">{t.alamat || '-'}</td>
+                        <td className="p-2.5 text-slate-700">{t.kota || '-'}</td>
+                        <td className="p-2.5 text-slate-700">{t.up || '-'}</td>
+                        <td className="p-2.5 text-slate-700">{t.noTelpon || '-'}</td>
+                        <td className="p-2.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleOpenEditTujuanMaster(t)}
+                              className="p-1.5 rounded bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-700 cursor-pointer"
+                              title="Edit Tujuan"
+                            >
+                              <Edit size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTujuanMaster(t.id)}
+                              className="p-1.5 rounded bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-700 cursor-pointer"
+                              title="Hapus Tujuan"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tambah/Edit Jenis SJ */}
+      {showJenisModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <h3 className="text-base font-black text-slate-900 uppercase m-0">
+                {editingJenisId ? 'Edit Jenis Surat Jalan' : 'Tambah Jenis Surat Jalan Baru'}
+              </h3>
+              <button
+                onClick={() => setShowJenisModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                  Kode Jenis SJ <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={jenisForm.kode}
+                  onChange={(e) => setJenisForm({ ...jenisForm, kode: e.target.value })}
+                  placeholder="Contoh: CKB, REG, EXP"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                  Nama Jenis SJ <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={jenisForm.nama}
+                  onChange={(e) => setJenisForm({ ...jenisForm, nama: e.target.value })}
+                  placeholder="Contoh: SURAT JALAN CKB"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowJenisModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveJenis}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Save size={15} />
+                <span>Simpan Ke Database</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tambah/Edit Master Tujuan */}
+      {showTujuanModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <h3 className="text-base font-black text-slate-900 uppercase m-0">
+                {editingTujuanId ? 'Edit Tujuan Pengiriman' : 'Tambah Tujuan Pengiriman Baru'}
+              </h3>
+              <button
+                onClick={() => setShowTujuanModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                  Nama Perusahaan / Tujuan <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={tujuanForm.nama}
+                  onChange={(e) => setTujuanForm({ ...tujuanForm, nama: e.target.value })}
+                  placeholder="Contoh: PT KINO INDONESIA SUKABUMI"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                  Alamat Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={tujuanForm.alamat}
+                  onChange={(e) => setTujuanForm({ ...tujuanForm, alamat: e.target.value })}
+                  placeholder="Jl. Raya Cikembar No. 88"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                    Kota / Kab
+                  </label>
+                  <input
+                    type="text"
+                    value={tujuanForm.kota}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, kota: e.target.value })}
+                    placeholder="Sukabumi"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                    U.P. (Attn)
+                  </label>
+                  <input
+                    type="text"
+                    value={tujuanForm.up}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, up: e.target.value })}
+                    placeholder="Bpk. Hendra"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-800 uppercase mb-1">
+                    No. Telepon
+                  </label>
+                  <input
+                    type="text"
+                    value={tujuanForm.noTelpon}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, noTelpon: e.target.value })}
+                    placeholder="08123456789"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowTujuanModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTujuanMaster}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Save size={15} />
+                <span>Simpan Ke Database</span>
+              </button>
             </div>
           </div>
         </div>

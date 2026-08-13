@@ -146,10 +146,20 @@ export function PromosiModule() {
   const fetchPromosiData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('promosi')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase order fetch note:', error.message);
+        // Fallback fetch without order in case created_at column is missing
+        const retry = await supabase.from('promosi').select('*');
+        if (!retry.error && retry.data) {
+          data = retry.data;
+          error = null;
+        }
+      }
 
       if (error) {
         console.warn('Supabase fetch error for promosi:', error.message);
@@ -161,7 +171,7 @@ export function PromosiModule() {
         const mappedData: PromosiData[] = data.map((item: any) => ({
           id: item.id || crypto.randomUUID(),
           nomor: item.nomor || item.Nomor || '',
-          tgl_terima: item.tgl_terima || item.tglTerima || item['Tgl Terima'] || getTodayDate(),
+          tgl_terima: formatDateToYYYYMMDD(item.tgl_terima || item.tglTerima || item['Tgl Terima']),
           material: item.material || item.Material || '',
           pengirim: item.pengirim || item.Pengirim || '',
           penerima: item.penerima || item.Penerima || '',
@@ -238,27 +248,59 @@ export function PromosiModule() {
     };
 
     if (editingId) {
-      const updatedList = promosiList.map(item => item.id === editingId ? { ...item, ...payload } : item);
+      const dbUpdatePayload = {
+        nomor: formData.nomor,
+        tgl_terima: formatDateToYYYYMMDD(formData.tgl_terima),
+        material: formData.material,
+        pengirim: formData.pengirim || '',
+        penerima: formData.penerima || '',
+        nopol: formData.nopol || '',
+        expedisi: formData.expedisi || '',
+        jumlah_ctn: Number(formData.jumlah_ctn) || 0,
+        jumlah_pcs: Number(formData.jumlah_pcs) || 0,
+        keterangan: formData.keterangan || ''
+      };
+
+      const updatedList = promosiList.map(item => item.id === editingId ? { ...item, ...dbUpdatePayload } : item);
       setPromosiList(updatedList);
       localStorage.setItem('pbp_global_data', JSON.stringify(updatedList));
 
       try {
-        const { error } = await supabase.from('promosi').update(payload).eq('id', editingId);
+        let { error } = await supabase.from('promosi').update(dbUpdatePayload).eq('id', editingId);
         if (error) {
-          console.warn('Supabase update note:', error.message);
-          showToast('Tersimpan Lokal', 'Data diperbarui secara lokal', 'info');
+          // Fallback to update by nomor if id mismatch or invalid uuid
+          const fallbackRes = await supabase.from('promosi').update(dbUpdatePayload).eq('nomor', formData.nomor);
+          error = fallbackRes.error;
+        }
+
+        if (error) {
+          console.error('Supabase update error:', error.message);
+          showToast('Peringatan Database', `Data tersimpan di browser, tetapi gagal di Supabase: ${error.message}`, 'danger');
         } else {
           showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui di Database', 'success');
           fetchPromosiData();
         }
-      } catch (e) {
+      } catch (e: any) {
         showToast('Berhasil', 'Data diperbarui di penyimpanan lokal', 'success');
       }
     } else {
       const newId = crypto.randomUUID();
-      const newItem: PromosiData = {
+      const dbInsertPayload = {
         id: newId,
-        ...payload,
+        nomor: formData.nomor,
+        tgl_terima: formatDateToYYYYMMDD(formData.tgl_terima),
+        material: formData.material,
+        pengirim: formData.pengirim || '',
+        penerima: formData.penerima || '',
+        nopol: formData.nopol || '',
+        expedisi: formData.expedisi || '',
+        jumlah_ctn: Number(formData.jumlah_ctn) || 0,
+        jumlah_pcs: Number(formData.jumlah_pcs) || 0,
+        keterangan: formData.keterangan || ''
+      };
+
+      const newItem: PromosiData = {
+        ...dbInsertPayload,
         created_at: new Date().toISOString()
       };
 
@@ -267,15 +309,15 @@ export function PromosiModule() {
       localStorage.setItem('pbp_global_data', JSON.stringify(updatedList));
 
       try {
-        const { error } = await supabase.from('promosi').insert([newItem]);
+        const { error } = await supabase.from('promosi').insert([dbInsertPayload]);
         if (error) {
-          console.warn('Supabase insert note:', error.message);
-          showToast('Tersimpan Lokal', 'Data tersimpan di penyimpanan lokal', 'info');
+          console.error('Supabase insert error:', error.message);
+          showToast('Peringatan Database', `Tersimpan di browser, gagal di Supabase: ${error.message}`, 'danger');
         } else {
           showToast('Berhasil', 'Data penerimaan berhasil disimpan ke Database', 'success');
           fetchPromosiData();
         }
-      } catch (e) {
+      } catch (e: any) {
         showToast('Berhasil', 'Data penerimaan disimpan di lokal', 'success');
       }
     }
@@ -298,21 +340,32 @@ export function PromosiModule() {
       keterangan: item.keterangan || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Mode Edit', `Mengedit data penerimaan nomor ${item.nomor}`, 'info');
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Yakin ingin menghapus data penerimaan ini?')) return;
 
+    const itemToDelete = promosiList.find(item => item.id === id);
     const updated = promosiList.filter(item => item.id !== id);
     setPromosiList(updated);
     localStorage.setItem('pbp_global_data', JSON.stringify(updated));
 
     try {
-      const { error } = await supabase.from('promosi').delete().eq('id', id);
-      if (error) {
-        console.warn('Supabase delete note:', error.message);
+      let { error } = await supabase.from('promosi').delete().eq('id', id);
+      if (error && itemToDelete?.nomor) {
+        // Fallback delete by nomor if id was invalid uuid or mismatched
+        const fallbackRes = await supabase.from('promosi').delete().eq('nomor', itemToDelete.nomor);
+        error = fallbackRes.error;
       }
-      showToast('Berhasil', 'Data penerimaan berhasil dihapus', 'info');
+
+      if (error) {
+        console.warn('Supabase delete warning:', error.message);
+        showToast('Peringatan', `Terhapus lokal, catatan Supabase: ${error.message}`, 'info');
+      } else {
+        showToast('Berhasil', 'Data penerimaan berhasil dihapus dari Database', 'success');
+        fetchPromosiData();
+      }
     } catch (e) {
       showToast('Berhasil', 'Data dihapus dari penyimpanan lokal', 'info');
     }
