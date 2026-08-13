@@ -5,6 +5,7 @@ import { QuranTicker } from './components/QuranTicker';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
+import { EmbeddedToolsWorkspace, MainToolTab } from './components/EmbeddedToolsWorkspace';
 import { QrGeneratorModal } from './components/QrGeneratorModal';
 import { BatchQrSection, QrItem } from './components/BatchQrSection';
 import { LogisticsModal, LogisticsTab } from './components/logistics/LogisticsModal';
@@ -23,6 +24,7 @@ export default function App() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showLogisticsModal, setShowLogisticsModal] = useState(false);
   const [logisticsTab, setLogisticsTab] = useState<LogisticsTab>('ed-checker');
+  const [activeWorkspaceTool, setActiveWorkspaceTool] = useState<MainToolTab | null>('qr-generator');
   const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
@@ -51,6 +53,15 @@ export default function App() {
       await addLink(data);
     }
     setShowLinkModal(false);
+  };
+
+  const handleOpenToolModal = (tool: MainToolTab) => {
+    if (tool === 'qr-generator') {
+      setShowQrModal(true);
+    } else {
+      setLogisticsTab(tool as LogisticsTab);
+      setShowLogisticsModal(true);
+    }
   };
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -84,12 +95,20 @@ export default function App() {
         />
 
         <ToolsGrid 
-          onOpenQrGenerator={() => setShowQrModal(true)} 
-          onOpenLogisticsTool={(tab) => {
-            setLogisticsTab(tab);
-            setShowLogisticsModal(true);
-          }}
+          activeTool={activeWorkspaceTool}
+          onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
+          onOpenModal={handleOpenToolModal}
         />
+
+        {activeWorkspaceTool && (
+          <EmbeddedToolsWorkspace 
+            activeTool={activeWorkspaceTool}
+            onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
+            onOpenModal={handleOpenToolModal}
+            onCloseWorkspace={() => setActiveWorkspaceTool(null)}
+            onSetBatchItems={(items) => setBatchQrItems(items)}
+          />
+        )}
 
         <BatchQrSection 
           items={batchQrItems} 
