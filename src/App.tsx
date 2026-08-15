@@ -33,6 +33,9 @@ export default function App() {
     loading: broadcastLoading, 
     incomingBroadcast, 
     soundEnabled: broadcastSoundEnabled, 
+    notificationPermission,
+    isNotificationSupported,
+    requestNotificationPermission,
     sendBroadcast, 
     deleteMessage: deleteBroadcastMessage, 
     clearAllMessages: clearAllBroadcastMessages, 
@@ -112,6 +115,9 @@ export default function App() {
           messageCount={broadcastMessages.length}
           soundEnabled={broadcastSoundEnabled}
           onToggleSound={toggleBroadcastSound}
+          notificationPermission={notificationPermission}
+          onRequestNotificationPermission={requestNotificationPermission}
+          isNotificationSupported={isNotificationSupported}
         />
         
         <Hero 
@@ -196,6 +202,9 @@ export default function App() {
             onClearAll={isAdmin ? clearAllBroadcastMessages : undefined}
             initialSenderName={replyRecipient}
             isAdmin={isAdmin}
+            notificationPermission={notificationPermission}
+            onRequestNotificationPermission={requestNotificationPermission}
+            isNotificationSupported={isNotificationSupported}
           />
         )}
 

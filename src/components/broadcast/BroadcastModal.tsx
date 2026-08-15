@@ -11,7 +11,10 @@ import {
   Heart,
   Database,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Bell,
+  BellRing,
+  CheckCircle2
 } from 'lucide-react';
 import { BroadcastMessage } from '../../types';
 import { playBroadcastSound } from '../../utils/broadcastSound';
@@ -34,6 +37,9 @@ interface BroadcastModalProps {
   onClearAll?: () => Promise<void>;
   initialSenderName?: string;
   isAdmin?: boolean;
+  notificationPermission?: NotificationPermission;
+  onRequestNotificationPermission?: () => Promise<any>;
+  isNotificationSupported?: boolean;
 }
 
 export function BroadcastModal({
@@ -47,7 +53,10 @@ export function BroadcastModal({
   onDeleteMessage,
   onClearAll,
   initialSenderName,
-  isAdmin
+  isAdmin,
+  notificationPermission,
+  onRequestNotificationPermission,
+  isNotificationSupported = true
 }: BroadcastModalProps) {
   const { showToast, showConfirm } = useNotification();
   const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
@@ -231,6 +240,52 @@ export function BroadcastModal({
         <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-white">
           {activeTab === 'compose' ? (
             <form onSubmit={handleSendBroadcast} className="space-y-3.5">
+              {/* OS Notification Status Banner */}
+              {isNotificationSupported && (
+                <div className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 text-xs transition-all ${
+                  notificationPermission === 'granted'
+                    ? 'bg-blue-50/70 border-blue-200 text-blue-900'
+                    : 'bg-amber-50/80 border-amber-200 text-amber-900'
+                }`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {notificationPermission === 'granted' ? (
+                      <CheckCircle2 size={16} className="text-blue-600 shrink-0" />
+                    ) : (
+                      <BellRing size={16} className="text-amber-600 animate-bounce shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-bold text-[11px] leading-tight m-0">
+                        {notificationPermission === 'granted' 
+                          ? 'Notifikasi Layar OS Aktif' 
+                          : 'Notifikasi Layar Belum Aktif'}
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-tight m-0 mt-0.5 truncate">
+                        {notificationPermission === 'granted'
+                          ? 'Siaran akan muncul di layar meski buka tab lain / Excel / HP.'
+                          : 'Aktifkan agar siaran tetap muncul saat buka aplikasi lain.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {notificationPermission !== 'granted' && onRequestNotificationPermission && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const res = await onRequestNotificationPermission();
+                        if (res === 'granted') {
+                          showToast('Berhasil Aktif', 'Notifikasi sistem OS berhasil diaktifkan.', 'success');
+                        } else if (res === 'denied') {
+                          showToast('Izin Ditolak', 'Silakan izinkan notifikasi melalui ikon gembok di browser.', 'warning');
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider shrink-0 transition-all shadow-xs cursor-pointer active:scale-95"
+                    >
+                      Aktifkan
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Input Nama Pengirim */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">

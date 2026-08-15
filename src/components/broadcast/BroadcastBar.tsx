@@ -1,4 +1,4 @@
-import { Radio, Volume2, VolumeX, History, Send, Megaphone, AlertCircle } from 'lucide-react';
+import { Radio, Volume2, VolumeX, Send, Bell, BellRing, Check } from 'lucide-react';
 import { BroadcastMessage } from '../../types';
 
 interface BroadcastBarProps {
@@ -7,6 +7,9 @@ interface BroadcastBarProps {
   messageCount: number;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  notificationPermission?: NotificationPermission;
+  onRequestNotificationPermission?: () => Promise<any>;
+  isNotificationSupported?: boolean;
 }
 
 export function BroadcastBar({
@@ -14,7 +17,10 @@ export function BroadcastBar({
   latestBroadcast,
   messageCount,
   soundEnabled,
-  onToggleSound
+  onToggleSound,
+  notificationPermission,
+  onRequestNotificationPermission,
+  isNotificationSupported = true
 }: BroadcastBarProps) {
   return (
     <div className="glass-box min-h-[46px] py-1 px-3 sm:px-4 flex flex-wrap items-center justify-between gap-2.5 mb-6 !rounded-2xl border border-white/70 shadow-xs bg-white/40">
@@ -45,6 +51,28 @@ export function BroadcastBar({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+        {/* Toggle / Request OS Desktop Notification */}
+        {isNotificationSupported && (
+          notificationPermission === 'granted' ? (
+            <div 
+              className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1 bg-emerald-50 text-emerald-700 border-emerald-300"
+              title="Notifikasi Sistem/OS Aktif: Pesan siaran otomatis melayang di layar meskipun membuka aplikasi/tab lain"
+            >
+              <Bell size={13} className="text-emerald-600" />
+              <span className="hidden lg:inline text-[10px]">Notif OS Aktif</span>
+            </div>
+          ) : (
+            <button
+              onClick={onRequestNotificationPermission}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1 bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 transition-all cursor-pointer shadow-2xs animate-pulse"
+              title="Klik untuk mengaktifkan notifikasi pop-up desktop agar siaran tetap muncul saat Anda membuka tab/aplikasi lain"
+            >
+              <BellRing size={13} className="text-amber-600 animate-bounce" />
+              <span className="hidden md:inline text-[10px]">Aktifkan Notif Layar</span>
+            </button>
+          )
+        )}
+
         {/* Toggle Sound */}
         <button
           onClick={onToggleSound}

@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabase';
 import { BroadcastMessage, BroadcastCategory } from '../types';
 import { playBroadcastSound } from '../utils/broadcastSound';
+import { 
+  triggerSystemBroadcastNotification, 
+  getNotificationPermission, 
+  requestNotificationPermission, 
+  isNotificationSupported,
+  stopTabAlert 
+} from '../utils/systemNotification';
 
 // Unique session ID to identify current browser tab
 const SESSION_CLIENT_ID = typeof crypto !== 'undefined' && crypto.randomUUID 
@@ -12,6 +19,7 @@ export function useBroadcast() {
   const [messages, setMessages] = useState<BroadcastMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [incomingBroadcast, setIncomingBroadcast] = useState<BroadcastMessage | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => getNotificationPermission());
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('broadcast_sound_enabled');
     return saved !== null ? saved === 'true' : true;
@@ -22,6 +30,12 @@ export function useBroadcast() {
     soundEnabledRef.current = soundEnabled;
     localStorage.setItem('broadcast_sound_enabled', String(soundEnabled));
   }, [soundEnabled]);
+
+  const requestSysPermission = useCallback(async () => {
+    const res = await requestNotificationPermission();
+    setNotificationPermission(res);
+    return res;
+  }, []);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -57,12 +71,17 @@ export function useBroadcast() {
           return [item, ...prev];
         });
 
-        // Trigger popup if sent by another device / session
+        // Trigger popup & OS level background notification if sent by another device / session
         if (item.sessionId !== SESSION_CLIENT_ID) {
           setIncomingBroadcast(item);
           if (soundEnabledRef.current) {
             playBroadcastSound(item.category || 'info');
           }
+
+          // Trigger OS Banner Notification & Flashing Tab title for background tabs/apps
+          triggerSystemBroadcastNotification(item, () => {
+            setIncomingBroadcast(item);
+          });
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_messages' }, (payload: any) => {
@@ -182,6 +201,7 @@ export function useBroadcast() {
 
   const dismissIncomingBroadcast = () => {
     setIncomingBroadcast(null);
+    stopTabAlert();
   };
 
   const toggleSound = () => {
@@ -193,6 +213,9 @@ export function useBroadcast() {
     loading,
     incomingBroadcast,
     soundEnabled,
+    notificationPermission,
+    isNotificationSupported: isNotificationSupported(),
+    requestNotificationPermission: requestSysPermission,
     sendBroadcast,
     deleteMessage,
     clearAllMessages,
@@ -201,3 +224,4 @@ export function useBroadcast() {
     refetch: fetchMessages
   };
 }
+
