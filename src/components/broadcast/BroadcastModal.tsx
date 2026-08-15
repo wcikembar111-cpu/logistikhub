@@ -8,6 +8,7 @@ import {
   VolumeX, 
   Trash2, 
   Bot,
+  Heart,
   Database,
   ShieldCheck,
   AlertCircle
@@ -160,15 +161,15 @@ export function BroadcastModal({
         {/* Simple Modern Header */}
         <div className="px-4 py-3 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center text-cyan-300 shadow-inner shrink-0">
-              <Bot size={18} className="animate-pulse" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-md shrink-0 border border-pink-300">
+              <Heart size={16} className="fill-white animate-pulse" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-white tracking-tight leading-none truncate m-0">
-                Kirim Pesan Siaran
+              <h3 className="text-sm font-bold text-white tracking-tight leading-none truncate m-0 flex items-center gap-1.5">
+                <span>Kirim Pesan Siaran</span>
               </h3>
-              <p className="text-[11px] text-slate-300 font-medium m-0 mt-0.5 truncate">
-                Disampaikan oleh Robot Kurir ke semua layar
+              <p className="text-[11px] text-pink-200 font-medium m-0 mt-0.5 truncate">
+                Disampaikan oleh Robot Pink Love ke semua layar
               </p>
             </div>
           </div>

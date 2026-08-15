@@ -138,7 +138,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {children}
 
       {/* Floating Toasts */}
-      <div className="fixed top-5 right-5 z-[200] flex flex-col gap-2.5 max-w-sm w-full px-4 pointer-events-none">
+      <div className="fixed top-5 right-5 z-[99999] flex flex-col gap-2.5 max-w-sm w-full px-4 pointer-events-none">
         {toasts.map(toast => {
           const isError = toast.type === 'error';
           const isSuccess = toast.type === 'success';
@@ -171,7 +171,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="shrink-0 p-1 rounded-lg hover:bg-white/20 transition-colors"
+                className="shrink-0 p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
               >
                 <X size={15} />
               </button>
@@ -182,8 +182,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       {/* Alert Modal Dialog */}
       {alertDialog.isOpen && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="glass-box max-w-md w-full p-6 sm:p-7 rounded-3xl bg-white/95 shadow-2xl border border-white flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="glass-box max-w-md w-full p-6 sm:p-7 rounded-3xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-md ${
                 alertDialog.type === 'error'
@@ -213,7 +213,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
             <button
               onClick={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
-              className="w-full py-3 px-6 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-blue-900 hover:bg-blue-950 shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
+              className="w-full py-3 px-6 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-blue-900 hover:bg-blue-950 shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 cursor-pointer"
             >
               Mengerti & Tutup
             </button>
@@ -223,8 +223,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       {/* Confirm Modal Dialog */}
       {confirmDialog.isOpen && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="glass-box max-w-md w-full p-6 sm:p-7 rounded-3xl bg-white/95 shadow-2xl border border-white flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="glass-box max-w-md w-full p-6 sm:p-7 rounded-3xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-md ${
                 confirmDialog.type === 'danger'
@@ -246,13 +246,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             <div className="flex items-center gap-3 w-full">
               <button
                 onClick={confirmDialog.onCancel}
-                className="flex-1 py-3 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-slate-700 bg-slate-200/80 hover:bg-slate-300 border border-slate-300 transition-all duration-200 active:scale-95"
+                className="flex-1 py-3 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-all duration-200 active:scale-95 cursor-pointer"
               >
                 {confirmDialog.cancelText}
               </button>
               <button
                 onClick={confirmDialog.onConfirm}
-                className={`flex-1 py-3 px-4 rounded-2xl font-extrabold text-xs uppercase tracking-wider text-white shadow-lg transition-all duration-200 active:scale-95 ${
+                className={`flex-1 py-3 px-4 rounded-2xl font-extrabold text-xs uppercase tracking-wider text-white shadow-lg transition-all duration-200 active:scale-95 cursor-pointer ${
                   confirmDialog.type === 'danger'
                     ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30'
                     : 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/30'
