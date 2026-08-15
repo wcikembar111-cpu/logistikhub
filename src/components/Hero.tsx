@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink } from 'lucide-react';
 import { TodoData } from '../types';
+import { InstallPwaButton } from './common/InstallPwaButton';
 
 interface HeroProps {
   isAdmin: boolean;
@@ -620,6 +621,9 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
               <div className="font-bold text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-500/30 px-2.5 py-0.5 bg-orange-500/10 rounded-full shadow-2xs">
                 {dateStr || 'Memuat...'}
               </div>
+
+              {/* Tombol Install PWA jika belum terinstall */}
+              <InstallPwaButton variant="header" />
               
               {/* Tombol Login/Logout dibuat lebih kecil dan diskret */}
               {!isAdmin ? (

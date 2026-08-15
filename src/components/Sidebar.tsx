@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2, ChevronLeft, Edit2, CheckCircle2, Clock, Circle, Save, Flame, Zap, AlertCircle, Sparkles } from 'lucide-react';
 import { TodoData, TodoPriority } from '../types';
 import { useNotification } from '../context/NotificationContext';
+import { InstallPwaButton } from './common/InstallPwaButton';
 
 interface SidebarProps {
   todos: TodoData[];
@@ -441,6 +442,11 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
               );
             })
           )}
+        </div>
+
+        {/* Sidebar Footer with Install PWA Button */}
+        <div className="p-3 border-t border-white/40 bg-white/40">
+          <InstallPwaButton variant="sidebar" />
         </div>
       </div>
 

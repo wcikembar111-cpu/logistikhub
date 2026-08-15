@@ -1,6 +1,8 @@
 import React from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, ExternalLink } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, ExternalLink, Download, Smartphone } from 'lucide-react';
 import { MainToolTab } from './EmbeddedToolsWorkspace';
+import { usePwa } from '../context/PwaContext';
+import { InstallPwaButton } from './common/InstallPwaButton';
 
 interface ToolsGridProps {
   activeTool?: MainToolTab | null;
@@ -9,6 +11,7 @@ interface ToolsGridProps {
 }
 
 export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridProps) {
+  const { isStandalone, canInstall, promptInstall } = usePwa();
   const tools: {
     id: MainToolTab;
     title: string;
@@ -78,10 +81,11 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
             Daftar Tools & Utilitas
           </h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] font-bold text-slate-500 bg-white/40 border border-white/60 px-3 py-1 rounded-full hidden sm:inline-block">
             Klik untuk Buka di Halaman Utama
           </span>
+          <InstallPwaButton variant="pill" />
           <div className="bg-white/50 border border-white/60 shadow-sm rounded-full px-3.5 py-1 font-bold text-[11px] text-blue-900 tracking-wider backdrop-blur-sm flex items-center gap-1.5">
             <Sparkles size={13} className="text-amber-500" />
             <span>Tools Internal</span>
