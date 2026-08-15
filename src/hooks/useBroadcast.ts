@@ -149,7 +149,10 @@ export function useBroadcast() {
   const deleteMessage = async (id: string) => {
     setMessages(prev => prev.filter(m => m.id !== id));
     try {
-      await supabase.from('broadcast_messages').delete().eq('id', id);
+      const { error } = await supabase.from('broadcast_messages').delete().eq('id', id);
+      if (error) {
+        console.error('Error deleting broadcast message from database:', error.message);
+      }
     } catch (e) {
       console.error('Error deleting broadcast message:', e);
     }
@@ -158,9 +161,22 @@ export function useBroadcast() {
   const clearAllMessages = async () => {
     setMessages([]);
     try {
-      await supabase.from('broadcast_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Delete all records from broadcast_messages in Supabase
+      const { error } = await supabase
+        .from('broadcast_messages')
+        .delete()
+        .not('id', 'is', null);
+
+      if (error) {
+        console.warn('First delete attempt result:', error.message);
+        // Fallback filter
+        await supabase
+          .from('broadcast_messages')
+          .delete()
+          .neq('sender_name', '___NON_EXISTENT_SENDER_NAME___');
+      }
     } catch (e) {
-      console.error('Error clearing all broadcast messages:', e);
+      console.error('Error clearing all broadcast messages from database:', e);
     }
   };
 

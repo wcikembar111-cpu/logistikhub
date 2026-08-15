@@ -7,7 +7,10 @@ import {
   Volume2, 
   VolumeX, 
   Trash2, 
-  Bot
+  Bot,
+  Database,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 import { BroadcastMessage } from '../../types';
 import { playBroadcastSound } from '../../utils/broadcastSound';
@@ -16,7 +19,7 @@ import { useNotification } from '../../context/NotificationContext';
 interface BroadcastModalProps {
   isOpen: boolean;
   onClose: () => void;
-  messages: any[];
+  messages: BroadcastMessage[];
   loading: boolean;
   soundEnabled: boolean;
   onToggleSound: () => void;
@@ -54,6 +57,7 @@ export function BroadcastModal({
 
   const [messageText, setMessageText] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
     if (initialSenderName) {
@@ -101,15 +105,45 @@ export function BroadcastModal({
   };
 
   const handleClearHistory = () => {
-    if (!onClearAll) return;
+    if (!onClearAll) {
+      showToast('Akses Terbatas', 'Hanya Admin yang dapat menghapus seluruh pesan di database.', 'warning');
+      return;
+    }
+
     showConfirm({
-      title: 'Hapus Riwayat Pesan?',
-      message: 'Semua riwayat siaran akan dibersihkan. Lanjutkan?',
-      confirmText: 'Ya, Bersihkan',
+      title: 'Kosongkan Seluruh Pesan Siaran?',
+      message: 'Semua riwayat pesan siaran akan dihapus secara permanen dari database Supabase agar kapasitas database tetap bersih dan tidak penuh. Lanjutkan?',
+      confirmText: 'Ya, Hapus Semua di Database',
       type: 'danger',
       onConfirm: async () => {
-        await onClearAll();
-        showToast('Berhasil', 'Riwayat telah dibersihkan.', 'success');
+        setIsDeleting(true);
+        try {
+          await onClearAll();
+          showToast('Database Bersih', 'Seluruh riwayat pesan siaran di database berhasil dikosongkan.', 'success');
+        } catch (e: any) {
+          showToast('Gagal', 'Terjadi kesalahan saat menghapus pesan di database.', 'error');
+        } finally {
+          setIsDeleting(false);
+        }
+      }
+    });
+  };
+
+  const handleDeleteSingle = (id: string, sender: string) => {
+    if (!onDeleteMessage) return;
+
+    showConfirm({
+      title: 'Hapus Pesan?',
+      message: `Hapus pesan siaran dari "${sender}" dari database?`,
+      confirmText: 'Hapus Pesan',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await onDeleteMessage(id);
+          showToast('Terhapus', 'Pesan siaran berhasil dihapus dari database.', 'success');
+        } catch (e) {
+          showToast('Gagal', 'Gagal menghapus pesan.', 'error');
+        }
       }
     });
   };
@@ -249,20 +283,50 @@ export function BroadcastModal({
             </form>
           ) : (
             /* History List */
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Daftar Pesan Terbaru ({messages.length})
-                </span>
+            <div className="space-y-3">
+              {/* Admin Database Control Bar */}
+              {isAdmin && onClearAll && messages.length > 0 && (
+                <div className="p-2.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                      <Database size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-red-950 m-0 leading-tight">
+                        Database Supabase ({messages.length} pesan)
+                      </p>
+                      <p className="text-[10px] text-red-700 m-0 leading-tight truncate">
+                        Kosongkan agar database tidak penuh
+                      </p>
+                    </div>
+                  </div>
 
-                {messages.length > 0 && (isAdmin || onClearAll) && (
                   <button
                     type="button"
                     onClick={handleClearHistory}
-                    className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1 hover:underline cursor-pointer"
+                    disabled={isDeleting}
+                    className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs transition-all active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
                   >
-                    <Trash2 size={11} /> Bersihkan
+                    <Trash2 size={12} />
+                    <span>{isDeleting ? 'Menghapus...' : 'Hapus Semua'}</span>
                   </button>
+                </div>
+              )}
+
+              {/* Status Header */}
+              <div className="flex items-center justify-between gap-2 px-0.5">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Daftar Pesan Tersimpan ({messages.length})
+                </span>
+
+                {isAdmin ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    <ShieldCheck size={11} /> Admin Mode
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <AlertCircle size={10} /> Hapus via Admin
+                  </span>
                 )}
               </div>
 
@@ -272,7 +336,7 @@ export function BroadcastModal({
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center py-8 px-4 rounded-xl bg-slate-50 border border-slate-100 text-slate-500">
-                  <p className="text-xs font-semibold m-0">Belum ada pesan siaran.</p>
+                  <p className="text-xs font-semibold m-0">Belum ada pesan siaran di database.</p>
                   <button
                     type="button"
                     onClick={() => setActiveTab('compose')}
@@ -282,7 +346,7 @@ export function BroadcastModal({
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[48vh] overflow-y-auto pr-0.5">
+                <div className="space-y-2 max-h-[44vh] overflow-y-auto pr-0.5">
                   {messages.map(item => {
                     const timeStr = new Date(item.created_at).toLocaleTimeString('id-ID', {
                       hour: '2-digit',
@@ -292,7 +356,7 @@ export function BroadcastModal({
                     return (
                       <div
                         key={item.id}
-                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col gap-1"
+                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col gap-1 hover:border-slate-300 transition-colors"
                       >
                         <div className="flex items-center justify-between gap-1.5 text-[11px]">
                           <div className="flex items-center gap-1.5 min-w-0">
@@ -306,15 +370,16 @@ export function BroadcastModal({
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0 text-slate-400 text-[10px]">
+                          <div className="flex items-center gap-1.5 shrink-0 text-slate-400 text-[10px]">
                             <span>{timeStr}</span>
-                            {onDeleteMessage && (
+                            {isAdmin && onDeleteMessage && (
                               <button
                                 type="button"
-                                onClick={() => onDeleteMessage(item.id)}
-                                className="p-0.5 text-slate-300 hover:text-red-600 transition-colors cursor-pointer"
+                                onClick={() => handleDeleteSingle(item.id, item.sender_name)}
+                                className="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all cursor-pointer"
+                                title="Hapus pesan ini dari database (Admin)"
                               >
-                                <Trash2 size={11} />
+                                <Trash2 size={12} />
                               </button>
                             )}
                           </div>
