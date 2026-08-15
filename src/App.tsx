@@ -3,7 +3,7 @@ import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
 import { QuranTicker } from './components/QuranTicker';
 import { BroadcastBar } from './components/broadcast/BroadcastBar';
 import { BroadcastModal } from './components/broadcast/BroadcastModal';
-import { IncomingBroadcastPopup } from './components/broadcast/IncomingBroadcastPopup';
+import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
@@ -177,8 +177,8 @@ export default function App() {
         isAdmin={isAdmin}
       />
 
-      {/* Pop-up Alert Masuk Otomatis ke Semua Perangkat */}
-      <IncomingBroadcastPopup
+      {/* Robot Melayang Pembawa Pesan Siaran */}
+      <FloatingRobotBroadcast
         broadcast={incomingBroadcast}
         onClose={dismissIncomingBroadcast}
         onReply={handleReplyBroadcast}
