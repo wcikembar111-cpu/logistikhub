@@ -1,20 +1,26 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
 import { QuranTicker } from './components/QuranTicker';
 import { BroadcastBar } from './components/broadcast/BroadcastBar';
-import { BroadcastModal } from './components/broadcast/BroadcastModal';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
-import { EmbeddedToolsWorkspace, MainToolTab } from './components/EmbeddedToolsWorkspace';
-import { QrGeneratorModal } from './components/QrGeneratorModal';
 import { BatchQrSection, QrItem } from './components/BatchQrSection';
-import { LogisticsModal, LogisticsTab } from './components/logistics/LogisticsModal';
 import { Sidebar } from './components/Sidebar';
-import { LoginModal } from './components/LoginModal';
-import { LinkModal } from './components/LinkModal';
+import { MainToolTab } from './components/EmbeddedToolsWorkspace';
+import { LogisticsTab } from './components/logistics/LogisticsModal';
+import { LazyFallback } from './components/common/LazyFallback';
+import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { LinkData } from './types';
+
+// Lazy Loaded Modals and Workspaces for Ultra-Fast Initial Page Load
+const EmbeddedToolsWorkspace = lazy(() => import('./components/EmbeddedToolsWorkspace').then(m => ({ default: m.EmbeddedToolsWorkspace })));
+const BroadcastModal = lazy(() => import('./components/broadcast/BroadcastModal').then(m => ({ default: m.BroadcastModal })));
+const QrGeneratorModal = lazy(() => import('./components/QrGeneratorModal').then(m => ({ default: m.QrGeneratorModal })));
+const LogisticsModal = lazy(() => import('./components/logistics/LogisticsModal').then(m => ({ default: m.LogisticsModal })));
+const LoginModal = lazy(() => import('./components/LoginModal').then(m => ({ default: m.LoginModal })));
+const LinkModal = lazy(() => import('./components/LinkModal').then(m => ({ default: m.LinkModal })));
 
 export default function App() {
   const { links, loading: linksLoading, addLink, updateLink, deleteLink } = useLinks();
@@ -132,13 +138,15 @@ export default function App() {
         />
 
         {activeWorkspaceTool && (
-          <EmbeddedToolsWorkspace 
-            activeTool={activeWorkspaceTool}
-            onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
-            onOpenModal={handleOpenToolModal}
-            onCloseWorkspace={() => setActiveWorkspaceTool(null)}
-            onSetBatchItems={(items) => setBatchQrItems(items)}
-          />
+          <Suspense fallback={<LazyFallback title="Menyiapkan Lembar Kerja..." minHeight="min-h-[300px]" />}>
+            <EmbeddedToolsWorkspace 
+              activeTool={activeWorkspaceTool}
+              onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
+              onOpenModal={handleOpenToolModal}
+              onCloseWorkspace={() => setActiveWorkspaceTool(null)}
+              onSetBatchItems={(items) => setBatchQrItems(items)}
+            />
+          </Suspense>
         )}
 
         <BatchQrSection 
@@ -159,22 +167,7 @@ export default function App() {
         onUpdateTodo={updateTodo}
         onDeleteTodo={deleteTodo}
         onDeleteCompletedTodos={deleteCompletedTodos}
-        onRefresh={() => {}} // Snapshot is real-time, no manual refresh needed, but we provide button
-      />
-
-      {/* Modal Kirim & Riwayat Siaran Realtime */}
-      <BroadcastModal
-        isOpen={showBroadcastModal}
-        onClose={() => setShowBroadcastModal(false)}
-        messages={broadcastMessages}
-        loading={broadcastLoading}
-        soundEnabled={broadcastSoundEnabled}
-        onToggleSound={toggleBroadcastSound}
-        onSend={sendBroadcast}
-        onDeleteMessage={isAdmin ? deleteBroadcastMessage : undefined}
-        onClearAll={isAdmin ? clearAllBroadcastMessages : undefined}
-        initialSenderName={replyRecipient}
-        isAdmin={isAdmin}
+        onRefresh={() => {}} 
       />
 
       {/* Robot Melayang Pembawa Pesan Siaran */}
@@ -185,35 +178,60 @@ export default function App() {
         soundEnabled={broadcastSoundEnabled}
       />
 
-      <QrGeneratorModal 
-        isOpen={showQrModal} 
-        onClose={() => setShowQrModal(false)} 
-        onSetBatchItems={(items) => setBatchQrItems(items)}
-        existingBatchCount={batchQrItems.length}
-      />
+      {/* PWA Install Prompt Banner & Offline Detector */}
+      <PwaInstallPrompt />
 
-      <LogisticsModal
-        isOpen={showLogisticsModal}
-        onClose={() => setShowLogisticsModal(false)}
-        initialTab={logisticsTab}
-      />
+      {/* Lazy Modals Suspense Container */}
+      <Suspense fallback={null}>
+        {showBroadcastModal && (
+          <BroadcastModal
+            isOpen={showBroadcastModal}
+            onClose={() => setShowBroadcastModal(false)}
+            messages={broadcastMessages}
+            loading={broadcastLoading}
+            soundEnabled={broadcastSoundEnabled}
+            onToggleSound={toggleBroadcastSound}
+            onSend={sendBroadcast}
+            onDeleteMessage={isAdmin ? deleteBroadcastMessage : undefined}
+            onClearAll={isAdmin ? clearAllBroadcastMessages : undefined}
+            initialSenderName={replyRecipient}
+            isAdmin={isAdmin}
+          />
+        )}
 
-      {showLogin && (
-        <LoginModal 
-          onClose={() => setShowLogin(false)} 
-          onSuccess={() => setShowLogin(false)} 
-        />
-      )}
+        {showQrModal && (
+          <QrGeneratorModal 
+            isOpen={showQrModal} 
+            onClose={() => setShowQrModal(false)} 
+            onSetBatchItems={(items) => setBatchQrItems(items)}
+            existingBatchCount={batchQrItems.length}
+          />
+        )}
 
-      {showLinkModal && (
-        <LinkModal 
-          link={editingLink}
-          existingCategories={existingCategories}
-          onClose={() => setShowLinkModal(false)}
-          onSave={handleSaveLink}
-        />
-      )}
+        {showLogisticsModal && (
+          <LogisticsModal
+            isOpen={showLogisticsModal}
+            onClose={() => setShowLogisticsModal(false)}
+            initialTab={logisticsTab}
+          />
+        )}
+
+        {showLogin && (
+          <LoginModal 
+            onClose={() => setShowLogin(false)} 
+            onSuccess={() => setShowLogin(false)} 
+          />
+        )}
+
+        {showLinkModal && (
+          <LinkModal 
+            link={editingLink}
+            existingCategories={existingCategories}
+            onClose={() => setShowLinkModal(false)}
+            onSave={handleSaveLink}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
-
