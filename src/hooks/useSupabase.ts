@@ -205,41 +205,6 @@ export function useTodos() {
   return { todos, loading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos };
 }
 
-export function useAnnouncements() {
-  const [messages, setMessages] = useState<string[]>([]);
-  
-  const fetchAnnouncements = async () => {
-    try {
-      const { data, error } = await supabase.from('settings').select('messages').eq('id', 'announcements').single();
-      if (!error && data) setMessages(data.messages || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    fetchAnnouncements();
-    const channel = supabase
-      .channel('announcements_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
-        fetchAnnouncements();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const updateMessages = async (newMessages: string[]) => {
-    setMessages(newMessages);
-    await supabase.from('settings').upsert({ id: 'announcements', messages: newMessages });
-    fetchAnnouncements();
-  };
-
-  return { messages, updateMessages };
-}
-
 export function useMenuOrder() {
   const [menuOrder, setMenuOrder] = useState<string[]>([]);
 
@@ -369,3 +334,6 @@ export function useAuth() {
 
   return { user, isAdmin: !!user, login, logout };
 }
+
+export { useBroadcast } from './useBroadcast';
+

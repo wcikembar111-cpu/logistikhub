@@ -108,6 +108,18 @@ CREATE TABLE IF NOT EXISTS public.rekapan_sj (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- =================================================================
+-- SKEMA TABEL BROADCAST / SIARAN ANTAR PERANGKAT PUBLIK
+-- =================================================================
+CREATE TABLE IF NOT EXISTS public.broadcast_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_name VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(50) DEFAULT 'info', -- 'info', 'urgent', 'warning', 'announcement'
+    device_info VARCHAR(100) DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Insert admin user jika belum ada
 INSERT INTO users (email, password) 
 VALUES ('admin@admin.com', 'Kino.2026') 
@@ -142,5 +154,26 @@ ALTER TABLE public.documents DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promosi DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rekapan_sj DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.broadcast_messages DISABLE ROW LEVEL SECURITY;
+
+-- Berikan izin akses penuh ke anon & authenticated
+GRANT ALL ON TABLE public.broadcast_messages TO anon, authenticated;
+
+-- Aktifkan Realtime Replication untuk tabel broadcast_messages
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'broadcast_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcast_messages;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- Abaikan jika publication supabase_realtime belum aktif atau sudah ada
+  NULL;
+END $$;
+
 
 

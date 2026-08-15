@@ -1,6 +1,6 @@
 {
   "name": "Kino Logistics & Public Todo Studio",
-  "description": "Aplikasi Logistics Studio, Surat Jalan, QR Generator, dan Public Todo dengan Tanda Prioritas & Animasi Kedip Warna.",
+  "description": "Aplikasi Logistics Studio, Surat Jalan, QR Generator, Public Todo, dan Siaran Pesan Broadcast Realtime antar-perangkat publik.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

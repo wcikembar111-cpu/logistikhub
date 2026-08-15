@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
-import { useLinks, useTodos, useAuth } from './hooks/useSupabase';
-import { Ticker } from './components/Ticker';
+import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
 import { QuranTicker } from './components/QuranTicker';
+import { BroadcastBar } from './components/broadcast/BroadcastBar';
+import { BroadcastModal } from './components/broadcast/BroadcastModal';
+import { IncomingBroadcastPopup } from './components/broadcast/IncomingBroadcastPopup';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
@@ -18,6 +20,22 @@ export default function App() {
   const { links, loading: linksLoading, addLink, updateLink, deleteLink } = useLinks();
   const { todos, loading: todosLoading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos } = useTodos();
   const { isAdmin, logout } = useAuth();
+  
+  // Realtime Broadcast Hook
+  const { 
+    messages: broadcastMessages, 
+    loading: broadcastLoading, 
+    incomingBroadcast, 
+    soundEnabled: broadcastSoundEnabled, 
+    sendBroadcast, 
+    deleteMessage: deleteBroadcastMessage, 
+    clearAllMessages: clearAllBroadcastMessages, 
+    dismissIncomingBroadcast, 
+    toggleSound: toggleBroadcastSound 
+  } = useBroadcast();
+
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [replyRecipient, setReplyRecipient] = useState<string>('');
 
   const [showLogin, setShowLogin] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -64,18 +82,31 @@ export default function App() {
     }
   };
 
+  const handleReplyBroadcast = (senderName: string) => {
+    setReplyRecipient(senderName);
+    setShowBroadcastModal(true);
+  };
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
     <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-bg-body text-black">
       <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
         
+        {/* Realtime Quran Ticker */}
         <QuranTicker />
         
-        {/* Ticker / Pengumuman ditempatkan tepat di bawah Quran */}
-        <div className="mb-6">
-          <Ticker isAdmin={isAdmin} />
-        </div>
+        {/* Tombol & Bar Siaran Antar-Perangkat (Broadcast) */}
+        <BroadcastBar 
+          onOpenBroadcastModal={() => {
+            setReplyRecipient('');
+            setShowBroadcastModal(true);
+          }}
+          latestBroadcast={broadcastMessages[0] || null}
+          messageCount={broadcastMessages.length}
+          soundEnabled={broadcastSoundEnabled}
+          onToggleSound={toggleBroadcastSound}
+        />
         
         <Hero 
           isAdmin={isAdmin} 
@@ -131,6 +162,29 @@ export default function App() {
         onRefresh={() => {}} // Snapshot is real-time, no manual refresh needed, but we provide button
       />
 
+      {/* Modal Kirim & Riwayat Siaran Realtime */}
+      <BroadcastModal
+        isOpen={showBroadcastModal}
+        onClose={() => setShowBroadcastModal(false)}
+        messages={broadcastMessages}
+        loading={broadcastLoading}
+        soundEnabled={broadcastSoundEnabled}
+        onToggleSound={toggleBroadcastSound}
+        onSend={sendBroadcast}
+        onDeleteMessage={isAdmin ? deleteBroadcastMessage : undefined}
+        onClearAll={isAdmin ? clearAllBroadcastMessages : undefined}
+        initialSenderName={replyRecipient}
+        isAdmin={isAdmin}
+      />
+
+      {/* Pop-up Alert Masuk Otomatis ke Semua Perangkat */}
+      <IncomingBroadcastPopup
+        broadcast={incomingBroadcast}
+        onClose={dismissIncomingBroadcast}
+        onReply={handleReplyBroadcast}
+        soundEnabled={broadcastSoundEnabled}
+      />
+
       <QrGeneratorModal 
         isOpen={showQrModal} 
         onClose={() => setShowQrModal(false)} 
@@ -162,3 +216,4 @@ export default function App() {
     </div>
   );
 }
+

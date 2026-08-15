@@ -9,16 +9,23 @@ export interface LinkData {
 
 export type TodoPriority = 'rendah' | 'sedang' | 'tinggi' | 'mendesak';
 
+export type BroadcastCategory = 'info' | 'urgent' | 'warning' | 'announcement';
+
+export interface BroadcastMessage {
+  id: string;
+  sender_name: string;
+  message: string;
+  category: BroadcastCategory;
+  device_info?: string;
+  created_at: string;
+}
+
 export interface TodoData {
   id: string;
   task: string;
   status: 'no' | 'onproses' | 'close';
   priority?: TodoPriority;
   is_blinking?: boolean;
-}
-
-export interface AnnouncementData {
-  messages: string[];
 }
 
 export interface ParsedTodoTask {
