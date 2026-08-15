@@ -231,84 +231,221 @@ export function compareLargoAndSap(
   largoRows: Array<{ sloc: string; item: string; desc?: string; batch: string; qty: any }>,
   sapRows: Array<{ sloc: string; item: string; desc?: string; batch: string; unrestricted?: any; blocked?: any; qty?: any }>
 ): CompareResultRow[] {
-  const norm = (s: any) => String(s || '').trim().toUpperCase().replace(/^0+(.+)$/, '$1') || String(s || '').trim().toUpperCase();
-  const pQty = (v: any) => { const n = parseFloat(String(v).replace(/,/g, '')); return isNaN(n) ? 0 : n; };
+  // Normalize material/item code: strip leading zeroes ONLY if numeric
+  const normItem = (s: any) => {
+    const str = String(s ?? '').trim().toUpperCase();
+    if (/^\d+$/.test(str)) {
+      return str.replace(/^0+/, '') || '0';
+    }
+    return str;
+  };
+
+  // Normalize SLOC: clean whitespace, uppercase
+  const normSloc = (s: any) => String(s ?? '').trim().toUpperCase();
+
+  // Normalize Batch: preserve exact characters without stripping leading zeroes
+  const normBatch = (s: any) => String(s ?? '').trim().toUpperCase();
+
+  // Robust Quantity Parser
+  const pQty = (v: any) => {
+    if (typeof v === 'number') return isNaN(v) ? 0 : v;
+    if (v === null || v === undefined) return 0;
+    let str = String(v).trim();
+    if (!str) return 0;
+
+    // Handle thousand/decimal formats
+    if (str.includes(',') && str.includes('.')) {
+      if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+        // Indonesian: 1.250,50 -> 1250.50
+        str = str.replace(/\./g, '').replace(',', '.');
+      } else {
+        // Standard: 1,250.50 -> 1250.50
+        str = str.replace(/,/g, '');
+      }
+    } else if (str.includes(',')) {
+      // Check if comma is decimal (e.g. 100,5) or thousand (e.g. 1,000)
+      if (/,\d{1,2}$/.test(str)) {
+        str = str.replace(',', '.');
+      } else {
+        str = str.replace(/,/g, '');
+      }
+    }
+    const n = parseFloat(str);
+    return isNaN(n) ? 0 : Math.round(n * 1000) / 1000;
+  };
 
   // 1. Grouping LARGO (Key: Sloc || Item || Batch)
-  const largoMap = new Map();
+  const largoMap = new Map<string, { sloc: string; item: string; origItem: string; desc: string; bat: string; qty: number }>();
   largoRows.forEach(r => {
-    const sloc = norm(r.sloc), item = norm(r.item), bat = norm(r.batch);
+    const sloc = normSloc(r.sloc);
+    const item = normItem(r.item);
+    const bat = normBatch(r.batch);
     if (!item || !bat) return;
-    const key = sloc + '||' + item + '||' + bat;
-    if (!largoMap.has(key)) largoMap.set(key, { sloc, item, desc: r.desc || '', bat, qty: 0 });
-    largoMap.get(key).qty += pQty(r.qty);
+
+    const key = `${sloc}||${item}||${bat}`;
+    if (!largoMap.has(key)) {
+      largoMap.set(key, { 
+        sloc: r.sloc ? String(r.sloc).trim() : sloc, 
+        item, 
+        origItem: String(r.item).trim(),
+        desc: r.desc ? String(r.desc).trim() : '', 
+        bat: String(r.batch).trim(), 
+        qty: 0 
+      });
+    }
+    largoMap.get(key)!.qty += pQty(r.qty);
   });
 
   // 2. Grouping SAP (Key: Sloc || Item || Batch)
-  const sapMap = new Map();
+  const sapMap = new Map<string, { sloc: string; item: string; origItem: string; desc: string; bat: string; qty: number }>();
   sapRows.forEach(r => {
-    const sloc = norm(r.sloc), item = norm(r.item), bat = norm(r.batch);
+    const sloc = normSloc(r.sloc);
+    const item = normItem(r.item);
+    const bat = normBatch(r.batch);
     if (!item || !bat) return;
-    const key = sloc + '||' + item + '||' + bat;
-    if (!sapMap.has(key)) sapMap.set(key, { sloc, item, desc: r.desc || '', bat, qty: 0 });
+
+    const key = `${sloc}||${item}||${bat}`;
+    if (!sapMap.has(key)) {
+      sapMap.set(key, { 
+        sloc: r.sloc ? String(r.sloc).trim() : sloc, 
+        item, 
+        origItem: String(r.item).trim(),
+        desc: r.desc ? String(r.desc).trim() : '', 
+        bat: String(r.batch).trim(), 
+        qty: 0 
+      });
+    }
     const addQty = r.qty !== undefined ? pQty(r.qty) : (pQty(r.unrestricted) + pQty(r.blocked));
-    sapMap.get(key).qty += addQty;
+    sapMap.get(key)!.qty += addQty;
   });
 
   // 3. Analisis Match, Selisih Qty, dan Batch Pengganti
-  const sapMissing: any[] = [], largoMissing: any[] = [];
-  sapMap.forEach((d, k) => { if (!largoMap.has(k)) sapMissing.push(d); });
-  largoMap.forEach((d, k) => { if (!sapMap.has(k)) largoMissing.push(d); });
+  const sapMissing: Array<{ key: string; sloc: string; item: string; origItem: string; desc: string; bat: string; qty: number }> = [];
+  const largoMissing: Array<{ key: string; sloc: string; item: string; origItem: string; desc: string; bat: string; qty: number }> = [];
 
-  const results: CompareResultRow[] = [];
-  let no = 0;
+  sapMap.forEach((d, k) => { 
+    if (!largoMap.has(k)) sapMissing.push({ ...d, key: k }); 
+  });
+  largoMap.forEach((d, k) => { 
+    if (!sapMap.has(k)) largoMissing.push({ ...d, key: k }); 
+  });
+
+  const rawResults: CompareResultRow[] = [];
 
   // Case A: Item & Batch sama di LARGO & SAP
   sapMap.forEach((sap, key) => {
     if (!largoMap.has(key)) return;
-    const largo = largoMap.get(key);
-    const match = sap.qty === largo.qty;
-    results.push({
-      no: ++no, sloc: sap.sloc, item: sap.item, desc: sap.desc || largo.desc,
-      bLargo: largo.bat, bSap: sap.bat, qLargo: largo.qty, qSap: sap.qty,
-      diff: sap.qty - largo.qty,
+    const largo = largoMap.get(key)!;
+    const diff = Math.round((sap.qty - largo.qty) * 1000) / 1000;
+    const match = Math.abs(diff) < 0.0001;
+
+    rawResults.push({
+      no: 0,
+      sloc: sap.sloc || largo.sloc,
+      item: sap.origItem || largo.origItem || sap.item,
+      desc: sap.desc || largo.desc || '-',
+      bLargo: largo.bat,
+      bSap: sap.bat,
+      qLargo: largo.qty,
+      qSap: sap.qty,
+      diff,
       status: match ? 'MATCH' : 'QTY_DIFF',
-      rec: match ? 'Sesuai' : 'Qty Beda'
+      rec: match ? 'Sesuai' : `Selisih Qty (SAP: ${sap.qty}, LARGO: ${largo.qty})`
     });
   });
 
   // Case B: Ada di SAP tapi tidak ada di LARGO (Cek kandidat ganti batch)
-  const claimed = new Set<string>();
-  const cKey = (s: string, i: string, b: string) => s + '||' + i + '||' + b;
+  const claimedLargoKeys = new Set<string>();
 
   sapMissing.forEach(sap => {
-    const cands = largoMissing.filter(l => l.sloc === sap.sloc && l.item === sap.item && l.qty === sap.qty && !claimed.has(cKey(l.sloc, l.item, l.bat)));
-    if (cands.length > 0) {
-      const blist = cands.map(c => c.bat).join(', ');
-      cands.forEach(c => claimed.add(cKey(c.sloc, c.item, c.bat)));
-      results.push({
-        no: ++no, sloc: sap.sloc, item: sap.item, desc: sap.desc,
-        bLargo: blist, bSap: sap.bat, qLargo: sap.qty, qSap: sap.qty,
-        diff: 0, status: 'REPLACE', rec: 'Ganti ke ' + blist
+    // Cari kandidat batch di LARGO dengan SLOC & Item yang sama serta Qty yang sama
+    const candidates = largoMissing.filter(l => 
+      l.sloc.toUpperCase() === sap.sloc.toUpperCase() && 
+      l.item === sap.item && 
+      Math.abs(l.qty - sap.qty) < 0.0001 && 
+      !claimedLargoKeys.has(l.key)
+    );
+
+    if (candidates.length > 0) {
+      // Pick first matching candidate
+      const cand = candidates[0];
+      claimedLargoKeys.add(cand.key);
+
+      rawResults.push({
+        no: 0,
+        sloc: sap.sloc,
+        item: sap.origItem || cand.origItem || sap.item,
+        desc: sap.desc || cand.desc || '-',
+        bLargo: cand.bat,
+        bSap: sap.bat,
+        qLargo: cand.qty,
+        qSap: sap.qty,
+        diff: 0,
+        status: 'REPLACE',
+        rec: `Ganti Batch SAP [${sap.bat}] -> LARGO [${cand.bat}]`
       });
     } else {
-      results.push({
-        no: ++no, sloc: sap.sloc, item: sap.item, desc: sap.desc,
-        bLargo: '', bSap: sap.bat, qLargo: 0, qSap: sap.qty,
-        diff: sap.qty, status: 'NO_CANDIDATE', rec: 'Tanpa Kandidat di LARGO'
+      rawResults.push({
+        no: 0,
+        sloc: sap.sloc,
+        item: sap.origItem || sap.item,
+        desc: sap.desc || '-',
+        bLargo: '-',
+        bSap: sap.bat,
+        qLargo: 0,
+        qSap: sap.qty,
+        diff: sap.qty,
+        status: 'NO_CANDIDATE',
+        rec: 'Hanya ada di SAP (Tanpa Kandidat di LARGO)'
       });
     }
   });
 
-  // Case C: Hanya ada di LARGO
+  // Case C: Hanya ada di LARGO (belum diklaim sebagai replacement)
   largoMissing.forEach(l => {
-    if (claimed.has(cKey(l.sloc, l.item, l.bat))) return;
-    results.push({
-      no: ++no, sloc: l.sloc, item: l.item, desc: l.desc,
-      bLargo: l.bat, bSap: '', qLargo: l.qty, qSap: 0,
-      diff: -l.qty, status: 'LARGO_ONLY', rec: 'Hanya ada di LARGO'
+    if (claimedLargoKeys.has(l.key)) return;
+
+    rawResults.push({
+      no: 0,
+      sloc: l.sloc,
+      item: l.origItem || l.item,
+      desc: l.desc || '-',
+      bLargo: l.bat,
+      bSap: '-',
+      qLargo: l.qty,
+      qSap: 0,
+      diff: -l.qty,
+      status: 'LARGO_ONLY',
+      rec: 'Hanya ada di LARGO (Belum tercatat di SAP)'
     });
   });
 
-  return results;
+  // Sort deterministically: SLOC -> Item -> Status Priority -> Batch
+  const statusPriority: Record<string, number> = {
+    'REPLACE': 1,
+    'QTY_DIFF': 2,
+    'NO_CANDIDATE': 3,
+    'LARGO_ONLY': 4,
+    'MATCH': 5
+  };
+
+  rawResults.sort((a, b) => {
+    const slocCmp = a.sloc.localeCompare(b.sloc);
+    if (slocCmp !== 0) return slocCmp;
+
+    const itemCmp = a.item.localeCompare(b.item);
+    if (itemCmp !== 0) return itemCmp;
+
+    const pA = statusPriority[a.status] || 99;
+    const pB = statusPriority[b.status] || 99;
+    if (pA !== pB) return pA - pB;
+
+    return (a.bSap || a.bLargo).localeCompare(b.bSap || b.bLargo);
+  });
+
+  // Assign clean 1-based sequential row numbers
+  return rawResults.map((r, idx) => ({
+    ...r,
+    no: idx + 1
+  }));
 }
