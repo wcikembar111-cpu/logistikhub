@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink } from 'lucide-react';
+import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink, KeyRound, Timer, LogOut } from 'lucide-react';
 import { TodoData } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
+import { TIMEOUT_OPTIONS } from '../utils/pinAuth';
 
 interface HeroProps {
   isAdmin: boolean;
   onLogin: () => void;
   onLogout: () => void;
+  onLockApp?: () => void;
+  sessionTimeoutMinutes?: number;
+  onChangeSessionTimeout?: (minutes: number) => void;
   todos?: TodoData[];
   onOpenTodo?: () => void;
 }
@@ -20,7 +24,17 @@ interface PrayerJadwal {
   isya: string;
 }
 
-export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: HeroProps) {
+export function Hero({ 
+  isAdmin, 
+  onLogin, 
+  onLogout, 
+  onLockApp, 
+  sessionTimeoutMinutes = 15,
+  onChangeSessionTimeout,
+  todos = [], 
+  onOpenTodo 
+}: HeroProps) {
+  const [showTimeoutDropdown, setShowTimeoutDropdown] = useState(false);
   const [time, setTime] = useState('');
   const [dateStr, setDateStr] = useState('');
   const [greeting, setGreeting] = useState('SELAMAT SIANG, REKAN!');
@@ -270,9 +284,8 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
     <>
       {/* Modal Alarm Pengingat Sholat */}
       {activeAlarm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fade-in">
-          <div className="glass-box !bg-white/90 p-6 sm:p-8 rounded-3xl max-w-md w-full text-center shadow-2xl border border-emerald-400 relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl"></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 animate-fade-in">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl border border-emerald-400 relative overflow-hidden">
             
             <button 
               onClick={handleClosePrayerAlarm}
@@ -320,9 +333,8 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
 
       {/* Modal Alarm Pengingat TODO */}
       {activeTodoReminder && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fade-in">
-          <div className="glass-box !bg-white/95 p-6 sm:p-8 rounded-3xl max-w-lg w-full shadow-2xl border border-orange-400 relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 w-32 h-32 bg-orange-500/20 rounded-full blur-2xl"></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 animate-fade-in">
+          <div className="bg-white p-6 sm:p-8 rounded-2xl max-w-lg w-full shadow-2xl border border-orange-400 relative overflow-hidden">
             
             <button 
               onClick={() => setActiveTodoReminder(false)}
@@ -523,138 +535,208 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
         </div>
       )}
 
-      <div className="glass-box p-0 flex flex-col xl:flex-row relative overflow-hidden mb-6">
-        {/* Profile Section - Disembunyikan Kontaknya agar area lebih kecil & ringkas */}
-        <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 sm:p-5 bg-white/20 min-w-0">
-          <div className="relative z-10 shrink-0 group">
-            <div 
-              onClick={() => setShowPhotoModal(true)}
-              className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300"
-              title="Klik untuk perbesar foto profil & lihat detail kontak"
-            >
-              <img 
-                src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
-                alt="Dede Suparman" 
-                className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl object-cover border-4 border-white shadow-md transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-2xl group-hover:border-blue-300"
-              />
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-900/30 via-transparent to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-center justify-center">
-                <span className="bg-slate-900/80 text-white text-[9px] font-bold px-2 py-1 rounded-full backdrop-blur-xs flex items-center gap-1 shadow-md">
-                  <ZoomIn size={10} /> Perbesar
+      <div className="bg-white border border-slate-200 shadow-xs rounded-2xl overflow-hidden mb-6">
+        {/* Top Header Row: Profile Info on Left, Action Buttons on Right */}
+        <div className="p-4 sm:p-5 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          
+          {/* Left: Profile Photo & Greeting & Role */}
+          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+            <div className="relative shrink-0 group">
+              <div 
+                onClick={() => setShowPhotoModal(true)}
+                className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300"
+                title="Klik untuk perbesar foto profil & lihat detail kontak"
+              >
+                <img 
+                  src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
+                  alt="Dede Suparman" 
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 rounded-2xl bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
+                  <span className="bg-slate-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                    <ZoomIn size={9} /> Zoom
+                  </span>
+                </div>
+                <span className="absolute -bottom-1 -right-1 bg-white border border-slate-200 rounded-full w-6 h-6 flex items-center justify-center text-[10px] shadow-xs">
+                  👋
                 </span>
               </div>
-              <span className="absolute -bottom-1 -right-1 bg-white/90 backdrop-blur-md border border-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-xs shadow-md transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 group-hover:bg-blue-50">
-                👋
-              </span>
+            </div>
+
+            <div className="min-w-0">
+              <h1 className="font-extrabold text-slate-800 m-0 text-base sm:text-lg md:text-xl tracking-tight uppercase leading-tight">
+                {greeting}
+              </h1>
+              
+              <div className="flex items-center gap-2 flex-wrap mt-0.5 mb-1">
+                <span className="font-black text-slate-800 text-xs sm:text-sm uppercase">Dede Suparman</span>
+                <span className="bg-blue-50 text-blue-900 border border-blue-200 text-[9px] sm:text-[10px] font-bold py-0.5 px-2 uppercase rounded-full shadow-2xs">
+                  Logistik Supervisor & Developer
+                </span>
+              </div>
+
+              {/* Sembunyikan Kontak Secara Default untuk Memperkecil Area */}
+              {showContacts ? (
+                <div className="flex items-center gap-1.5 flex-wrap mt-1.5 animate-fade-in">
+                  <a 
+                    href="https://wa.me/6281911934000" 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200 transition-all"
+                    title="Hubungi WhatsApp"
+                  >
+                    <MessageCircle size={11} className="text-emerald-600 shrink-0" />
+                    <span>081911934000</span>
+                  </a>
+
+                  <a 
+                    href="mailto:dede.suparman@kino.co.id" 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-950 text-[10px] font-bold border border-blue-200 transition-all"
+                    title="Email Kantor Kino"
+                  >
+                    <Mail size={11} className="text-blue-900 shrink-0" />
+                    <span>dede.suparman@kino.co.id</span>
+                  </a>
+
+                  <a 
+                    href="mailto:dedesuparman333@gmail.com" 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold border border-slate-200 transition-all"
+                    title="Email Pribadi"
+                  >
+                    <Mail size={11} className="text-slate-600 shrink-0" />
+                    <span>dedesuparman333@gmail.com</span>
+                  </a>
+
+                  <button 
+                    onClick={() => setShowContacts(false)}
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-200 text-slate-600 hover:text-slate-900 text-[9px] font-bold transition-all cursor-pointer"
+                    title="Sembunyikan Kontak"
+                  >
+                    <ChevronUp size={10} /> Tutup
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowContacts(true)}
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-blue-900 bg-white hover:bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 transition-all cursor-pointer shadow-2xs"
+                  title="Tampilkan Kontak Person"
+                >
+                  <Mail size={11} className="text-slate-500" />
+                  <span>Lihat Kontak</span>
+                  <ChevronDown size={11} />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="relative z-10 flex-1 min-w-0 ml-0 sm:ml-2 text-center sm:text-left flex flex-col items-center sm:items-start w-full justify-center">
-            <h1 className="font-extrabold text-slate-800 m-0 mb-0.5 text-lg sm:text-xl md:text-2xl tracking-tight uppercase break-words">{greeting}</h1>
-            
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 flex-wrap mb-1.5">
-              <span className="font-black text-slate-800 text-xs sm:text-sm md:text-base uppercase">Dede Suparman</span>
-              <span className="bg-blue-900/15 text-blue-900 border border-blue-900/30 text-[9px] sm:text-[10px] font-bold py-0.5 px-2 uppercase rounded-full shadow-2xs">
-                Logistik Supervisor & Developer
-              </span>
+          {/* Right: Action Buttons Group (Date Badge, Install App, Lock PIN, Session Timeout, Admin Login) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap self-start md:self-center">
+            <div className="font-bold text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-200 px-2.5 py-1 bg-orange-50 rounded-lg shadow-2xs whitespace-nowrap">
+              {dateStr || 'Memuat...'}
             </div>
 
-            {/* Sembunyikan Kontak Secara Default untuk Memperkecil Area */}
-            {showContacts ? (
-              <div className="flex justify-center sm:justify-start gap-2 flex-wrap mt-2 animate-fade-in">
-                <a 
-                  href="https://wa.me/6281911934000" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 text-[11px] font-bold border border-emerald-500/20 transition-all hover:scale-105"
-                  title="Hubungi WhatsApp"
-                >
-                  <MessageCircle size={13} className="text-emerald-600 shrink-0" />
-                  <span>081911934000</span>
-                </a>
-
-                <a 
-                  href="mailto:dede.suparman@kino.co.id" 
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-900/10 hover:bg-blue-900/20 text-blue-950 text-[11px] font-bold border border-blue-900/20 transition-all hover:scale-105"
-                  title="Email Kantor Kino"
-                >
-                  <Mail size={13} className="text-blue-900 shrink-0" />
-                  <span>dede.suparman@kino.co.id</span>
-                </a>
-
-                <a 
-                  href="mailto:dedesuparman333@gmail.com" 
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-800 text-[11px] font-bold border border-slate-500/20 transition-all hover:scale-105"
-                  title="Email Pribadi"
-                >
-                  <Mail size={13} className="text-slate-600 shrink-0" />
-                  <span>dedesuparman333@gmail.com</span>
-                </a>
-
+            {/* Tombol Install PWA jika belum terinstall */}
+            <InstallPwaButton variant="header" />
+            
+            {/* Tombol Kunci / Logout PIN Aplikasi & Pengaturan Durasi Sesi */}
+            {onLockApp && (
+              <div className="relative inline-flex items-center gap-1">
                 <button 
-                  onClick={() => setShowContacts(false)}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200/80 text-slate-600 hover:text-slate-900 text-[10px] font-bold transition-all"
-                  title="Sembunyikan Kontak"
+                  onClick={onLockApp} 
+                  className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-indigo-950 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 hover:border-indigo-600 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
+                  title="Kunci / Logout Aplikasi kembali ke Layar PIN 6 Digit"
                 >
-                  <ChevronUp size={12} /> Sembunyikan
+                  <KeyRound size={12} className="text-indigo-600 group-hover:text-white shrink-0" />
+                  <span>KUNCI / LOGOUT PIN</span>
                 </button>
+
+                {/* Indikator & Dropdown Durasi Auto-Lock Sesi */}
+                {onChangeSessionTimeout && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowTimeoutDropdown(!showTimeoutDropdown)}
+                      className="px-2 py-1 rounded-lg text-[9px] font-extrabold bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-900 border border-slate-200 flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                      title={`Sesi Otomatis Terkunci setelah ${sessionTimeoutMinutes} menit tanpa aktivitas`}
+                    >
+                      <Timer size={10} className="text-amber-600 shrink-0" />
+                      <span>{sessionTimeoutMinutes}m</span>
+                      <ChevronDown size={10} />
+                    </button>
+
+                    {showTimeoutDropdown && (
+                      <div className="absolute top-full right-0 mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 p-2 min-w-[170px] text-left animate-scale-up">
+                        <div className="text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1.5">
+                          Otomatis Kunci Sesi:
+                        </div>
+                        <div className="space-y-0.5">
+                          {TIMEOUT_OPTIONS.map((mins) => (
+                            <button
+                              key={mins}
+                              type="button"
+                              onClick={() => {
+                                onChangeSessionTimeout(mins);
+                                setShowTimeoutDropdown(false);
+                              }}
+                              className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                sessionTimeoutMinutes === mins
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'hover:bg-indigo-50 text-slate-700'
+                              }`}
+                            >
+                              <span>{mins} Menit Tidak Aktif</span>
+                              {sessionTimeoutMinutes === mins && <span className="text-[10px]">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[9px] text-slate-400 px-1 italic">
+                          Aplikasi terkunci otomatis jika tidak disentuh/digerakkan.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* Tombol Login/Logout */}
+            {!isAdmin ? (
+              <button 
+                onClick={onLogin} 
+                className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-slate-700 hover:text-blue-900 bg-white hover:bg-slate-50 border border-slate-200 flex items-center gap-1 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                title="Login Admin (Kunci)"
+              >
+                <Lock size={11} className="text-blue-900 shrink-0" />
+                <span>ADMIN LOGIN</span>
+              </button>
             ) : (
               <button 
-                onClick={() => setShowContacts(true)}
-                className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-blue-900 bg-white/40 hover:bg-white/70 px-2 py-0.5 rounded-md border border-white/60 transition-all mt-0.5"
-                title="Tampilkan Kontak Person"
+                onClick={onLogout} 
+                className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 flex items-center gap-1 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                title="Logout Admin"
               >
-                <Mail size={11} className="text-slate-500" />
-                <span>Lihat Kontak</span>
-                <ChevronDown size={11} />
+                <Unlock size={11} className="shrink-0" />
+                <span>LOGOUT</span>
               </button>
             )}
           </div>
         </div>
         
-        {/* Right Section: Clock & Prayer Times Sejajar (Side by Side) */}
-        <div className="p-4 sm:p-5 flex flex-col md:flex-row xl:flex-col 2xl:flex-row items-stretch md:items-start justify-between gap-4 bg-white/30 backdrop-blur-lg xl:border-l border-white/50 border-t xl:border-t-0 z-10 relative shrink-0 min-w-0">
+        {/* Bottom Row: Digital Clock & Prayer Times Schedule */}
+        <div className="p-4 sm:p-5 bg-white flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           
-          {/* Clock & Date Block + Small Login/Logout */}
-          <div className="flex flex-col items-center sm:items-start shrink-0 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap justify-center sm:justify-start">
-              <div className="font-bold text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-500/30 px-2.5 py-0.5 bg-orange-500/10 rounded-full shadow-2xs">
-                {dateStr || 'Memuat...'}
-              </div>
-
-              {/* Tombol Install PWA jika belum terinstall */}
-              <InstallPwaButton variant="header" />
-              
-              {/* Tombol Login/Logout dibuat lebih kecil dan diskret */}
-              {!isAdmin ? (
-                <button 
-                  onClick={onLogin} 
-                  className="glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-slate-600 hover:text-blue-900 bg-white/50 hover:bg-white/80 border-white/60 opacity-80 hover:opacity-100 flex items-center gap-1 transition-all shadow-2xs"
-                  title="Login Admin (Kunci)"
-                >
-                  <Lock size={11} className="text-blue-900" />
-                  <span>Admin Login</span>
-                </button>
-              ) : (
-                <button 
-                  onClick={onLogout} 
-                  className="glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-red-600 bg-red-500/10 hover:bg-red-500/20 border-red-500/20 flex items-center gap-1 transition-all shadow-2xs"
-                  title="Logout Admin"
-                >
-                  <Unlock size={11} />
-                  <span>Logout</span>
-                </button>
-              )}
-            </div>
-
-            <div className="font-black text-blue-900 text-2xl sm:text-3xl md:text-4xl leading-none tracking-tight drop-shadow-md">
+          {/* Big Digital Clock */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="font-black text-blue-950 text-3xl sm:text-4xl tracking-tight leading-none">
               {time || '--:--:--'}
             </div>
-
-
+            <div className="flex flex-col justify-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">WIB</span>
+              <span className="text-[10px] font-semibold text-slate-500 leading-none mt-1">Real-time</span>
+            </div>
           </div>
 
-          {/* Jadwal Sholat (Sejajar dengan Jam - Mepet Atas) */}
+          {/* Jadwal Sholat Sukabumi */}
           <div className="flex-1 w-full min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 tracking-wider">
@@ -666,7 +748,7 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
                 {/* Toggle Suara Alarm */}
                 <button 
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className={`p-1 rounded-md text-[10px] font-semibold border transition-all flex items-center gap-1 ${
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
                     soundEnabled 
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
                       : 'bg-slate-100 text-slate-500 border-slate-300 line-through'
@@ -693,22 +775,22 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
             {loadingPrayer ? (
               <div className="text-xs text-slate-500 font-medium py-1">Memuat Jadwal Sholat...</div>
             ) : (
-              <div className="grid grid-cols-3 xs:grid-cols-6 sm:grid-cols-6 gap-1 sm:gap-1.5 w-full min-w-0">
+              <div className="grid grid-cols-3 xs:grid-cols-6 sm:grid-cols-6 gap-1.5 w-full min-w-0">
                 {prayerList.map((p) => {
                   const isNext = nextPrayer && nextPrayer.name.toLowerCase() === p.label.toLowerCase();
                   return (
                     <div 
                       key={p.label}
-                      className={`flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl text-center border transition-all min-w-0 ${
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl text-center border transition-all min-w-0 ${
                         isNext 
-                          ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-300 shadow-md scale-105' 
-                          : 'bg-white/50 text-slate-700 border-white/60 hover:bg-white/70'
+                          ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-300 shadow-xs scale-105' 
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       <span className={`text-[9px] font-bold tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
                         {p.label}
                       </span>
-                      <span className={`text-[11px] sm:text-xs font-bold mt-0.5 ${isNext ? 'text-white' : 'text-blue-950'}`}>
+                      <span className={`text-xs font-extrabold mt-0.5 ${isNext ? 'text-white' : 'text-slate-800'}`}>
                         {p.time}
                       </span>
                     </div>
@@ -717,7 +799,6 @@ export function Hero({ isAdmin, onLogin, onLogout, todos = [], onOpenTodo }: Her
               </div>
             )}
           </div>
-
         </div>
       </div>
     </>

@@ -1,21 +1,23 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, lazy, Suspense, useCallback } from 'react';
 import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
+import { useInactivityLock } from './hooks/useInactivityLock';
 import { QuranTicker } from './components/QuranTicker';
 import { BroadcastBar } from './components/broadcast/BroadcastBar';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
-import { BatchQrSection, QrItem } from './components/BatchQrSection';
+import { ToolWorkspacePage } from './components/tools/ToolWorkspacePage';
+import { QrItem } from './components/BatchQrSection';
 import { Sidebar } from './components/Sidebar';
 import { MainToolTab } from './components/EmbeddedToolsWorkspace';
 import { LogisticsTab } from './components/logistics/LogisticsModal';
-import { LazyFallback } from './components/common/LazyFallback';
+import { PinLockScreen } from './components/auth/PinLockScreen';
+import { isPinUnlocked, lockApp } from './utils/pinAuth';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { LinkData } from './types';
 
 // Lazy Loaded Modals and Workspaces for Ultra-Fast Initial Page Load
-const EmbeddedToolsWorkspace = lazy(() => import('./components/EmbeddedToolsWorkspace').then(m => ({ default: m.EmbeddedToolsWorkspace })));
 const BroadcastModal = lazy(() => import('./components/broadcast/BroadcastModal').then(m => ({ default: m.BroadcastModal })));
 const QrGeneratorModal = lazy(() => import('./components/QrGeneratorModal').then(m => ({ default: m.QrGeneratorModal })));
 const LogisticsModal = lazy(() => import('./components/logistics/LogisticsModal').then(m => ({ default: m.LogisticsModal })));
@@ -23,6 +25,23 @@ const LoginModal = lazy(() => import('./components/LoginModal').then(m => ({ def
 const LinkModal = lazy(() => import('./components/LinkModal').then(m => ({ default: m.LinkModal })));
 
 export default function App() {
+  // 6-Digit PIN Screen Lock State
+  const [unlocked, setUnlocked] = useState<boolean>(() => isPinUnlocked());
+
+  // Handle auto-lock / manual lock callback
+  const handleLockTriggered = useCallback(() => {
+    setUnlocked(false);
+  }, []);
+
+  // Inactivity Auto-Lock Hook (Default: 15 minutes without interaction)
+  const { timeoutMinutes, updateTimeoutMinutes, lockNow } = useInactivityLock({
+    onLock: handleLockTriggered,
+    enabled: unlocked
+  });
+
+  // Page View Routing State: 'home' (Halaman Utama) or 'tool-workspace' (Halaman Khusus Tools & Utilitas)
+  const [currentView, setCurrentView] = useState<'home' | 'tool-workspace'>('home');
+
   const { links, loading: linksLoading, addLink, updateLink, deleteLink } = useLinks();
   const { todos, loading: todosLoading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos } = useTodos();
   const { isAdmin, logout } = useAuth();
@@ -51,7 +70,7 @@ export default function App() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showLogisticsModal, setShowLogisticsModal] = useState(false);
   const [logisticsTab, setLogisticsTab] = useState<LogisticsTab>('ed-checker');
-  const [activeWorkspaceTool, setActiveWorkspaceTool] = useState<MainToolTab | null>('qr-generator');
+  const [activeWorkspaceTool, setActiveWorkspaceTool] = useState<MainToolTab>('qr-generator');
   const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
@@ -96,7 +115,16 @@ export default function App() {
     setShowBroadcastModal(true);
   };
 
+  const handleLockApplication = () => {
+    lockNow();
+  };
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // If locked, present the 6-Digit PIN Screen
+  if (!unlocked) {
+    return <PinLockScreen onUnlocked={() => setUnlocked(true)} />;
+  }
 
   return (
     <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-bg-body text-black">
@@ -120,46 +148,50 @@ export default function App() {
           isNotificationSupported={isNotificationSupported}
         />
         
-        <Hero 
-          isAdmin={isAdmin} 
-          onLogin={() => setShowLogin(true)} 
-          onLogout={logout} 
-          todos={todos}
-          onOpenTodo={() => setIsSidebarOpen(true)}
-        />
-
-        <LinkGrid 
-          links={links} 
-          loading={linksLoading}
-          isAdmin={isAdmin} 
-          onAdd={handleOpenAddLink}
-          onEdit={handleOpenEditLink}
-          onDelete={deleteLink}
-        />
-
-        <ToolsGrid 
-          activeTool={activeWorkspaceTool}
-          onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
-          onOpenModal={handleOpenToolModal}
-        />
-
-        {activeWorkspaceTool && (
-          <Suspense fallback={<LazyFallback title="Menyiapkan Lembar Kerja..." minHeight="min-h-[300px]" />}>
-            <EmbeddedToolsWorkspace 
-              activeTool={activeWorkspaceTool}
-              onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
-              onOpenModal={handleOpenToolModal}
-              onCloseWorkspace={() => setActiveWorkspaceTool(null)}
-              onSetBatchItems={(items) => setBatchQrItems(items)}
+        {/* VIEW 1: HALAMAN UTAMA (Main Dashboard) */}
+        {currentView === 'home' ? (
+          <>
+            <Hero 
+              isAdmin={isAdmin} 
+              onLogin={() => setShowLogin(true)} 
+              onLogout={logout} 
+              onLockApp={handleLockApplication}
+              sessionTimeoutMinutes={timeoutMinutes}
+              onChangeSessionTimeout={updateTimeoutMinutes}
+              todos={todos}
+              onOpenTodo={() => setIsSidebarOpen(true)}
             />
-          </Suspense>
-        )}
 
-        <BatchQrSection 
-          items={batchQrItems} 
-          onClear={() => setBatchQrItems([])} 
-          onOpenModal={() => setShowQrModal(true)} 
-        />
+            <LinkGrid 
+              links={links} 
+              loading={linksLoading}
+              isAdmin={isAdmin} 
+              onAdd={handleOpenAddLink}
+              onEdit={handleOpenEditLink}
+              onDelete={deleteLink}
+            />
+
+            <ToolsGrid 
+              activeTool={activeWorkspaceTool}
+              onSelectTool={(tool) => {
+                setActiveWorkspaceTool(tool);
+                setCurrentView('tool-workspace');
+              }}
+              onOpenModal={handleOpenToolModal}
+            />
+          </>
+        ) : (
+          /* VIEW 2: HALAMAN KHUSUS TOOLS & UTILITAS (Dedicated Workspace Page) */
+          <ToolWorkspacePage
+            activeTool={activeWorkspaceTool}
+            onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
+            onBackToHome={() => setCurrentView('home')}
+            onOpenModal={handleOpenToolModal}
+            onLockApp={handleLockApplication}
+            batchQrItems={batchQrItems}
+            onSetBatchQrItems={setBatchQrItems}
+          />
+        )}
       </div>
 
       <Sidebar 

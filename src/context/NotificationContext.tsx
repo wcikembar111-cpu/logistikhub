@@ -147,14 +147,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${
+              className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-xl transition-all duration-200 animate-in fade-in slide-in-from-top-4 ${
                 isError
-                  ? 'bg-red-600/95 text-white border-red-400/80 shadow-red-900/30'
+                  ? 'bg-red-600 text-white border-red-500 shadow-red-950/20'
                   : isSuccess
-                  ? 'bg-emerald-600/95 text-white border-emerald-400/80 shadow-emerald-900/30'
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/20'
                   : isWarning
-                  ? 'bg-amber-500/95 text-white border-amber-300/80 shadow-amber-900/30'
-                  : 'bg-blue-900/95 text-white border-blue-400/80 shadow-blue-950/30'
+                  ? 'bg-amber-600 text-white border-amber-500 shadow-amber-950/20'
+                  : 'bg-blue-900 text-white border-blue-800 shadow-blue-950/20'
               }`}
             >
               <div className="shrink-0 mt-0.5">
@@ -182,17 +182,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       {/* Alert Modal Dialog */}
       {alertDialog.isOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="glass-box max-w-md w-full p-6 sm:p-7 rounded-3xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/70 animate-in fade-in duration-150">
+          <div className="max-w-md w-full p-6 sm:p-7 rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-md ${
                 alertDialog.type === 'error'
-                  ? 'bg-red-500/15 text-red-600 border border-red-500/30'
+                  ? 'bg-red-50 text-red-600 border border-red-200'
                   : alertDialog.type === 'success'
-                  ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                   : alertDialog.type === 'warning'
-                  ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30'
-                  : 'bg-blue-900/15 text-blue-900 border border-blue-900/30'
+                  ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                  : 'bg-blue-50 text-blue-900 border border-blue-200'
               }`}
             >
               {alertDialog.type === 'error' && <AlertTriangle size={28} />}
@@ -213,7 +213,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
             <button
               onClick={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
-              className="w-full py-3 px-6 rounded-2xl font-black text-xs uppercase tracking-wider text-white bg-blue-900 hover:bg-blue-950 shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 cursor-pointer"
+              className="w-full py-3 px-6 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-blue-900 hover:bg-blue-950 shadow-md transition-all duration-150 active:scale-95 cursor-pointer"
             >
               Mengerti & Tutup
             </button>
@@ -223,13 +223,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       {/* Confirm Modal Dialog */}
       {confirmDialog.isOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="glass-box max-w-md w-full p-6 sm:p-7 rounded-3xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/70 animate-in fade-in duration-150">
+          <div className="max-w-md w-full p-6 sm:p-7 rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-md ${
                 confirmDialog.type === 'danger'
-                  ? 'bg-red-500/15 text-red-600 border border-red-500/30'
-                  : 'bg-amber-500/15 text-amber-600 border border-amber-500/30'
+                  ? 'bg-red-50 text-red-600 border border-red-200'
+                  : 'bg-amber-50 text-amber-600 border border-amber-200'
               }`}
             >
               {confirmDialog.type === 'danger' ? <Trash2 size={28} /> : <HelpCircle size={28} />}

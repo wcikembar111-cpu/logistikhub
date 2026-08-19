@@ -175,15 +175,15 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
     <>
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/30 backdrop-blur-2xs z-[85] lg:hidden transition-opacity duration-300 cursor-pointer"
+          className="fixed inset-0 bg-slate-950/60 z-[85] lg:hidden transition-opacity duration-200 cursor-pointer"
           onClick={onToggle}
           title="Klik untuk menutup Todo sidebar"
         />
       )}
       <div 
-        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[380px] lg:w-[360px] xl:w-[380px] bg-white/70 backdrop-blur-xl border-l border-white/40 flex flex-col transition-transform duration-400 ease-in-out z-[90] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[380px] lg:w-[360px] xl:w-[380px] bg-white border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out z-[90] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-white/40 bg-white/40">
+        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80">
           <h5 className="m-0 font-bold text-slate-800 flex items-center gap-2.5 text-base">
             <div className="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-600 flex items-center justify-center border border-orange-500/30 shadow-sm"><ListTodo size={18} /></div> 
             Public Todo
@@ -452,8 +452,8 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
 
       {/* Modal Form Edit/Detail Tugas Public */}
       {editingTodo && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="glass-box !bg-white/95 p-6 sm:p-7 rounded-3xl max-w-md w-full shadow-2xl border border-orange-400 relative overflow-hidden text-left">
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-orange-300 relative overflow-hidden text-left">
             <button 
               onClick={() => setEditingTodo(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
@@ -670,8 +670,8 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
 
       {/* Modal Form Tambah Tugas Baru */}
       {showFormModal && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="glass-box !bg-white/95 p-6 sm:p-7 rounded-3xl max-w-md w-full shadow-2xl border border-orange-400 relative overflow-hidden text-left">
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-orange-300 relative overflow-hidden text-left">
             <button 
               onClick={() => setShowFormModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
@@ -813,8 +813,8 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
 
       {/* Modal Pengingat Todo Aktif dari Lonceng */}
       {showReminderModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="glass-box !bg-white/95 p-6 sm:p-7 rounded-3xl max-w-lg w-full shadow-2xl border border-orange-400 relative overflow-hidden text-left">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-lg w-full shadow-2xl border border-orange-300 relative overflow-hidden text-left">
             <button 
               onClick={() => setShowReminderModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
@@ -850,7 +850,7 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                     handleAdd();
                   }
                 }}
-                className="glass-input flex-1 !text-xs !py-2.5 !px-3"
+                className="flex-1 text-xs py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
               />
               <button 
                 onClick={handleAdd}
@@ -923,14 +923,14 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
       >
         <button 
           onClick={onToggle}
-          className="glass-box !bg-orange-500/90 hover:!bg-orange-600 backdrop-blur-md text-white !rounded-l-xl !rounded-r-none border-r-0 px-2.5 py-1.5 flex items-center gap-1.5 shadow-lg transition-all hover:pl-3 cursor-pointer group"
+          className="bg-orange-600 hover:bg-orange-700 text-white rounded-l-xl rounded-r-none border-r-0 px-2.5 py-1.5 flex items-center gap-1.5 shadow-lg transition-all hover:pl-3 cursor-pointer group"
           title="Buka Public Todo"
         >
           <ChevronLeft size={15} className="transition-transform group-hover:-translate-x-0.5" />
           <ListTodo size={15} />
           <span className="text-xs font-bold pr-1">Todo</span>
           {priorityCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" title={`${priorityCount} Tugas Kedip`} />
+            <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" title={`${priorityCount} Tugas Kedip`} />
           )}
         </button>
       </div>

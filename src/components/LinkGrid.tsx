@@ -203,21 +203,21 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
       </div>
 
       <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-3 m-0 drop-shadow-sm">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-3 m-0">
           {category === 'Semua' || category === 'All' ? 'Daftar Aplikasi' : `Aplikasi ${category}`}
         </h2>
-        <div className="bg-white/50 border border-white/60 shadow-sm rounded-full px-4 py-1.5 font-bold text-[11px] text-blue-900 tracking-wider backdrop-blur-sm">
+        <div className="bg-white border border-slate-200 shadow-2xs rounded-full px-4 py-1.5 font-bold text-[11px] text-blue-900 tracking-wider">
           {filteredLinks.length} Item
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-5 pb-4">
         {loading ? (
-          <div className="col-span-full text-center py-12 glass-box font-bold text-slate-500 text-sm">
+          <div className="col-span-full text-center py-12 bg-white border border-slate-200 rounded-2xl font-bold text-slate-500 text-sm">
             Memuat Data...
           </div>
         ) : filteredLinks.length === 0 ? (
-          <div className="col-span-full text-center py-12 glass-box font-bold text-slate-500 text-sm">
+          <div className="col-span-full text-center py-12 bg-white border border-slate-200 rounded-2xl font-bold text-slate-500 text-sm">
             Tidak Ditemukan
           </div>
         ) : (
@@ -247,18 +247,15 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                     e.stopPropagation();
                   }
                 }}
-                className={`glass-box p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[120px] sm:min-h-[135px] transition-all duration-300 ease-out group bg-white/30 overflow-hidden no-underline text-slate-800 block rounded-2xl sm:rounded-3xl ${
-                  isReordering ? 'ring-2 ring-orange-400/80 bg-orange-50/30 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl hover:bg-white/90 hover:border-blue-400 cursor-pointer'
+                className={`bg-white border border-slate-200 shadow-2xs p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[120px] sm:min-h-[135px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-2xl ${
+                  isReordering ? 'ring-2 ring-orange-400 bg-orange-50/50 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1 hover:shadow-md hover:border-blue-400 hover:bg-slate-50/70 cursor-pointer'
                 } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
-                  isDragOverThis ? '!ring-4 !ring-blue-500 !bg-blue-100/50 scale-105 shadow-xl' : ''
+                  isDragOverThis ? '!ring-4 !ring-blue-500 !bg-blue-100/50 scale-105 shadow-lg' : ''
                 }`}
               >
-                {/* Visual shine gradient effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/0 via-white/30 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
                 {/* Control bar for Reordering */}
                 {isReordering && (
-                  <div className="absolute top-1.5 left-1.5 right-1.5 z-30 flex justify-between items-center pointer-events-auto bg-slate-900/80 backdrop-blur-md rounded-xl px-1 py-0.5 text-white shadow-md">
+                  <div className="absolute top-1.5 left-1.5 right-1.5 z-30 flex justify-between items-center pointer-events-auto bg-slate-900 rounded-xl px-1 py-0.5 text-white shadow-md">
                     <button 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveLinkPosition(l.id, 'prev'); }}
                       disabled={index === 0}

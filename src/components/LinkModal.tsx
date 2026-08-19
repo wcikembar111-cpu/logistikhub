@@ -78,12 +78,12 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
   const filteredIcons = ICON_LIST.filter(i => i.includes(iconSearch.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-[1055] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="glass-box rounded-3xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-[1055] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200">
         
-        <div className="border-b border-white/40 px-6 py-5 bg-white/40 flex justify-between items-center shrink-0">
-          <h5 className="font-extrabold text-slate-800 flex items-center gap-3 m-0 text-lg uppercase drop-shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-600 flex items-center justify-center border border-orange-500/30 shadow-sm">
+        <div className="border-b border-slate-200 px-6 py-4 bg-slate-50 flex justify-between items-center shrink-0">
+          <h5 className="font-extrabold text-slate-800 flex items-center gap-3 m-0 text-lg uppercase">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center border border-orange-200 shadow-2xs">
               {link ? <Edit size={20} /> : <PlusCircle size={20} />}
             </div>
             {link ? 'Edit Link' : 'Create New Link'}
@@ -91,14 +91,14 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
           <button onClick={onClose} className="text-slate-500 hover:text-slate-800 font-black text-xl transition-transform cursor-pointer">✕</button>
         </div>
         
-        <div className="p-6 overflow-y-auto min-h-0 flex-1 custom-scrollbar bg-white/30">
+        <div className="p-6 overflow-y-auto min-h-0 flex-1 custom-scrollbar bg-slate-50/50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="text-[11px] font-bold text-blue-900 uppercase tracking-widest mb-2 block">Application Title</label>
               <input 
                 type="text" 
                 value={title} onChange={e => setTitle(e.target.value)}
-                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-sm placeholder:text-slate-400" 
+                className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-2xs placeholder:text-slate-400" 
                 placeholder="e.g. Inventory System" 
               />
             </div>

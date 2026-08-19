@@ -82,11 +82,11 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
           </h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-bold text-slate-500 bg-white/40 border border-white/60 px-3 py-1 rounded-full hidden sm:inline-block">
-            Klik untuk Buka di Halaman Utama
+          <span className="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full hidden sm:inline-block">
+            Klik untuk Buka Halaman Tool
           </span>
           <InstallPwaButton variant="pill" />
-          <div className="bg-white/50 border border-white/60 shadow-sm rounded-full px-3.5 py-1 font-bold text-[11px] text-blue-900 tracking-wider backdrop-blur-sm flex items-center gap-1.5">
+          <div className="bg-white border border-slate-200 shadow-2xs rounded-full px-3.5 py-1 font-bold text-[11px] text-blue-900 tracking-wider flex items-center gap-1.5">
             <Sparkles size={13} className="text-amber-500" />
             <span>Tools Internal</span>
           </div>
@@ -101,16 +101,12 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
               key={t.id}
               onClick={() => {
                 onSelectTool(t.id);
-                setTimeout(() => {
-                  const elem = document.getElementById('main-page-tool-workspace');
-                  if (elem) elem.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
               }}
-              title={`${t.title} - Klik untuk Buka di Halaman Utama`}
-              className={`glass-box p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[125px] sm:min-h-[140px] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl hover:bg-white/90 hover:border-blue-400 cursor-pointer group overflow-hidden text-slate-800 rounded-2xl sm:rounded-3xl ${
+              title={`${t.title} - Klik untuk Buka Halaman Tool`}
+              className={`bg-white border border-slate-200 shadow-2xs p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[125px] sm:min-h-[140px] transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md hover:border-blue-400 hover:bg-slate-50/70 cursor-pointer group overflow-hidden text-slate-800 rounded-2xl ${
                 isActive 
-                  ? 'bg-white/95 border-2 border-blue-600 ring-4 ring-blue-400/30 shadow-lg' 
-                  : 'bg-white/30 border-white/60'
+                  ? 'border-2 border-blue-600 ring-4 ring-blue-400/30 shadow-md' 
+                  : ''
               }`}
             >
               {/* Active Badge Marker */}

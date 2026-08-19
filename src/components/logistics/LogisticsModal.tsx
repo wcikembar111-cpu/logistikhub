@@ -68,8 +68,8 @@ export function LogisticsModal({ isOpen, onClose, initialTab = 'ed-checker' }: L
   const currentTool = toolConfig[initialTab] || toolConfig['ed-checker'];
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="glass-box !bg-white/95 p-5 sm:p-7 rounded-3xl max-w-5xl w-full shadow-2xl border border-blue-300 relative max-h-[92vh] flex flex-col overflow-hidden text-left">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white p-5 sm:p-7 rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 relative max-h-[92vh] flex flex-col overflow-hidden text-left">
         {/* Header - Dedicated to Selected Tool */}
         <div className="flex items-start justify-between pb-4 mb-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-3">
