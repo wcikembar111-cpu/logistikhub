@@ -101,14 +101,15 @@ export async function verifyPin(pin: string, rememberDevice: boolean = true): Pr
   }
 
   try {
-    // 1. Primary Method: Verify via Server-Side API (PIN is verified on backend, never exposed in client inspect)
+    // 1. Primary Method: Verify via Server-Side API / Cloudflare Pages Function (PIN is verified on backend/edge, never exposed in client inspect)
     const response = await fetch('/api/auth/verify-pin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: cleanPin })
     });
 
-    if (response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
       const data = await response.json();
       if (data.success && data.token) {
         // Reset failed counter
@@ -129,23 +130,30 @@ export async function verifyPin(pin: string, rememberDevice: boolean = true): Pr
       }
     }
 
-    if (response.status === 401) {
+    if (response.status === 401 && contentType.includes('application/json')) {
       handleFailedAttempt();
       return { success: false, message: 'PIN 6 digit tidak sesuai. Silakan periksa kembali.' };
     }
   } catch (serverErr) {
-    console.warn('Server PIN endpoint unavailable (offline mode), using cryptographic verification fallback...', serverErr);
+    console.warn('Server PIN endpoint unavailable, falling back to cryptographic verification...', serverErr);
   }
 
-  // 2. Fallback for Offline / Service Worker cache mode:
-  // Use Web Crypto SHA-256 salted hash
+  // 2. Fallback for Static Host / Cloudflare build variable / Offline PWA mode:
   try {
     const hash = await computeSha256(cleanPin + OFFLINE_SALT);
-    if (hash === OFFLINE_DEFAULT_HASH) {
+    
+    // Check default PIN hash (123456)
+    const isDefaultMatch = hash === OFFLINE_DEFAULT_HASH;
+    
+    // Check if custom VITE_APP_PIN was provided at build time
+    const clientCustomPin = (import.meta.env.VITE_APP_PIN as string | undefined)?.trim();
+    const isClientCustomMatch = Boolean(clientCustomPin && cleanPin === clientCustomPin);
+
+    if (isDefaultMatch || isClientCustomMatch) {
       localStorage.removeItem(PIN_FAIL_COUNT_KEY);
       localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
 
-      const fakeToken = btoa(JSON.stringify({ offline: true, iat: Date.now(), sig: hash }));
+      const fakeToken = btoa(JSON.stringify({ mode: 'client-verified', iat: Date.now(), sig: hash }));
       if (rememberDevice) {
         localStorage.setItem(PIN_STORAGE_KEY, fakeToken);
       } else {
