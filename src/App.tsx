@@ -1,7 +1,6 @@
 import { useState, useMemo, lazy, Suspense, useCallback } from 'react';
 import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
 import { useInactivityLock } from './hooks/useInactivityLock';
-import { QuranTicker } from './components/QuranTicker';
 import { BroadcastBar } from './components/broadcast/BroadcastBar';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
 import { Hero } from './components/Hero';
@@ -129,9 +128,6 @@ export default function App() {
   return (
     <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-bg-body text-black">
       <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
-        
-        {/* Realtime Quran Ticker */}
-        <QuranTicker />
         
         {/* Tombol & Bar Siaran Antar-Perangkat (Broadcast) */}
         <BroadcastBar 
