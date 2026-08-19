@@ -244,73 +244,10 @@ export function EmbeddedToolsWorkspace({
   const currentToolInfo = toolsList.find(t => t.id === activeTool) || toolsList[0];
 
   return (
-    <div id="main-page-tool-workspace" className="mt-8 scroll-mt-6 animate-fade-in">
-      <div className="glass-box p-4 sm:p-6 bg-white/95 border border-blue-300/80 shadow-xl rounded-3xl relative overflow-hidden">
-        
-        {/* Workspace Top Header & Navigation Tabs */}
-        <div className="flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-200 flex-wrap">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${currentToolInfo.style} text-white flex items-center justify-center shadow-md shrink-0`}>
-              {currentToolInfo.icon}
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="bg-blue-900 text-white font-extrabold text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  HALAMAN UTAMA WORKSPACE
-                </span>
-                <Sparkles size={13} className="text-amber-500" />
-              </div>
-              <h3 className="text-base sm:text-lg font-black text-slate-800 m-0 leading-tight">
-                {currentToolInfo.title}
-              </h3>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onOpenModal(activeTool)}
-              className="glass-btn !py-1.5 !px-3 !rounded-xl text-xs font-bold bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-              title="Buka dalam Jendela Pop-Up Modal"
-            >
-              <Maximize2 size={14} />
-              <span>Layar Pop-Up</span>
-            </button>
-
-            {onCloseWorkspace && (
-              <button
-                onClick={onCloseWorkspace}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all cursor-pointer"
-                title="Sembunyikan Workspace Tools"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Interactive Tool Switcher Tab Bar directly on Main Page */}
-        <div className="flex items-center gap-1.5 mb-6 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-          {toolsList.map(t => {
-            const isActive = t.id === activeTool;
-            return (
-              <button
-                key={t.id}
-                onClick={() => onSelectTool(t.id)}
-                className={`py-2 px-3 sm:px-3.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
-                  isActive
-                    ? 'bg-blue-900 text-white border-blue-950 ring-2 ring-blue-400/50 shadow-md'
-                    : 'bg-slate-100/80 text-slate-700 border-slate-200/90 hover:bg-white hover:text-blue-900'
-                }`}
-              >
-                <span>{t.icon}</span>
-                <span>{t.title}</span>
-              </button>
-            );
-          })}
-        </div>
-
+    <div id="main-page-tool-workspace" className="w-full scroll-mt-6 animate-fade-in">
+      <div className="bg-white border border-slate-200 shadow-xs rounded-2xl p-4 sm:p-6">
         {/* ACTIVE TOOL MODULE RENDERING */}
-        <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-inner">
+        <div className="w-full">
           {activeTool === 'qr-generator' && (
             <div className="space-y-4">
               {/* QR Subtabs */}

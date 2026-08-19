@@ -84,20 +84,10 @@ export function ToolWorkspacePage({
 }: ToolWorkspacePageProps) {
   const currentMeta = toolMetadata[activeTool] || toolMetadata['qr-generator'];
 
-  const allTools: MainToolTab[] = [
-    'qr-generator',
-    'ed-checker',
-    'stock-opname',
-    'sn-generator',
-    'batch-checker',
-    'promosi',
-    'surat-jalan'
-  ];
-
   return (
     <div className="w-full pb-16 animate-fade-in">
-      {/* Top Sticky Navigation Bar */}
-      <div className="bg-white p-3 sm:p-4 mb-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      {/* Top Dedicated Navigation Bar */}
+      <div className="bg-white p-3.5 sm:p-4 mb-5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
         
         {/* Left: Prominent Back to Home Button */}
         <button
@@ -110,16 +100,16 @@ export function ToolWorkspacePage({
           <span>Kembali ke Halaman Utama</span>
         </button>
 
-        {/* Center: Current Tool Header Pill */}
-        <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl shadow-2xs">
-          <div className={`w-7 h-7 rounded-xl bg-gradient-to-tr ${currentMeta.color} flex items-center justify-center shadow-xs text-white`}>
+        {/* Center: Selected Application Title */}
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-xl bg-gradient-to-tr ${currentMeta.color} flex items-center justify-center shadow-xs text-white shrink-0`}>
             {currentMeta.icon}
           </div>
           <div>
             <div className="text-[10px] font-bold text-slate-400 uppercase leading-none">
-              Tools & Utilitas Aktif
+              Aplikasi Utilitas Logistik
             </div>
-            <div className="font-extrabold text-slate-800 text-xs sm:text-sm leading-tight">
+            <div className="font-extrabold text-slate-800 text-sm sm:text-base leading-tight">
               {currentMeta.title}
             </div>
           </div>
@@ -146,38 +136,12 @@ export function ToolWorkspacePage({
             title="Buka dalam mode Pop-up Modal terpisah"
           >
             <ExternalLink size={13} />
-            <span className="hidden sm:inline">Buka Pop-up</span>
+            <span className="hidden sm:inline">Layar Pop-Up</span>
           </button>
         </div>
       </div>
 
-      {/* Fast Switcher Tabs across All Tools */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-3 mb-4 no-scrollbar">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-          <Sparkles size={12} className="text-amber-500" />
-          <span>Pilih Tool:</span>
-        </span>
-        {allTools.map((t) => {
-          const meta = toolMetadata[t];
-          const isSelected = activeTool === t;
-          return (
-            <button
-              key={t}
-              type="button"
-              onClick={() => onSelectTool(t)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
-                isSelected
-                  ? 'bg-blue-900 text-white shadow-md ring-2 ring-blue-400/40'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-              }`}
-            >
-              <span>{meta.title}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Main Workspace Container */}
+      {/* Main Workspace Container - Purely focused on the single selected tool */}
       <Suspense fallback={<LazyFallback title="Menyiapkan Lembar Kerja..." minHeight="min-h-[400px]" />}>
         <EmbeddedToolsWorkspace
           activeTool={activeTool}
