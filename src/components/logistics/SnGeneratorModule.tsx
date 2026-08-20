@@ -6,7 +6,7 @@ import { useNotification } from '../../context/NotificationContext';
 
 export function SnGeneratorModule() {
   const { showToast } = useNotification();
-  const [inputText, setInputText] = useState("A01B02C3\t21104501\tKINO SAMANTHA HAIR OIL\tPALLET-01\nA01B02C4\t21104502\tOLIVE OIL SOFT PACK\tPALLET-02\nBIN-LOC-009\t21104503\tPAPER TOWEL ABSORBENT\tPALLET-03");
+  const [inputText, setInputText] = useState("");
   const [generatedList, setGeneratedList] = useState<Array<{ sn: string; rawCols: string[] }>>([]);
   const [copied, setCopied] = useState(false);
 
@@ -93,7 +93,7 @@ export function SnGeneratorModule() {
           rows={5}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="A01B02C3	21104501	KINO SAMANTHA HAIR OIL"
+          placeholder={"A01B02C3\t21104501\tKINO SAMANTHA HAIR OIL\tPALLET-01\nA01B02C4\t21104502\tOLIVE OIL SOFT PACK\tPALLET-02\nBIN-LOC-009\t21104503\tPAPER TOWEL ABSORBENT\tPALLET-03"}
           className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none"
         />
       </div>

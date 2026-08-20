@@ -126,22 +126,24 @@ export default function App() {
 
   return (
     <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-bg-body text-black">
-      <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
+      <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${currentView === 'home' && isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
         
-        {/* Tombol & Bar Siaran Antar-Perangkat (Broadcast) */}
-        <BroadcastBar 
-          onOpenBroadcastModal={() => {
-            setReplyRecipient('');
-            setShowBroadcastModal(true);
-          }}
-          latestBroadcast={broadcastMessages[0] || null}
-          messageCount={broadcastMessages.length}
-          soundEnabled={broadcastSoundEnabled}
-          onToggleSound={toggleBroadcastSound}
-          notificationPermission={notificationPermission}
-          onRequestNotificationPermission={requestNotificationPermission}
-          isNotificationSupported={isNotificationSupported}
-        />
+        {/* Tombol & Bar Siaran Antar-Perangkat (Broadcast) - Hanya di Halaman Utama */}
+        {currentView === 'home' && (
+          <BroadcastBar 
+            onOpenBroadcastModal={() => {
+              setReplyRecipient('');
+              setShowBroadcastModal(true);
+            }}
+            latestBroadcast={broadcastMessages[0] || null}
+            messageCount={broadcastMessages.length}
+            soundEnabled={broadcastSoundEnabled}
+            onToggleSound={toggleBroadcastSound}
+            notificationPermission={notificationPermission}
+            onRequestNotificationPermission={requestNotificationPermission}
+            isNotificationSupported={isNotificationSupported}
+          />
+        )}
         
         {/* VIEW 1: HALAMAN UTAMA (Main Dashboard) */}
         {currentView === 'home' ? (
@@ -189,27 +191,32 @@ export default function App() {
         )}
       </div>
 
-      <Sidebar 
-        todos={todos}
-        loading={todosLoading}
-        isAdmin={isAdmin}
-        isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onAddTodo={addTodo}
-        onUpdateStatus={updateTodoStatus}
-        onUpdateTodo={updateTodo}
-        onDeleteTodo={deleteTodo}
-        onDeleteCompletedTodos={deleteCompletedTodos}
-        onRefresh={() => {}} 
-      />
+      {/* Sidebar Public Todo - Hanya di Halaman Utama */}
+      {currentView === 'home' && (
+        <Sidebar 
+          todos={todos}
+          loading={todosLoading}
+          isAdmin={isAdmin}
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+          onAddTodo={addTodo}
+          onUpdateStatus={updateTodoStatus}
+          onUpdateTodo={updateTodo}
+          onDeleteTodo={deleteTodo}
+          onDeleteCompletedTodos={deleteCompletedTodos}
+          onRefresh={() => {}} 
+        />
+      )}
 
-      {/* Robot Melayang Pembawa Pesan Siaran */}
-      <FloatingRobotBroadcast
-        broadcast={incomingBroadcast}
-        onClose={dismissIncomingBroadcast}
-        onReply={handleReplyBroadcast}
-        soundEnabled={broadcastSoundEnabled}
-      />
+      {/* Robot Melayang Pembawa Pesan Siaran - Hanya di Halaman Utama */}
+      {currentView === 'home' && (
+        <FloatingRobotBroadcast
+          broadcast={incomingBroadcast}
+          onClose={dismissIncomingBroadcast}
+          onReply={handleReplyBroadcast}
+          soundEnabled={broadcastSoundEnabled}
+        />
+      )}
 
       {/* Lazy Modals Suspense Container */}
       <Suspense fallback={null}>

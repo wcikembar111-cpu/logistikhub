@@ -8,9 +8,9 @@ export function EdCheckerModule() {
   const { showToast } = useNotification();
 
   // Single Tester State
-  const [singleMaterial, setSingleMaterial] = useState('21104501');
-  const [singleDesc, setSingleDesc] = useState('KINO SAMANTHA HAIR OIL');
-  const [singleBatch, setSingleBatch] = useState('L911346N');
+  const [singleMaterial, setSingleMaterial] = useState('');
+  const [singleDesc, setSingleDesc] = useState('');
+  const [singleBatch, setSingleBatch] = useState('');
 
   // Excel Batch State
   const [excelRows, setExcelRows] = useState<EdComputeResult[]>([]);
@@ -18,8 +18,12 @@ export function EdCheckerModule() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'ok' | 'warning' | 'error'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  const hasSingleInput = Boolean(singleBatch.trim() || singleMaterial.trim() || singleDesc.trim());
+
   // Single Result Computation
-  const singleResult = edComputeExpiredRow(singleMaterial, singleDesc, singleBatch);
+  const singleResult = hasSingleInput 
+    ? edComputeExpiredRow(singleMaterial, singleDesc, singleBatch)
+    : null;
 
   const formatDate = (d: Date | null) => {
     if (!d) return '-';
@@ -185,39 +189,45 @@ export function EdCheckerModule() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hasil Analisis Batch:</span>
-            <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
-              singleResult.status.startsWith('OK')
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                : singleResult.status.includes('PERHATIAN')
-                ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                : 'bg-red-100 text-red-800 border border-red-300'
-            }`}>
-              {singleResult.status.startsWith('OK') && <CheckCircle size={13} />}
-              {singleResult.status.includes('PERHATIAN') && <AlertTriangle size={13} />}
-              {singleResult.status.startsWith('Cek:') && <AlertCircle size={13} />}
-              <span>{singleResult.status}</span>
-            </span>
+            {singleResult ? (
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                singleResult.status.startsWith('OK')
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : singleResult.status.includes('PERHATIAN')
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : 'bg-red-100 text-red-800 border border-red-300'
+              }`}>
+                {singleResult.status.startsWith('OK') && <CheckCircle size={13} />}
+                {singleResult.status.includes('PERHATIAN') && <AlertTriangle size={13} />}
+                {singleResult.status.startsWith('Cek:') && <AlertCircle size={13} />}
+                <span>{singleResult.status}</span>
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                Menunggu Input Batch...
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
             <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <span className="text-[10px] text-slate-500 font-semibold block">Tanggal Mixing</span>
-              <span className="text-xs font-bold text-slate-800">{formatDate(singleResult.tglMixing)}</span>
+              <span className="text-xs font-bold text-slate-800">{singleResult ? formatDate(singleResult.tglMixing) : '-'}</span>
             </div>
 
             <div className="bg-blue-50/70 p-2.5 rounded-lg border border-blue-200">
               <span className="text-[10px] text-blue-700 font-semibold block">SLED / Expired Date</span>
-              <span className="text-xs font-extrabold text-blue-900">{formatDate(singleResult.sledEd)}</span>
+              <span className="text-xs font-extrabold text-blue-900">{singleResult ? formatDate(singleResult.sledEd) : '-'}</span>
             </div>
 
             <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <span className="text-[10px] text-slate-500 font-semibold block">DOY (Day of Year)</span>
-              <span className="text-xs font-bold text-slate-800">{singleResult.doy ?? '-'}</span>
+              <span className="text-xs font-bold text-slate-800">{singleResult?.doy ?? '-'}</span>
             </div>
 
             <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <span className="text-[10px] text-slate-500 font-semibold block">Tahun Produksi</span>
-              <span className="text-xs font-bold text-slate-800">{singleResult.tahunProduksi ?? '-'} (Masa Simpan {singleResult.lamaEdTahun} Thn)</span>
+              <span className="text-xs font-bold text-slate-800">{singleResult ? `${singleResult.tahunProduksi ?? '-'} (Masa Simpan ${singleResult.lamaEdTahun} Thn)` : '-'}</span>
             </div>
           </div>
         </div>

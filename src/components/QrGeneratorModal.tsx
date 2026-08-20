@@ -17,14 +17,14 @@ export function QrGeneratorModal({ isOpen, onClose, onSetBatchItems, existingBat
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
 
   // Single mode state
-  const [singleText, setSingleText] = useState('https://sukabumikab.go.id');
+  const [singleText, setSingleText] = useState('');
   const [singleDataUrl, setSingleDataUrl] = useState('');
   const [fgColor, setFgColor] = useState('#000000');
   const [bgColor, setBgColor] = useState('#ffffff');
   const [copied, setCopied] = useState(false);
 
   // Batch mode state
-  const [batchText, setBatchText] = useState("Website Pemkab, https://sukabumikab.go.id\nDokumen SPPD, https://example.com/sppd\nPengumuman Resmi, https://example.com/pengumuman");
+  const [batchText, setBatchText] = useState('');
   const [batchItems, setBatchItems] = useState<QrItem[]>([]);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [isZipping, setIsZipping] = useState(false);

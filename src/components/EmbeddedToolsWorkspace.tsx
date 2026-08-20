@@ -38,13 +38,13 @@ export function EmbeddedToolsWorkspace({
 
   // QR Generator Local State inside Main Page
   const [qrMode, setQrMode] = useState<'single' | 'batch'>('single');
-  const [singleText, setSingleText] = useState('https://sukabumikab.go.id');
+  const [singleText, setSingleText] = useState('');
   const [singleDataUrl, setSingleDataUrl] = useState('');
   const [fgColor, setFgColor] = useState('#000000');
   const [bgColor, setBgColor] = useState('#ffffff');
   const [copied, setCopied] = useState(false);
 
-  const [batchText, setBatchText] = useState("Website Pemkab, https://sukabumikab.go.id\nDokumen SPPD, https://example.com/sppd\nPengumuman Resmi, https://example.com/pengumuman");
+  const [batchText, setBatchText] = useState('');
   const [batchItems, setBatchItems] = useState<QrItem[]>([]);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [isZipping, setIsZipping] = useState(false);

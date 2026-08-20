@@ -9,7 +9,7 @@ export function StockOpnameModule() {
   const [activeTab, setActiveTab] = useState<'largo' | 'mb52' | 'form-so'>('largo');
 
   // LARGO State
-  const [largoRawText, setLargoRawText] = useState("LOC01\t21104501\tKINO SAMANTHA HAIR OIL\tSL01\t100\nLOC01\t21104501\tKINO SAMANTHA HAIR OIL\tSL01\t50\nLOC02\t21104502\tOLIVE OIL SOFT PACK\tSL02\t200");
+  const [largoRawText, setLargoRawText] = useState("");
   const [aggregatedLargo, setAggregatedLargo] = useState<any[]>([]);
 
   // MB52 State
@@ -135,27 +135,43 @@ export function StockOpnameModule() {
       {activeTab === 'largo' && (
         <div className="space-y-4">
           <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-800 m-0">Input Teks Data Mentah LARGO</h3>
                 <p className="text-[11px] text-slate-500 m-0">Format per baris (Tab-Separated): <code>Location</code> [Tab] <code>ItemCode</code> [Tab] <code>ItemName</code> [Tab] <code>SLOC</code> [Tab] <code>Qty</code></p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleProcessLargo}
-                className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <RefreshCw size={14} />
-                <span>Proses SUMIFS / Agregasi</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {largoRawText && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLargoRawText('');
+                      setAggregatedLargo([]);
+                      showToast('Bersih', 'Input data LARGO telah dibersihkan', 'info');
+                    }}
+                    className="px-3 py-1.5 text-red-600 hover:text-red-700 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Clear Input</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleProcessLargo}
+                  className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw size={14} />
+                  <span>Proses SUMIFS / Agregasi</span>
+                </button>
+              </div>
             </div>
 
             <textarea
               rows={5}
               value={largoRawText}
               onChange={(e) => setLargoRawText(e.target.value)}
-              placeholder="LOC01	21104501	KINO SAMANTHA HAIR OIL	SL01	100"
+              placeholder={"LOC01\t21104501\tKINO SAMANTHA HAIR OIL\tSL01\t100\nLOC01\t21104501\tKINO SAMANTHA HAIR OIL\tSL01\t50\nLOC02\t21104502\tOLIVE OIL SOFT PACK\tSL02\t200"}
               className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
