@@ -11,7 +11,7 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     const { request, env } = context;
     const body = (await request.json().catch(() => ({}))) as { pin?: string };
     const pin = body.pin;
-    const serverPin = (env.APP_PIN || '123456').trim();
+    const serverPin = (env.APP_PIN || '089739').trim();
 
     if (!pin || typeof pin !== 'string') {
       return new Response(

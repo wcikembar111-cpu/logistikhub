@@ -21,7 +21,7 @@ async function startServer() {
 
   // Check PIN Configuration Status (does not expose the PIN!)
   app.get("/api/auth/pin-status", (_req, res) => {
-    const isCustomPin = Boolean(process.env.APP_PIN && process.env.APP_PIN.trim() !== "123456");
+    const isCustomPin = Boolean(process.env.APP_PIN && process.env.APP_PIN.trim() !== "089739");
     res.json({
       configured: true,
       digits: 6,
@@ -34,7 +34,7 @@ async function startServer() {
   // The actual PIN is NEVER sent to or visible in client-side inspect element!
   app.post("/api/auth/verify-pin", (req, res) => {
     const { pin } = req.body;
-    const serverPin = (process.env.APP_PIN || "123456").trim();
+    const serverPin = (process.env.APP_PIN || "089739").trim();
 
     if (!pin || typeof pin !== "string") {
       return res.status(400).json({ 
@@ -89,7 +89,7 @@ async function startServer() {
   // Verify existing token validity
   app.post("/api/auth/validate-token", (req, res) => {
     const { token } = req.body;
-    const serverPin = (process.env.APP_PIN || "123456").trim();
+    const serverPin = (process.env.APP_PIN || "089739").trim();
     const sessionSecret = process.env.SESSION_SECRET || "ckb-hub-secure-auth-secret-key-2026";
 
     if (!token || typeof token !== "string") {

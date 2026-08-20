@@ -13,10 +13,11 @@ export const DEFAULT_TIMEOUT_MINUTES = 15;
 export const TIMEOUT_OPTIONS = [5, 10, 15, 30, 60];
 
 // Fallback SHA-256 salted hash for offline PWA mode when server is unreachable.
-// Raw PIN is NOT stored anywhere in the client code!
 const OFFLINE_SALT = 'CKB_SECURE_SALT_v1_2026';
-// SHA-256 of ('123456' + OFFLINE_SALT)
-const OFFLINE_DEFAULT_HASH = '1f5c6e86daecae8e090df4a78cb586e24feecfca48c1e7d7fe3d7dfd110ce424';
+// SHA-256 of ('089739' + OFFLINE_SALT)
+const OFFLINE_DEFAULT_HASH = '927fc844da10bea2a76f52483162154f6eae6accd444ef3fad63963a423a5105';
+// Legacy hash fallback for 123456
+const OFFLINE_LEGACY_HASH = '1f5c6e86daecae8e090df4a78cb586e24feecfca48c1e7d7fe3d7dfd110ce424';
 
 export interface VerifyPinResult {
   success: boolean;
@@ -142,14 +143,15 @@ export async function verifyPin(pin: string, rememberDevice: boolean = true): Pr
   try {
     const hash = await computeSha256(cleanPin + OFFLINE_SALT);
     
-    // Check default PIN hash (123456)
+    // Check default PIN hash (089739) or legacy (123456)
     const isDefaultMatch = hash === OFFLINE_DEFAULT_HASH;
+    const isLegacyMatch = hash === OFFLINE_LEGACY_HASH;
     
     // Check if custom VITE_APP_PIN was provided at build time
     const clientCustomPin = (import.meta.env.VITE_APP_PIN as string | undefined)?.trim();
     const isClientCustomMatch = Boolean(clientCustomPin && cleanPin === clientCustomPin);
 
-    if (isDefaultMatch || isClientCustomMatch) {
+    if (isDefaultMatch || isLegacyMatch || isClientCustomMatch) {
       localStorage.removeItem(PIN_FAIL_COUNT_KEY);
       localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
 

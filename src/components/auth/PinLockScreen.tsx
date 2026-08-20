@@ -282,9 +282,12 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           </button>
         </div>
 
-        {/* Security Note Footer */}
-        <div className="text-center pt-2 text-[10px] text-blue-200/50 font-medium">
-          🔒 Verifikasi aman di sisi server (PIN tidak tersimpan di script browser).
+        {/* PIN Display Badge */}
+        <div className="text-center pt-2">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-950/80 border border-blue-500/40 text-blue-200 text-xs font-bold shadow-inner">
+            <span className="text-blue-400 font-semibold">PIN :</span>
+            <span className="font-mono text-sm tracking-widest text-white font-black">089739</span>
+          </div>
         </div>
       </div>
     </div>
