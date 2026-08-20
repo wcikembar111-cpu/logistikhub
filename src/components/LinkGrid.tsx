@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, DragEvent } from 'react';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { useMenuOrder } from '../hooks/useSupabase';
@@ -141,21 +141,91 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
   };
 
   return (
-    <>
-      <div className="glass-box flex items-center mb-6 p-2 !rounded-full bg-white/40 border border-white/60 focus-within:border-blue-400 focus-within:bg-white/70 focus-within:shadow-lg transition-all duration-300">
-        <div className="pl-4 pr-2 text-slate-500 flex items-center">
-          <Search size={22} className="transition-transform duration-300 group-focus-within:scale-110" />
+    <div className="mt-8 pt-6 border-t border-slate-300/60">
+      {/* Top Header Row matching ToolsGrid exactly */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-900/10 text-blue-900 flex items-center justify-center border border-blue-900/15 shadow-xs shrink-0">
+            <LayoutGrid size={19} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 m-0 leading-tight">
+              Daftar Aplikasi & Sistem
+            </h2>
+            <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
+              Akses cepat seluruh portal web dan sistem operasional
+            </p>
+          </div>
         </div>
-        <input 
-          type="text" 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari Aplikasi atau Sistem..." 
-          className="flex-1 border-none bg-transparent py-3 px-2 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-        />
+
+        <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+          {/* Search Input Box */}
+          <div className="relative flex-1 md:w-64">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input 
+              type="text" 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari aplikasi atau sistem..." 
+              className="w-full pl-9 pr-8 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-xl shadow-2xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors cursor-pointer"
+                title="Hapus pencarian"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* Counter Badge */}
+          <div className="bg-white border border-slate-200 shadow-2xs rounded-xl px-3 py-1.5 font-bold text-[11px] text-blue-900 tracking-wide flex items-center gap-1.5 shrink-0">
+            <Sparkles size={13} className="text-amber-500" />
+            <span>{filteredLinks.length} / {links.length} Aplikasi</span>
+          </div>
+
+          {/* Admin Actions */}
+          {isAdmin && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button 
+                onClick={() => {
+                  const nextReordering = !isReordering;
+                  setIsReordering(nextReordering);
+                  if (nextReordering) {
+                    showToast('Atur Tata Letak', 'Seret & lepas icon atau gunakan tombol panah kiri/kanan untuk menggeser posisi aplikasi', 'info');
+                  } else {
+                    showToast('Tersimpan', 'Tata letak menu aplikasi telah disimpan secara permanen', 'success');
+                  }
+                }} 
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
+                  isReordering 
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse' 
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'
+                }`}
+                title="Atur Urutan Tata Letak Menu"
+              >
+                {isReordering ? <Check size={14} /> : <Move size={14} />}
+                <span>{isReordering ? 'Selesai' : 'Atur Urutan'}</span>
+              </button>
+
+              <button 
+                onClick={onAdd} 
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                title="Tambah Aplikasi Baru"
+              >
+                <Plus size={14} />
+                <span>Tambah</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex justify-center gap-2.5 mb-8 flex-wrap items-center">
+      {/* Category Pills Bar */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 custom-scrollbar">
         {categories.map(cat => {
           const count = (cat === 'Semua' || cat === 'All') 
             ? links.length 
@@ -165,63 +235,50 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
             <button 
               key={cat} 
               onClick={() => setCategory(cat)} 
-              className={`glass-btn !rounded-full transition-all duration-300 hover:scale-105 active:scale-95 ${isActive ? '!bg-blue-900 !text-white !border-blue-800 shadow-md' : 'hover:shadow-md'}`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                isActive 
+                  ? 'bg-blue-900 text-white shadow-xs' 
+                  : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+              }`}
             >
-              {cat} <span className={`glass-badge ml-2 ${isActive ? '!bg-white/20 !text-white !border-white/30' : ''}`}>{count}</span>
+              <span>{cat}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {count}
+              </span>
             </button>
           );
         })}
-
-        {isAdmin && (
-          <button 
-            onClick={() => {
-              const nextReordering = !isReordering;
-              setIsReordering(nextReordering);
-              if (nextReordering) {
-                showToast('Atur Tata Letak', 'Seret & lepas icon atau gunakan tombol panah kiri/kanan untuk menggeser posisi aplikasi', 'info');
-              } else {
-                showToast('Tersimpan', 'Tata letak menu aplikasi telah disimpan secara permanen', 'success');
-              }
-            }} 
-            className={`glass-btn !px-4 !rounded-full transition-all duration-300 shadow-sm border ${
-              isReordering 
-                ? '!bg-emerald-600 !text-white !border-emerald-700 animate-pulse' 
-                : 'hover:!bg-white/80 text-slate-700'
-            }`}
-            title="Atur Urutan Tata Letak Menu"
-          >
-            {isReordering ? <Check size={16} /> : <Move size={16} />}
-            <span>{isReordering ? 'Selesai Atur' : 'Atur Tata Letak'}</span>
-          </button>
-        )}
-
-        {isAdmin && (
-          <button onClick={onAdd} className="glass-btn !bg-orange-500/90 !text-white hover:!bg-orange-600 !border-orange-400 !px-5 !rounded-full transition-all duration-300 hover:scale-105 active:scale-95 shadow-md">
-            <Plus size={18} /> Tambah Aplikasi
-          </button>
-        )}
       </div>
 
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-3 m-0">
-          {category === 'Semua' || category === 'All' ? 'Daftar Aplikasi' : `Aplikasi ${category}`}
-        </h2>
-        <div className="bg-white border border-slate-200 shadow-2xs rounded-full px-4 py-1.5 font-bold text-[11px] text-blue-900 tracking-wider">
-          {filteredLinks.length} Item
+      {/* Grid Content */}
+      {loading ? (
+        <div className="text-center py-12 bg-white border border-slate-200 rounded-2xl font-bold text-slate-500 text-sm">
+          Memuat Data...
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-5 pb-4">
-        {loading ? (
-          <div className="col-span-full text-center py-12 bg-white border border-slate-200 rounded-2xl font-bold text-slate-500 text-sm">
-            Memuat Data...
+      ) : filteredLinks.length === 0 ? (
+        <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center my-2 shadow-2xs">
+          <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+            <Search size={22} />
           </div>
-        ) : filteredLinks.length === 0 ? (
-          <div className="col-span-full text-center py-12 bg-white border border-slate-200 rounded-2xl font-bold text-slate-500 text-sm">
-            Tidak Ditemukan
-          </div>
-        ) : (
-          filteredLinks.map((l, index) => {
+          <h4 className="text-sm font-bold text-slate-800 mb-1">
+            Tidak ada aplikasi yang cocok
+          </h4>
+          <p className="text-xs text-slate-500 mb-4 max-w-sm mx-auto">
+            Tidak ditemukan aplikasi dengan kata kunci <span className="font-semibold text-slate-800">"{search}"</span>.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setSearch(''); setCategory('Semua'); }}
+            className="px-4 py-1.5 rounded-xl bg-blue-900 text-white font-bold text-xs hover:bg-blue-950 transition-colors shadow-xs cursor-pointer"
+          >
+            Reset Pencarian
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-3.5 pb-2">
+          {filteredLinks.map((l, index) => {
             const isEmoji = l.icon && !l.icon.startsWith('fa');
             const nativeStyle = NATIVE_ICON_STYLES[index % NATIVE_ICON_STYLES.length];
             const targetUrl = l.url ? (l.url.startsWith('http://') || l.url.startsWith('https://') ? l.url : `https://${l.url}`) : '#';
@@ -247,7 +304,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                     e.stopPropagation();
                   }
                 }}
-                className={`bg-white border border-slate-200 shadow-2xs p-3.5 sm:p-4 flex flex-col items-center justify-center relative min-h-[120px] sm:min-h-[135px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-2xl ${
+                className={`bg-white border border-slate-200 shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
                   isReordering ? 'ring-2 ring-orange-400 bg-orange-50/50 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1 hover:shadow-md hover:border-blue-400 hover:bg-slate-50/70 cursor-pointer'
                 } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
                   isDragOverThis ? '!ring-4 !ring-blue-500 !bg-blue-100/50 scale-105 shadow-lg' : ''
@@ -262,7 +319,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                       className="p-1 hover:bg-white/20 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
                       title="Geser Kiri"
                     >
-                      <ChevronLeft size={14} />
+                      <ChevronLeft size={13} />
                     </button>
                     <span className="text-[9px] font-bold text-slate-200">Geser</span>
                     <button 
@@ -271,17 +328,17 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                       className="p-1 hover:bg-white/20 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
                       title="Geser Kanan"
                     >
-                      <ChevronRight size={14} />
+                      <ChevronRight size={13} />
                     </button>
                   </div>
                 )}
 
                 {/* Admin Actions or External Link Badge on Hover */}
                 {!isReordering && (
-                  <div className="absolute top-2.5 right-2.5 z-20 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div className="absolute top-2 right-2 z-20 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     {!isAdmin && (
-                      <div className="w-7 h-7 rounded-lg bg-blue-900/10 text-blue-900 flex items-center justify-center">
-                        <ExternalLink size={14} />
+                      <div className="w-6 h-6 rounded-lg bg-blue-900/10 text-blue-900 flex items-center justify-center">
+                        <ExternalLink size={12} />
                       </div>
                     )}
                     
@@ -289,10 +346,10 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                       <div className="flex gap-1">
                         <button 
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
-                          className="glass-btn !p-1.5 !rounded-lg !bg-blue-900/10 hover:!bg-blue-900 hover:!text-white !text-blue-900 transition-all cursor-pointer"
+                          className="p-1 rounded-lg bg-blue-900/10 hover:bg-blue-900 hover:text-white text-blue-900 transition-all cursor-pointer"
                           title="Edit Aplikasi"
                         >
-                          <Edit2 size={13} />
+                          <Edit2 size={12} />
                         </button>
                         <button 
                           onClick={(e) => { 
@@ -310,45 +367,45 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                               }
                             });
                           }} 
-                          className="glass-btn !p-1.5 !rounded-lg !bg-red-500/10 hover:!bg-red-600 hover:!text-white !text-red-600 transition-all cursor-pointer"
+                          className="p-1 rounded-lg bg-red-500/10 hover:bg-red-600 hover:text-white text-red-600 transition-all cursor-pointer"
                           title="Hapus Aplikasi"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Main Icon Tile (Always Visible) */}
-                <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-md ${nativeStyle} transition-all duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 group-hover:shadow-lg border border-white/40 overflow-hidden ${
+                {/* Main Icon Tile (Sleek, Compact & Neat) */}
+                <div className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-md ${nativeStyle} transition-all duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-0.5 group-hover:shadow-lg border border-white/40 overflow-hidden ${
                   isReordering ? 'mt-3' : ''
                 }`}>
                   {/* Glossy top-down glass shine overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent pointer-events-none rounded-[20px]" />
-                  <div className="absolute -top-5 -left-5 w-10 h-10 bg-white/35 rounded-full blur-md pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-transparent pointer-events-none rounded-xl sm:rounded-2xl" />
+                  <div className="absolute -top-4 -left-4 w-8 h-8 bg-white/35 rounded-full blur-sm pointer-events-none" />
 
-                  <span className="relative z-10 drop-shadow-md flex items-center justify-center">
+                  <span className="relative z-10 drop-shadow-sm flex items-center justify-center">
                     {isEmoji ? (
-                      <span className="drop-shadow-sm">{l.icon || '📱'}</span>
+                      <span className="text-xl sm:text-2xl">{l.icon || '📱'}</span>
                     ) : (
-                      <i className={`${l.icon || 'fas fa-cubes'} text-white text-xl sm:text-2xl drop-shadow-sm`} />
+                      <i className={`${l.icon || 'fas fa-cubes'} text-white text-base sm:text-lg drop-shadow-xs`} />
                     )}
                   </span>
                 </div>
 
-                {/* Title Info (Directly Visible, Smaller Font, Non-Bold, Title Case) */}
-                <div className="w-full text-center mt-2.5 px-1 pointer-events-none">
-                  <h4 className="font-medium text-xs sm:text-[13px] text-slate-800 m-0 tracking-wide leading-snug break-words group-hover:text-blue-900 transition-colors duration-200 capitalize">
+                {/* Title Info */}
+                <div className="w-full text-center mt-2 px-0.5 pointer-events-none">
+                  <h4 className="font-bold text-xs text-slate-800 m-0 tracking-tight leading-snug break-words group-hover:text-blue-900 transition-colors line-clamp-2 capitalize">
                     {l.title}
                   </h4>
                 </div>
               </a>
             );
-          })
-        )}
-      </div>
-    </>
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

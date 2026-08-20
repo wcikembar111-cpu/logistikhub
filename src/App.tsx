@@ -13,7 +13,6 @@ import { MainToolTab } from './components/EmbeddedToolsWorkspace';
 import { LogisticsTab } from './components/logistics/LogisticsModal';
 import { PinLockScreen } from './components/auth/PinLockScreen';
 import { isPinUnlocked, lockApp } from './utils/pinAuth';
-import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { LinkData } from './types';
 
 // Lazy Loaded Modals and Workspaces for Ultra-Fast Initial Page Load
@@ -211,9 +210,6 @@ export default function App() {
         onReply={handleReplyBroadcast}
         soundEnabled={broadcastSoundEnabled}
       />
-
-      {/* PWA Install Prompt Banner & Offline Detector */}
-      <PwaInstallPrompt />
 
       {/* Lazy Modals Suspense Container */}
       <Suspense fallback={null}>

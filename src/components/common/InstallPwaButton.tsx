@@ -37,11 +37,11 @@ export function InstallPwaButton({
       <button
         type="button"
         onClick={promptInstall}
-        className={`glass-btn !py-1 !px-2.5 !text-[10px] !rounded-lg text-blue-900 bg-blue-500/15 hover:bg-blue-500/25 border-blue-400/40 hover:border-blue-500 font-extrabold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-105 active:scale-95 animate-pulse ${className}`}
+        className={`py-1 px-2.5 text-[10px] font-bold rounded-lg text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 flex items-center gap-1.5 transition-all shadow-xs hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap ${className}`}
         title="Pasang CKBLogistic sebagai Aplikasi (PWA)"
       >
-        <Download size={12} className="text-blue-900 animate-bounce" />
-        <span>Install App</span>
+        <Download size={12} className="text-white animate-bounce shrink-0" />
+        <span>INSTALL PWA</span>
       </button>
     );
   }

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2, ChevronLeft, Edit2, CheckCircle2, Clock, Circle, Save, Flame, Zap, AlertCircle, Sparkles } from 'lucide-react';
 import { TodoData, TodoPriority } from '../types';
 import { useNotification } from '../context/NotificationContext';
-import { InstallPwaButton } from './common/InstallPwaButton';
 
 interface SidebarProps {
   todos: TodoData[];
@@ -183,122 +182,119 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
       <div 
         className={`fixed top-0 right-0 bottom-0 w-full sm:w-[380px] lg:w-[360px] xl:w-[380px] bg-white border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out z-[90] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80">
-          <h5 className="m-0 font-bold text-slate-800 flex items-center gap-2.5 text-base">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-600 flex items-center justify-center border border-orange-500/30 shadow-sm"><ListTodo size={18} /></div> 
-            Public Todo
-          </h5>
+        {/* Top Header with Embedded Tambah Tugas & Actions */}
+        <div className="flex justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50/90 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-600 flex items-center justify-center border border-orange-500/30 shadow-xs shrink-0">
+              <ListTodo size={17} />
+            </div> 
+            <div className="min-w-0">
+              <h5 className="m-0 font-bold text-slate-800 text-sm leading-tight truncate">
+                Public Todo
+              </h5>
+              <div className="text-[10px] text-slate-400 font-semibold">
+                {pendingCount} Pending
+              </div>
+            </div>
+          </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Tambah Tugas Baru Button in Header */}
             <button 
-              onClick={handleTestReminder}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all ${
-                reminderActive 
-                  ? 'bg-orange-500 text-white border-orange-600 scale-105 shadow-md' 
-                  : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 border-orange-500/30'
-              }`}
-              title="Bunyikan Nada Pengingat Todo"
+              onClick={() => setShowFormModal(true)} 
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+              title="Tambah Tugas Baru"
             >
-              <BellRing size={13} className={reminderActive ? 'animate-bounce' : ''} />
-              <span>{pendingCount} Pending</span>
+              <Plus size={15} />
+              <span>Tambah</span>
             </button>
 
-            <button onClick={onToggle} className="w-9 h-9 rounded-xl bg-white/50 flex items-center justify-center text-slate-600 hover:text-slate-900 border border-white/60 shadow-sm hover:scale-105 transition-all cursor-pointer">
-              <X size={18} />
+            {/* Refresh Button */}
+            <button 
+              onClick={onRefresh} 
+              className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition-all cursor-pointer" 
+              title="Refresh Todo"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin text-blue-900' : ''} />
+            </button>
+
+            {/* Delete Completed Tasks Button */}
+            {close > 0 && onDeleteCompletedTodos && (
+              <button 
+                onClick={() => {
+                  showConfirm({
+                    title: 'Hapus Tugas Selesai',
+                    message: `Hapus masal ${close} tugas yang sudah berstatus Done/Selesai?`,
+                    confirmText: 'Hapus Selesai',
+                    cancelText: 'Batal',
+                    type: 'danger',
+                    onConfirm: async () => {
+                      await onDeleteCompletedTodos();
+                      showToast('Selesai', 'Tugas selesai berhasil dibersihkan', 'info');
+                    }
+                  });
+                }}
+                title="Hapus masal semua tugas yang sudah selesai (Done)"
+                className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all cursor-pointer"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+
+            {/* Close Sidebar Button */}
+            <button 
+              onClick={onToggle} 
+              className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 hover:text-slate-900 border border-slate-200 shadow-2xs transition-all cursor-pointer"
+              title="Tutup Sidebar"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* KPI Summary Cards - Included Priority Filter Badge */}
-        <div className="grid grid-cols-4 p-3 sm:p-4 border-b border-white/40 gap-1.5 bg-transparent">
+        {/* KPI Summary Cards - Clickable Filters with Toggle Back to All */}
+        <div className="grid grid-cols-4 p-3 border-b border-slate-200 gap-1.5 bg-slate-50/40">
           <div 
-            onClick={() => setFilter('priority')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'priority' ? 'bg-red-500/20 border-red-500/50 ring-2 ring-red-500 animate-badge-blink' : 'bg-red-500/10 border-red-500/30'}`}
-            title="Filter Tugas Prioritas / Kedip"
+            onClick={() => setFilter(prev => prev === 'priority' ? 'all' : 'priority')}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'priority' ? 'bg-red-500/20 border-red-500/50 ring-2 ring-red-500 animate-badge-blink' : 'bg-white hover:bg-red-50/50 border-slate-200'}`}
+            title="Filter Tugas Prioritas / Kedip (Klik lagi untuk lihat semua)"
           >
-            <div className="text-base font-black text-red-700 leading-tight flex items-center justify-center gap-1">
-              <Zap size={13} className="text-red-600 fill-current animate-bounce" /> {priorityCount}
+            <div className="text-sm font-black text-red-700 leading-tight flex items-center justify-center gap-1">
+              <Zap size={12} className="text-red-600 fill-current animate-bounce" /> {priorityCount}
             </div>
             <div className="font-bold text-[8px] text-red-700 tracking-wider mt-0.5 uppercase">Kedip</div>
           </div>
 
           <div 
-            onClick={() => setFilter('no')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'no' ? 'bg-orange-500/15 border-orange-500/40 ring-2 ring-orange-400' : 'bg-white/50 border-white/60'}`}
+            onClick={() => setFilter(prev => prev === 'no' ? 'all' : 'no')}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'no' ? 'bg-orange-500/15 border-orange-500/40 ring-2 ring-orange-400' : 'bg-white hover:bg-orange-50/50 border-slate-200'}`}
+            title="Filter Tugas Todo (Klik lagi untuk lihat semua)"
           >
-            <div className="text-base font-black text-slate-800 leading-tight">{no}</div>
+            <div className="text-sm font-black text-slate-800 leading-tight">{no}</div>
             <div className="font-bold text-[8px] text-slate-600 tracking-wider mt-0.5 uppercase">Todo</div>
           </div>
 
           <div 
-            onClick={() => setFilter('onproses')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'onproses' ? 'bg-blue-900/20 border-blue-900/40 ring-2 ring-blue-800' : 'bg-blue-900/10 border-blue-900/20'}`}
+            onClick={() => setFilter(prev => prev === 'onproses' ? 'all' : 'onproses')}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'onproses' ? 'bg-blue-900/20 border-blue-900/40 ring-2 ring-blue-800' : 'bg-white hover:bg-blue-50/50 border-slate-200'}`}
+            title="Filter Tugas Proses (Klik lagi untuk lihat semua)"
           >
-            <div className="text-base font-black text-blue-900 leading-tight">{onproses}</div>
+            <div className="text-sm font-black text-blue-900 leading-tight">{onproses}</div>
             <div className="font-bold text-[8px] text-blue-900 tracking-wider mt-0.5 uppercase">Proses</div>
           </div>
 
           <div 
-            onClick={() => setFilter('close')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'close' ? 'bg-emerald-500/25 border-emerald-500/40 ring-2 ring-emerald-500' : 'bg-emerald-500/10 border-emerald-500/20'}`}
+            onClick={() => setFilter(prev => prev === 'close' ? 'all' : 'close')}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'close' ? 'bg-emerald-500/25 border-emerald-500/40 ring-2 ring-emerald-500' : 'bg-white hover:bg-emerald-50/50 border-slate-200'}`}
+            title="Filter Tugas Selesai / Done (Klik lagi untuk lihat semua)"
           >
-            <div className="text-base font-black text-emerald-700 leading-tight">{close}</div>
+            <div className="text-sm font-black text-emerald-700 leading-tight">{close}</div>
             <div className="font-bold text-[8px] text-emerald-600 tracking-wider mt-0.5 uppercase">Done</div>
           </div>
         </div>
 
-        {/* Action Bar: Tombol Tambah Tugas + Filter Buttons */}
-        <div className="px-4 py-3 border-b border-white/40 flex flex-col gap-2.5 bg-white/30">
-          <button 
-            onClick={() => setShowFormModal(true)} 
-            className="glass-btn !bg-orange-500 hover:!bg-orange-600 !text-white !rounded-xl !py-2.5 !px-4 flex items-center justify-center gap-2 text-xs font-bold shadow-md transition-all active:scale-95"
-          >
-            <Plus size={16} /> Tambah Tugas Baru
-          </button>
-
-          <div className="flex justify-between items-center gap-1 flex-wrap">
-            <div className="flex gap-1 flex-wrap">
-              <button onClick={() => setFilter('all')} className={`glass-btn !py-1 !px-2 !rounded-lg text-[10px] ${filter === 'all' ? '!bg-slate-800 !text-white' : ''}`}>Semua</button>
-              <button onClick={() => setFilter('priority')} className={`glass-btn !py-1 !px-2 !rounded-lg text-[10px] flex items-center gap-1 ${filter === 'priority' ? '!bg-red-600 !text-white' : '!bg-red-50 !text-red-700 !border-red-200'}`}>
-                <Zap size={11} className={filter === 'priority' ? 'fill-white' : 'text-red-600'} /> Kedip ({priorityCount})
-              </button>
-              <button onClick={() => setFilter('no')} className={`glass-btn !py-1 !px-2 !rounded-lg text-[10px] ${filter === 'no' ? '!bg-orange-600 !text-white' : ''}`}>Todo</button>
-              <button onClick={() => setFilter('onproses')} className={`glass-btn !py-1 !px-2 !rounded-lg text-[10px] ${filter === 'onproses' ? '!bg-blue-900 !text-white' : ''}`}>Proses</button>
-              <button onClick={() => setFilter('close')} className={`glass-btn !py-1 !px-2 !rounded-lg text-[10px] ${filter === 'close' ? '!bg-emerald-600 !text-white' : ''}`}>Done ({close})</button>
-            </div>
-            
-            <div className="flex gap-1.5 items-center">
-              {close > 0 && onDeleteCompletedTodos && (
-                <button 
-                  onClick={() => {
-                    showConfirm({
-                      title: 'Hapus Tugas Selesai',
-                      message: `Hapus masal ${close} tugas yang sudah berstatus Done/Selesai?`,
-                      confirmText: 'Hapus Selesai',
-                      cancelText: 'Batal',
-                      type: 'danger',
-                      onConfirm: async () => {
-                        await onDeleteCompletedTodos();
-                        showToast('Selesai', 'Tugas selesai berhasil dibersihkan', 'info');
-                      }
-                    });
-                  }}
-                  title="Hapus masal semua tugas yang sudah selesai (Done)"
-                  className="glass-btn !bg-red-500/10 hover:!bg-red-500/20 !text-red-600 !py-1 !px-2 !rounded-lg flex items-center gap-1 text-[10px] font-bold border border-red-500/20"
-                >
-                  <Trash2 size={12} />
-                  <span>Hapus</span>
-                </button>
-              )}
-              <button onClick={onRefresh} className="glass-btn !p-1.5 !rounded-lg" title="Refresh">
-                <RefreshCw size={14} className={loading ? 'animate-spin text-blue-900' : 'text-slate-600'} />
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* List Task - Includes Blinking Color Animation */}
-        <div className="flex-1 overflow-auto p-4 sm:p-5 bg-transparent custom-scrollbar">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 bg-slate-50/20 custom-scrollbar">
           {loading ? (
             <div className="text-center py-8 font-bold text-slate-500 text-xs">Memuat Daftar Tugas...</div>
           ) : filteredTodos.length === 0 ? (
@@ -442,11 +438,6 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
               );
             })
           )}
-        </div>
-
-        {/* Sidebar Footer with Install PWA Button */}
-        <div className="p-3 border-t border-white/40 bg-white/40">
-          <InstallPwaButton variant="sidebar" />
         </div>
       </div>
 

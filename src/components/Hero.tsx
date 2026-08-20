@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink, KeyRound, Timer, LogOut } from 'lucide-react';
+import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink, KeyRound, Timer, LogOut, Moon, Sun, Sunrise, Sunset, Clock, Sparkles, Compass } from 'lucide-react';
 import { TodoData } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
 import { TIMEOUT_OPTIONS } from '../utils/pinAuth';
@@ -49,6 +49,9 @@ export function Hero({
   // Modal Perbesar Foto Profil & Detail Kontak
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
+  // Modal Jadwal Sholat Lengkap
+  const [showPrayerModal, setShowPrayerModal] = useState(false);
+
   // State untuk Alarm Pengingat Sholat
   const [activeAlarm, setActiveAlarm] = useState<{ name: string; time: string } | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -58,6 +61,25 @@ export function Hero({
   const [activeTodoReminder, setActiveTodoReminder] = useState<boolean>(false);
 
   const pendingTodos = todos.filter(t => t.status === 'no' || t.status === 'onproses');
+
+  // Countdown to next prayer calculation
+  const getNextPrayerCountdown = () => {
+    if (!nextPrayer) return '';
+    const now = new Date();
+    const [h, m] = nextPrayer.time.split(':').map(Number);
+    const target = new Date(now);
+    target.setHours(h, m, 0, 0);
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1);
+    }
+    const diffMs = target.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (diffHours > 0) {
+      return `${diffHours} jam ${diffMins} menit lagi`;
+    }
+    return `${diffMins} menit lagi`;
+  };
 
   // Function untuk memainkan nada panggil / chime sholat
   const playPrayerChime = () => {
@@ -275,21 +297,162 @@ export function Hero({
 
   const handleClosePrayerAlarm = () => {
     setActiveAlarm(null);
-    setTimeout(() => {
-      handleTriggerTodoReminder();
-    }, 350);
   };
 
   return (
     <>
-      {/* Modal Alarm Pengingat Sholat */}
+      {/* Modal Jadwal Sholat Lengkap Wilayah Sukabumi */}
+      {showPrayerModal && (
+        <div 
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/75 backdrop-blur-md p-4 animate-fade-in"
+          onClick={() => setShowPrayerModal(false)}
+        >
+          <div 
+            className="bg-white p-6 sm:p-7 rounded-3xl max-w-lg w-full shadow-2xl border border-emerald-400 relative overflow-hidden animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Background Glow */}
+            <div className="absolute -top-16 -right-16 w-36 h-36 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
+
+            <button 
+              onClick={() => setShowPrayerModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all z-20 cursor-pointer"
+              title="Tutup"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shrink-0">
+                <Moon size={24} className="text-emerald-100" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
+                  <MapPin size={12} />
+                  <span>Kabupaten Sukabumi, Jawa Barat</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-800 m-0 leading-tight">
+                  Jadwal Sholat & Imsakiyah
+                </h3>
+                <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
+                  {dateStr} • {time} WIB
+                </p>
+              </div>
+            </div>
+
+            {/* Upcoming Prayer Spotlight Card */}
+            {nextPrayer && (
+              <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 text-white p-4 rounded-2xl shadow-md mb-4 relative overflow-hidden">
+                <div className="absolute right-0 top-0 bottom-0 w-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
+                <div className="relative z-10 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-black tracking-widest text-emerald-200 bg-black/20 px-2 py-0.5 rounded-md inline-block mb-1">
+                      WAKTU SHOLAT MENDATANG
+                    </span>
+                    <div className="text-2xl font-black tracking-tight leading-none">
+                      {nextPrayer.name} • {nextPrayer.time} <span className="text-sm font-semibold text-emerald-200">WIB</span>
+                    </div>
+                    <div className="text-xs text-emerald-100 font-medium mt-1 flex items-center gap-1">
+                      <Clock size={12} />
+                      <span>Tersisa sekitar <strong className="text-white font-bold">{getNextPrayerCountdown()}</strong></span>
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0 shadow-inner">
+                    <BellRing size={22} className="animate-bounce" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 6 Times Grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+              {prayerList.map((p) => {
+                const isNext = nextPrayer && nextPrayer.name.toLowerCase() === p.label.toLowerCase();
+                return (
+                  <div 
+                    key={p.label}
+                    className={`p-3 rounded-2xl text-center border transition-all flex flex-col items-center justify-center ${
+                      isNext 
+                        ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-300 shadow-md scale-105' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      {p.label}
+                    </span>
+                    <span className={`text-sm sm:text-base font-black mt-1 ${isNext ? 'text-white' : 'text-slate-800'}`}>
+                      {p.time}
+                    </span>
+                    {isNext && (
+                      <span className="text-[8px] bg-emerald-800/80 text-emerald-100 px-1.5 py-0.2 rounded-full font-black mt-1 uppercase">
+                        Mendatang
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Prayer Note & Hadith */}
+            <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3 text-xs text-emerald-900 mb-4 font-medium flex items-start gap-2">
+              <Sparkles size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="m-0 font-semibold italic text-[11px] leading-relaxed">
+                  "Sesungguhnya sholat itu adalah kewajiban yang ditentukan waktunya atas orang-orang yang beriman." (QS. An-Nisa: 103)
+                </p>
+                <p className="m-0 text-[10px] text-emerald-700 mt-1 font-normal">
+                  *Waktu sholat otomatis dihitung dan disinkronkan harian sesuai zona waktu Sukabumi (WIB).
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 flex-wrap">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => { playPrayerChime(); }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Test Bunyi Nada Alarm Sholat"
+                >
+                  <Volume2 size={14} />
+                  <span>Test Nada</span>
+                </button>
+
+                <button 
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    soundEnabled 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
+                      : 'bg-slate-100 text-slate-500 border-slate-300 line-through'
+                  }`}
+                  title={soundEnabled ? "Suara Alarm Aktif" : "Suara Alarm Muted"}
+                >
+                  {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                  <span>{soundEnabled ? 'Suara Aktif' : 'Mute'}</span>
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setShowPrayerModal(false)}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Alarm Pengingat Sholat Otomatis */}
       {activeAlarm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 animate-fade-in">
           <div className="bg-white p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl border border-emerald-400 relative overflow-hidden">
             
             <button 
               onClick={handleClosePrayerAlarm}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -316,13 +479,13 @@ export function Hero({
             <div className="flex gap-3 justify-center">
               <button 
                 onClick={() => { playPrayerChime(); }}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2 transition-all"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
               >
                 <Volume2 size={16} /> Bunyikan Nada
               </button>
               <button 
                 onClick={handleClosePrayerAlarm}
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all"
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
               >
                 Tutup Pengingat
               </button>
@@ -739,10 +902,16 @@ export function Hero({
           {/* Jadwal Sholat Sukabumi */}
           <div className="flex-1 w-full min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 tracking-wider">
+              <button 
+                type="button"
+                onClick={() => setShowPrayerModal(true)}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-emerald-700 tracking-wider transition-colors cursor-pointer text-left bg-transparent border-none p-0"
+                title="Buka Jadwal Sholat Lengkap Wilayah Sukabumi"
+              >
                 <MapPin size={13} className="text-emerald-600 shrink-0" />
                 <span>Jadwal Sholat Sukabumi</span>
-              </div>
+                <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded-md border border-emerald-200 ml-0.5">Detail</span>
+              </button>
 
               <div className="flex items-center gap-1.5 flex-wrap">
                 {/* Toggle Suara Alarm */}
@@ -761,9 +930,9 @@ export function Hero({
 
                 {nextPrayer && (
                   <button 
-                    onClick={handleTriggerTodoReminder}
-                    className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 cursor-pointer transition-all text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-2xs active:scale-95"
-                    title="Klik Lonceng untuk bunyikan nada & tampilkan pengingat Todo aktif"
+                    onClick={() => setShowPrayerModal(true)}
+                    className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 cursor-pointer transition-all text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-2xs active:scale-95"
+                    title="Klik untuk membuka jadwal sholat lengkap & waktu mendatang"
                   >
                     <Bell size={11} className="animate-bounce" />
                     <span>Mendatang: {nextPrayer.name} ({nextPrayer.time})</span>
@@ -775,7 +944,11 @@ export function Hero({
             {loadingPrayer ? (
               <div className="text-xs text-slate-500 font-medium py-1">Memuat Jadwal Sholat...</div>
             ) : (
-              <div className="grid grid-cols-3 xs:grid-cols-6 sm:grid-cols-6 gap-1.5 w-full min-w-0">
+              <div 
+                onClick={() => setShowPrayerModal(true)}
+                className="grid grid-cols-3 xs:grid-cols-6 sm:grid-cols-6 gap-1.5 w-full min-w-0 cursor-pointer group"
+                title="Klik untuk melihat Jadwal Sholat Lengkap"
+              >
                 {prayerList.map((p) => {
                   const isNext = nextPrayer && nextPrayer.name.toLowerCase() === p.label.toLowerCase();
                   return (
@@ -784,7 +957,7 @@ export function Hero({
                       className={`flex flex-col items-center justify-center p-2 rounded-xl text-center border transition-all min-w-0 ${
                         isNext 
                           ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-300 shadow-xs scale-105' 
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 group-hover:border-emerald-300 hover:!bg-slate-100'
                       }`}
                     >
                       <span className={`text-[9px] font-bold tracking-wider ${isNext ? 'text-emerald-100' : 'text-slate-500'}`}>
