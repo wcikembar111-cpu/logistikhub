@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { X, Calendar, Layers, Barcode, ArrowRightLeft, PackageCheck, FileText } from 'lucide-react';
+import { X, Calendar, Layers, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame } from 'lucide-react';
 import { LazyFallback } from '../common/LazyFallback';
 
 const EdCheckerModule = lazy(() => import('./EdCheckerModule').then(m => ({ default: m.EdCheckerModule })));
@@ -8,8 +8,10 @@ const SnGeneratorModule = lazy(() => import('./SnGeneratorModule').then(m => ({ 
 const BatchCheckerModule = lazy(() => import('./BatchCheckerModule').then(m => ({ default: m.BatchCheckerModule })));
 const PromosiModule = lazy(() => import('./PromosiModule').then(m => ({ default: m.PromosiModule })));
 const SuratJalanModule = lazy(() => import('./SuratJalanModule').then(m => ({ default: m.SuratJalanModule })));
+const ReturInventoryModule = lazy(() => import('./ReturInventoryModule').then(m => ({ default: m.ReturInventoryModule })));
+const MonitoringPemusnahanModule = lazy(() => import('./MonitoringPemusnahanModule').then(m => ({ default: m.MonitoringPemusnahanModule })));
 
-export type LogisticsTab = 'ed-checker' | 'stock-opname' | 'sn-generator' | 'batch-checker' | 'promosi' | 'surat-jalan';
+export type LogisticsTab = 'ed-checker' | 'stock-opname' | 'sn-generator' | 'batch-checker' | 'promosi' | 'surat-jalan' | 'retur-inventory' | 'monitoring-pemusnahan';
 
 interface LogisticsModalProps {
   isOpen: boolean;
@@ -62,6 +64,20 @@ export function LogisticsModal({ isOpen, onClose, initialTab = 'ed-checker' }: L
       icon: <FileText size={22} className="text-white" />,
       bgGradient: 'from-blue-600 via-indigo-700 to-slate-950',
       component: <SuratJalanModule />
+    },
+    'retur-inventory': {
+      title: 'Retur Inventory Management',
+      subtitle: 'Manajemen pengajuan retur barang, tracking COGS & status penerimaan barang retur',
+      icon: <Undo2 size={22} className="text-white" />,
+      bgGradient: 'from-rose-600 via-red-700 to-slate-950',
+      component: <ReturInventoryModule />
+    },
+    'monitoring-pemusnahan': {
+      title: 'Monitoring Pemusnahan (WH-CKB)',
+      subtitle: 'Monitoring alur berkas & dokumen pemusnahan barang (27 Kolom Data) terintegrasi',
+      icon: <Flame size={22} className="text-white" />,
+      bgGradient: 'from-amber-600 via-orange-700 to-slate-950',
+      component: <MonitoringPemusnahanModule />
     }
   };
 

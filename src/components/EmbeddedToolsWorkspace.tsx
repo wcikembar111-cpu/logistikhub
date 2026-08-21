@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import QRCode from 'qrcode';
 import JSZip from 'jszip';
 import { 
-  Wrench, QrCode, Calendar, Layers, Barcode, ArrowRightLeft, PackageCheck, FileText, 
+  Wrench, QrCode, Calendar, Layers, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame,
   X, Maximize2, RefreshCw, Download, Upload, Copy, Check, Eye, Eraser, Trash2, Sparkles, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { LogisticsTab } from './logistics/LogisticsModal';
@@ -17,6 +17,8 @@ const SnGeneratorModule = lazy(() => import('./logistics/SnGeneratorModule').the
 const BatchCheckerModule = lazy(() => import('./logistics/BatchCheckerModule').then(m => ({ default: m.BatchCheckerModule })));
 const PromosiModule = lazy(() => import('./logistics/PromosiModule').then(m => ({ default: m.PromosiModule })));
 const SuratJalanModule = lazy(() => import('./logistics/SuratJalanModule').then(m => ({ default: m.SuratJalanModule })));
+const ReturInventoryModule = lazy(() => import('./logistics/ReturInventoryModule').then(m => ({ default: m.ReturInventoryModule })));
+const MonitoringPemusnahanModule = lazy(() => import('./logistics/MonitoringPemusnahanModule').then(m => ({ default: m.MonitoringPemusnahanModule })));
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
 
@@ -239,6 +241,18 @@ export function EmbeddedToolsWorkspace({
       title: 'Surat Jalan Studio',
       icon: <FileText size={16} />,
       style: 'from-blue-600 to-indigo-800'
+    },
+    {
+      id: 'retur-inventory',
+      title: 'Retur Inventory',
+      icon: <Undo2 size={16} />,
+      style: 'from-rose-600 to-red-800'
+    },
+    {
+      id: 'monitoring-pemusnahan',
+      title: 'Monitoring Pemusnahan',
+      icon: <Flame size={16} />,
+      style: 'from-amber-600 to-orange-800'
     }
   ];
 
@@ -259,6 +273,8 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'batch-checker' && <BatchCheckerModule />}
             {activeTool === 'promosi' && <PromosiModule />}
             {activeTool === 'surat-jalan' && <SuratJalanModule />}
+            {activeTool === 'retur-inventory' && <ReturInventoryModule />}
+            {activeTool === 'monitoring-pemusnahan' && <MonitoringPemusnahanModule />}
           </Suspense>
         </div>
       </div>

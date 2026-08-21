@@ -9,6 +9,8 @@ import {
   ArrowRightLeft, 
   PackageCheck, 
   FileText, 
+  Undo2,
+  Flame,
   ExternalLink,
   Sparkles,
   KeyRound
@@ -69,6 +71,18 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'Buat, Cetak & Rekap SJ',
     icon: <FileText size={18} className="text-white" />,
     iconBg: 'bg-blue-900'
+  },
+  'retur-inventory': {
+    title: 'Retur Inventory',
+    category: 'Pengajuan & Tracking Retur',
+    icon: <Undo2 size={18} className="text-white" />,
+    iconBg: 'bg-rose-600'
+  },
+  'monitoring-pemusnahan': {
+    title: 'Monitoring Pemusnahan',
+    category: 'WH-CKB 27 Kolom Data',
+    icon: <Flame size={18} className="text-white" />,
+    iconBg: 'bg-amber-600'
   }
 };
 

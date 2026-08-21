@@ -37,7 +37,7 @@ export function useLinks() {
     setLinks(prev => [newLink, ...prev]);
     const { error } = await supabase.from('links').insert([link]);
     if (error) {
-      alert(`Gagal menyimpan ke database Supabase: ${error.message}\n\nSolusi: Pastikan tabel "links" sudah dibuat dan matikan RLS (DISABLE ROW LEVEL SECURITY) atau tambahkan POLICY di Supabase SQL Editor.`);
+      alert(`Gagal menyimpan ke database: ${error.message}\n\nSolusi: Pastikan tabel "links" sudah dibuat di database.`);
       setLinks(prev => prev.filter(l => l.id !== tempId));
     } else {
       fetchLinks();
@@ -48,7 +48,7 @@ export function useLinks() {
     setLinks(prev => prev.map(l => l.id === id ? { ...l, ...link } : l));
     const { error } = await supabase.from('links').update(link).eq('id', id);
     if (error) {
-      alert(`Gagal memperbarui aplikasi di Supabase: ${error.message}`);
+      alert(`Gagal memperbarui aplikasi di database: ${error.message}`);
       fetchLinks();
     } else {
       fetchLinks();
@@ -59,7 +59,7 @@ export function useLinks() {
     setLinks(prev => prev.filter(l => l.id !== id));
     const { error } = await supabase.from('links').delete().eq('id', id);
     if (error) {
-      alert(`Gagal menghapus aplikasi dari Supabase: ${error.message}`);
+      alert(`Gagal menghapus aplikasi dari database: ${error.message}`);
       fetchLinks();
     }
   };
@@ -123,7 +123,7 @@ export function useTodos() {
 
     const { error } = await supabase.from('todos').insert([{ task: formattedTask, status: 'no' }]);
     if (error) {
-      alert(`Gagal menyimpan tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS (Row Level Security) di tabel "todos" pada Supabase agar public dapat menambah data.`);
+      alert(`Gagal menyimpan tugas. Pesan: ${error.message}.`);
       setTodos(prev => prev.filter(t => t.id !== tempId));
     } else {
       fetchTodos();
@@ -142,7 +142,7 @@ export function useTodos() {
 
     const { error } = await supabase.from('todos').update(updatePayload).eq('id', id);
     if (error) {
-      alert(`Gagal mengubah status. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+      alert(`Gagal mengubah status. Pesan: ${error.message}.`);
       fetchTodos();
     } else {
       fetchTodos();
@@ -174,7 +174,7 @@ export function useTodos() {
     }).eq('id', id);
 
     if (error) {
-      alert(`Gagal memperbarui tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+      alert(`Gagal memperbarui tugas. Pesan: ${error.message}.`);
       fetchTodos();
     } else {
       fetchTodos();
@@ -185,7 +185,7 @@ export function useTodos() {
     setTodos(prev => prev.filter(t => t.id !== id));
     const { error } = await supabase.from('todos').delete().eq('id', id);
     if (error) {
-      alert(`Gagal menghapus tugas. Pesan: ${error.message}. Pastikan Anda menonaktifkan RLS di tabel "todos".`);
+      alert(`Gagal menghapus tugas. Pesan: ${error.message}.`);
       fetchTodos();
     }
   };

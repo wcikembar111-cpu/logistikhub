@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, ExternalLink, Search, X } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, ExternalLink, Search, X } from 'lucide-react';
 import { MainToolTab } from './EmbeddedToolsWorkspace';
 
 interface ToolsGridProps {
@@ -74,6 +74,22 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
       keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman',
       icon: <FileText size={20} className="text-white" />,
       iconBg: 'bg-blue-900'
+    },
+    {
+      id: 'retur-inventory',
+      title: 'Retur Inventory',
+      category: 'Pengajuan & Tracking Retur',
+      keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim',
+      icon: <Undo2 size={20} className="text-white" />,
+      iconBg: 'bg-rose-600'
+    },
+    {
+      id: 'monitoring-pemusnahan',
+      title: 'Monitoring Pemusnahan',
+      category: 'WH-CKB 27 Kolom Data',
+      keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir',
+      icon: <Flame size={20} className="text-white" />,
+      iconBg: 'bg-amber-600'
     }
   ];
 

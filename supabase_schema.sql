@@ -140,6 +140,66 @@ INSERT INTO public.pengirim (nama, alamat, kota_kab, telp, kota_dateline)
 SELECT 'LOGISTICS WAREHOUSE', 'Jl. Utama Logistics No. 1', 'Jakarta', '021-12345678', 'Jakarta'
 WHERE NOT EXISTS (SELECT 1 FROM public.pengirim);
 
+-- =================================================================
+-- SKEMA TABEL RETUR INVENTORY & MONITORING PEMUSNAHAN
+-- =================================================================
+CREATE TABLE IF NOT EXISTS public.retur_inventory (
+    id VARCHAR(100) PRIMARY KEY,
+    no_pengajuan VARCHAR(100) NOT NULL,
+    tgl_pengajuan DATE NOT NULL,
+    customer_distributor VARCHAR(255) NOT NULL,
+    sku_code VARCHAR(100) NOT NULL,
+    material_desc TEXT NOT NULL,
+    batch_number VARCHAR(100) NOT NULL,
+    expired_date DATE,
+    qty_retur_pcs NUMERIC(15,2) DEFAULT 0,
+    cogs_per_unit NUMERIC(15,2) DEFAULT 0,
+    total_cogs_retur NUMERIC(18,2) DEFAULT 0,
+    alasan_retur TEXT NOT NULL,
+    kategori_retur VARCHAR(50) DEFAULT 'ED_NEAR', -- 'ED_NEAR', 'RUSAK_KEMASAN', 'RECALL', 'OVERSTOCK', 'LAINNYA'
+    status VARCHAR(50) DEFAULT 'MENUNGGU_APPROVAL', -- 'MENUNGGU_APPROVAL', 'DISETUJUI', 'DITOLAK', 'DALAM_PROSES_GUDANG', 'SELESAI_MASUK_GUDANG', 'SIAP_MUSNAH'
+    lokasi_gudang_terima VARCHAR(100) DEFAULT 'WH-CKB',
+    no_surat_jalan_retur VARCHAR(100) DEFAULT '',
+    no_dokumen_sap VARCHAR(100) DEFAULT '',
+    disetujui_oleh VARCHAR(100) DEFAULT '',
+    tgl_approval TIMESTAMPTZ,
+    pic_gudang VARCHAR(100) DEFAULT '',
+    catatan_retur TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_update TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.monitoring_pemusnahan (
+    id VARCHAR(100) PRIMARY KEY,
+    tahun INT NOT NULL,
+    bulan_pengajuan VARCHAR(150) NOT NULL,
+    qty_pcs NUMERIC(15,2) DEFAULT 0,
+    value NUMERIC(18,2) DEFAULT 0,
+    cogs NUMERIC(18,2) DEFAULT 0,
+    sloc VARCHAR(50) DEFAULT '8A04',
+    location VARCHAR(100) DEFAULT 'Cikembar',
+    kategori VARCHAR(100) DEFAULT 'REGULER',
+    no_persetujuan VARCHAR(150) DEFAULT '',
+    no_pengajuan VARCHAR(150) DEFAULT '',
+    no_penolakan_qa VARCHAR(150) DEFAULT '',
+    approved_head_log VARCHAR(255) DEFAULT '',
+    approved_ho_direksi VARCHAR(255) DEFAULT '',
+    serah_terima_gudang_reject VARCHAR(255) DEFAULT '',
+    acc_teams_bap VARCHAR(255) DEFAULT '',
+    kirim_dokumen_bap_ke_ho VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    musnah_sistem_z87 VARCHAR(255) DEFAULT '',
+    completed_approval VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    completed_ba VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    completed_migo VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    sj_kapsul VARCHAR(150) DEFAULT '',
+    bap_kapsul VARCHAR(150) DEFAULT '',
+    check_kapsul VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    keterangan TEXT DEFAULT '',
+    status VARCHAR(50) DEFAULT 'PROSES', -- 'SELESAI', 'PROSES'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_update TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- =========================================================
 -- AKSES HAK AKSES & RLS (Row Level Security)
 -- =========================================================
@@ -155,11 +215,15 @@ ALTER TABLE public.items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promosi DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rekapan_sj DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.broadcast_messages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.retur_inventory DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.monitoring_pemusnahan DISABLE ROW LEVEL SECURITY;
 
 -- Berikan izin akses penuh ke anon & authenticated
 GRANT ALL ON TABLE public.broadcast_messages TO anon, authenticated;
+GRANT ALL ON TABLE public.retur_inventory TO anon, authenticated;
+GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;
 
--- Aktifkan Realtime Replication untuk tabel broadcast_messages
+-- Aktifkan Realtime Replication untuk tabel broadcast_messages, retur_inventory, monitoring_pemusnahan
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -170,10 +234,29 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcast_messages;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'retur_inventory'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.retur_inventory;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'monitoring_pemusnahan'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.monitoring_pemusnahan;
+  END IF;
 EXCEPTION WHEN OTHERS THEN
   -- Abaikan jika publication supabase_realtime belum aktif atau sudah ada
   NULL;
 END $$;
+
 
 
 

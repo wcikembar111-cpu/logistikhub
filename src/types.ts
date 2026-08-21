@@ -98,3 +98,61 @@ export interface QrLabelItem {
 
 export type LabelPresetSize = '100x80' | '80x100' | '50x30' | '70x50' | '100x150';
 
+export interface ReturInventoryItem {
+  id?: string;
+  created_at?: string;
+  no?: number | string;
+  item_code?: string;
+  item_name?: string;
+  category?: string;
+  location?: string;
+  location_type?: string;
+  first_qty?: number;
+  last_qty_pcs?: number;
+  uom?: string;
+  qty_convert_ctn?: number;
+  uom_convert?: string;
+  lpn_serial?: string;
+  batch?: string;
+  vendor_batch?: string;
+  sloc?: string;
+  expired?: string;
+  destination_code?: string;
+  qc_code?: string;
+  user_tally?: string;
+  shelf_life?: string;
+  source?: string;
+  by_ed?: string;
+}
+
+export interface MonitoringPemusnahanItem {
+  id: string;
+  tahun: number;
+  bulan_pengajuan: string;
+  qty_pcs: number;
+  value: number;
+  cogs: number;
+  sloc: string;
+  location: string;
+  kategori: string;
+  no_persetujuan: string;
+  no_pengajuan: string;
+  no_penolakan_qa: string;
+  approved_head_log: string;
+  approved_ho_direksi: string;
+  serah_terima_gudang_reject: string;
+  acc_teams_bap: string;
+  kirim_dokumen_bap_ke_ho: 'OPEN' | 'CLOSE' | string;
+  musnah_sistem_z87: string;
+  completed_approval: 'OPEN' | 'CLOSE' | string;
+  completed_ba: 'OPEN' | 'CLOSE' | string;
+  completed_migo: 'OPEN' | 'CLOSE' | string;
+  sj_kapsul: string;
+  bap_kapsul: string;
+  check_kapsul: 'OPEN' | 'CLOSE' | string;
+  keterangan: string;
+  status: 'SELESAI' | 'PROSES';
+  last_update?: string;
+  created_at?: string;
+}
+
