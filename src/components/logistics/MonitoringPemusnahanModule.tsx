@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../hooks/useSupabase';
 import { MonitoringPemusnahanItem } from '../../types';
 
 const PIPELINE_STEPS = [
@@ -56,11 +57,13 @@ function computeStatus(item: Partial<MonitoringPemusnahanItem>): 'SELESAI' | 'PR
 
 export function MonitoringPemusnahanModule() {
   const { showToast, showConfirm } = useNotification();
+  const { isAdmin } = useAuth();
   const [dataList, setDataList] = useState<MonitoringPemusnahanItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Inline editing / draft state
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -339,7 +342,109 @@ export function MonitoringPemusnahanModule() {
     }
   };
 
-  // Delete Row
+  // Selection Handlers (Khusus Admin)
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredRecords.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredRecords.map(r => r.id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk Delete Selected Rows (Khusus Admin)
+  const handleBulkDelete = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi hapus massal khusus untuk Admin.', 'danger');
+      return;
+    }
+    if (selectedIds.length === 0) {
+      showToast('Pilih Data', 'Silakan pilih setidaknya satu baris data untuk dihapus.', 'info');
+      return;
+    }
+
+    showConfirm({
+      title: 'Konfirmasi Hapus Massal (Admin)',
+      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} data monitoring pemusnahan yang dipilih secara permanen dari database?`,
+      confirmText: `Ya, Hapus ${selectedIds.length} Data`,
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const { error } = await supabase
+            .from('monitoring_pemusnahan')
+            .delete()
+            .in('id', selectedIds);
+
+          if (error) {
+            console.error('Bulk delete error:', error);
+            showToast('Gagal Hapus DB', error.message, 'danger');
+          } else {
+            showToast('Sukses Hapus Massal', `${selectedIds.length} data berhasil dihapus dari database!`, 'success');
+          }
+        } catch (e: any) {
+          console.error(e);
+        }
+
+        const nextList = dataList.filter(d => !selectedIds.includes(d.id));
+        setDataList(nextList);
+        localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+        setSelectedIds([]);
+        setLoading(false);
+      }
+    });
+  };
+
+  // Delete All Rows (Khusus Admin)
+  const handleDeleteAll = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi reset seluruh data khusus untuk Admin.', 'danger');
+      return;
+    }
+    if (dataList.length === 0) {
+      showToast('Data Kosong', 'Tidak ada data untuk dihapus.', 'info');
+      return;
+    }
+
+    showConfirm({
+      title: 'Hapus SEMUA Data Monitoring Pemusnahan (Admin)',
+      message: `PERINGATAN: Aksi ini akan menghapus seluruh (${dataList.length}) data monitoring pemusnahan dari database. Aksi ini TIDAK DAPAT dibatalkan. Lanjutkan?`,
+      confirmText: 'Ya, Kosongkan Semua',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const allIds = dataList.map(d => d.id);
+          const { error } = await supabase
+            .from('monitoring_pemusnahan')
+            .delete()
+            .in('id', allIds);
+
+          if (error) {
+            showToast('Gagal Hapus DB', error.message, 'danger');
+          } else {
+            showToast('Tabel Dikosongkan', 'Seluruh data monitoring pemusnahan berhasil dikosongkan.', 'success');
+          }
+        } catch (e: any) {
+          console.error(e);
+        }
+
+        setDataList([]);
+        localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify([]));
+        setSelectedIds([]);
+        setLoading(false);
+      }
+    });
+  };
+
+  // Delete Single Row
   const handleDeleteRow = (id: string) => {
     const target = dataList.find(d => d.id === id);
     showConfirm({
@@ -355,6 +460,7 @@ export function MonitoringPemusnahanModule() {
         const nextList = dataList.filter(d => d.id !== id);
         setDataList(nextList);
         localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+        setSelectedIds(prev => prev.filter(x => x !== id));
         setLoading(false);
         showToast('Dihapus', 'Data pengajuan berhasil dihapus', 'info');
       }
@@ -549,6 +655,19 @@ export function MonitoringPemusnahanModule() {
             <span>+ Inline</span>
           </button>
 
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleDeleteAll}
+              disabled={loading || dataList.length === 0}
+              className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Khusus Admin: Kosongkan seluruh data di database"
+            >
+              <Trash2 size={13} />
+              <span>Reset Tabel</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={fetchMonitoringData}
@@ -560,6 +679,42 @@ export function MonitoringPemusnahanModule() {
           </button>
         </div>
       </div>
+
+      {/* Admin Bulk Action Banner */}
+      {isAdmin && selectedIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-red-50 border-2 border-red-200 rounded-2xl animate-in fade-in duration-150 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+            <div>
+              <span className="text-xs font-black text-red-950 uppercase tracking-wide">
+                Mode Admin: {selectedIds.length} Dari {filteredRecords.length} Data Dipilih
+              </span>
+              <p className="text-[11px] text-red-700 font-medium m-0">
+                Pilih aksi massal untuk menghapus data terpilih sekaligus dari database.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition-all cursor-pointer shadow-2xs"
+            >
+              Batal Pilihan
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={loading}
+              className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <Trash2 size={14} />
+              <span>Hapus Massal Terpilih ({selectedIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Wide Scrollable Table (27 Columns) */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
@@ -577,8 +732,19 @@ export function MonitoringPemusnahanModule() {
           <table className="w-full text-left text-xs border-collapse whitespace-nowrap min-w-[2800px]">
             <thead className="sticky top-0 bg-blue-50/95 backdrop-blur-xs text-blue-950 font-bold border-b border-slate-200 z-20 uppercase tracking-wider text-[10px]">
               <tr>
-                <th className="sticky left-0 bg-blue-100/90 py-3 px-3 text-center w-28 z-30 shadow-xs border-r border-blue-200">
-                  AKSI
+                <th className={`sticky left-0 bg-blue-100/90 py-3 px-2 text-center z-30 shadow-xs border-r border-blue-200 ${isAdmin ? 'w-36' : 'w-28'}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    {isAdmin && (
+                      <input
+                        type="checkbox"
+                        checked={filteredRecords.length > 0 && selectedIds.length === filteredRecords.length}
+                        onChange={handleToggleSelectAll}
+                        title="Pilih Semua Baris (Admin)"
+                        className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                      />
+                    )}
+                    <span>AKSI</span>
+                  </div>
                 </th>
                 <th className="py-3 px-3 w-20">TAHUN</th>
                 <th className="py-3 px-3 min-w-[180px]">BULAN_PENGAJUAN</th>
@@ -772,10 +938,21 @@ export function MonitoringPemusnahanModule() {
                     );
                   }
 
+                  const isSelected = selectedIds.includes(r.id);
+
                   return (
-                    <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="sticky left-0 bg-white hover:bg-slate-50 py-2.5 px-2 text-center z-10 border-r border-slate-200">
-                        <div className="flex items-center justify-center gap-1">
+                    <tr key={r.id} className={`transition-colors ${isSelected ? 'bg-red-50/70 hover:bg-red-100/50' : 'hover:bg-slate-50'}`}>
+                      <td className={`sticky left-0 py-2.5 px-2 text-center z-10 border-r border-slate-200 ${isSelected ? 'bg-red-100/90' : 'bg-white hover:bg-slate-50'}`}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {isAdmin && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelect(r.id)}
+                              className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                              title="Pilih data untuk aksi massal"
+                            />
+                          )}
                           <button
                             type="button"
                             onClick={() => handleOpenFormModal(r)}

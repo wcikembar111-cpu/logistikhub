@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../hooks/useSupabase';
 
 export interface PromosiData {
   id: string;
@@ -24,10 +25,12 @@ export interface PromosiData {
 
 export function PromosiModule() {
   const { showToast, showConfirm } = useNotification();
+  const { isAdmin } = useAuth();
 
   const [promosiList, setPromosiList] = useState<PromosiData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Preview state for Excel import before saving to database
   const [previewItems, setPreviewItems] = useState<PromosiData[] | null>(null);
@@ -343,6 +346,90 @@ export function PromosiModule() {
     showToast('Mode Edit', `Mengedit data penerimaan nomor ${item.nomor}`, 'info');
   };
 
+  // Selection Handlers (Khusus Admin)
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === promosiList.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(promosiList.map(r => r.id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk Delete (Khusus Admin)
+  const handleBulkDelete = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi hapus massal khusus untuk Admin.', 'danger');
+      return;
+    }
+    if (selectedIds.length === 0) {
+      showToast('Pilih Data', 'Pilih setidaknya satu baris data promosi untuk dihapus.', 'info');
+      return;
+    }
+
+    showConfirm({
+      title: 'Konfirmasi Hapus Massal Data Promosi (Admin)',
+      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} data barang promosi yang dipilih secara permanen dari database?`,
+      confirmText: `Ya, Hapus ${selectedIds.length} Data`,
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const { error } = await supabase
+            .from('promosi')
+            .delete()
+            .in('id', selectedIds);
+
+          if (error) {
+            console.error('Bulk delete error:', error);
+            showToast('Peringatan', error.message, 'danger');
+          } else {
+            showToast('Sukses Hapus Massal', `${selectedIds.length} data promosi berhasil dihapus dari database!`, 'success');
+          }
+        } catch (e: any) {
+          console.error(e);
+        }
+
+        const nextList = promosiList.filter(item => !selectedIds.includes(item.id));
+        setPromosiList(nextList);
+        setSelectedIds([]);
+        setLoading(false);
+      }
+    });
+  };
+
+  // Clear All Data in Table (Khusus Admin)
+  const handleClearAllPromosi = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi kosongkan seluruh tabel khusus untuk Admin.', 'danger');
+      return;
+    }
+
+    showConfirm({
+      title: 'Kosongkan Semua Data Promosi (Admin)',
+      message: `PERINGATAN: Anda akan menghapus SELURUH (${promosiList.length}) data barang promosi dari database. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
+      confirmText: 'Ya, Kosongkan Semua',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await supabase.from('promosi').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch {}
+        setPromosiList([]);
+        setSelectedIds([]);
+        setLoading(false);
+        showToast('Dibersihkan', 'Seluruh data promosi berhasil dikosongkan dari database', 'info');
+      }
+    });
+  };
+
   const handleDelete = (id: string) => {
     showConfirm({
       title: 'Hapus Data Penerimaan',
@@ -354,6 +441,7 @@ export function PromosiModule() {
         const itemToDelete = promosiList.find(item => item.id === id);
         const updated = promosiList.filter(item => item.id !== id);
         setPromosiList(updated);
+        setSelectedIds(prev => prev.filter(x => x !== id));
 
         try {
           let { error } = await supabase.from('promosi').delete().eq('id', id);
@@ -364,8 +452,8 @@ export function PromosiModule() {
           }
 
           if (error) {
-            console.warn('Supabase delete warning:', error.message);
-            showToast('Peringatan', `Terhapus lokal, catatan Supabase: ${error.message}`, 'info');
+            console.warn('Database delete warning:', error.message);
+            showToast('Peringatan', `Terhapus lokal: ${error.message}`, 'info');
           } else {
             showToast('Berhasil', 'Data penerimaan berhasil dihapus dari Database', 'success');
             fetchPromosiData();
@@ -830,19 +918,31 @@ export function PromosiModule() {
               Data Barang Diterima
             </h2>
             <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
-              Database Supabase (Tabel: promosi)
+              Tabel Penerimaan Barang Promosi ({promosiList.length} Total Data)
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleClearAllPromosi}
+                disabled={loading || promosiList.length === 0}
+                className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Khusus Admin: Kosongkan seluruh data tabel promosi"
+              >
+                <Trash2 size={14} />
+                <span>Reset Tabel</span>
+              </button>
+            )}
+
             <button
               onClick={fetchPromosiData}
               disabled={loading}
-              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
               title="Refresh data dari database"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Refresh</span>
+              <RefreshCw size={14} className={loading ? 'animate-spin text-blue-600' : ''} />
             </button>
 
             {/* BUTTON 1: DOWNLOAD TEMPLATE EXCEL */}
@@ -879,11 +979,58 @@ export function PromosiModule() {
           </div>
         </div>
 
+        {/* Admin Bulk Action Banner */}
+        {isAdmin && selectedIds.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-red-50 border-2 border-red-200 rounded-xl animate-in fade-in duration-150 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+              <div>
+                <span className="text-xs font-black text-red-950 uppercase tracking-wide">
+                  Mode Admin: {selectedIds.length} Dari {promosiList.length} Data Dipilih
+                </span>
+                <p className="text-[11px] text-red-700 font-medium m-0">
+                  Pilih aksi massal untuk menghapus data terpilih sekaligus dari database.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition-all cursor-pointer shadow-2xs"
+              >
+                Batal Pilihan
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={loading}
+                className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              >
+                <Trash2 size={14} />
+                <span>Hapus Massal Terpilih ({selectedIds.length})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* MAIN DATA TABLE */}
         <div className="overflow-x-auto border border-slate-200 rounded-lg">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 text-slate-700 font-extrabold uppercase border-b border-slate-200">
               <tr>
+                {isAdmin && (
+                  <th className="p-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={promosiList.length > 0 && selectedIds.length === promosiList.length}
+                      onChange={handleToggleSelectAll}
+                      title="Pilih Semua (Admin)"
+                      className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                    />
+                  </th>
+                )}
                 <th className="p-3">Nomor</th>
                 <th className="p-3">Tgl Terima</th>
                 <th className="p-3">Material</th>
@@ -900,60 +1047,74 @@ export function PromosiModule() {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-slate-500 font-semibold">
+                  <td colSpan={isAdmin ? 12 : 11} className="p-8 text-center text-slate-500 font-semibold">
                     <RefreshCw size={20} className="animate-spin inline-block mr-2 text-blue-600" />
-                    Memuat data penerimaan dari Supabase...
+                    Memuat data penerimaan...
                   </td>
                 </tr>
               ) : promosiList.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-slate-400 font-bold">
+                  <td colSpan={isAdmin ? 12 : 11} className="p-8 text-center text-slate-400 font-bold">
                     Belum ada data penerimaan barang promosi.
                   </td>
                 </tr>
               ) : (
-                promosiList.map((row) => (
-                  <tr key={row.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="p-3 font-mono font-bold text-orange-600 whitespace-nowrap">
-                      {row.nomor}
-                    </td>
-                    <td className="p-3 whitespace-nowrap">{row.tgl_terima}</td>
-                    <td className="p-3 font-semibold text-slate-900 max-w-[180px] truncate" title={row.material}>
-                      {row.material}
-                    </td>
-                    <td className="p-3 text-slate-700 whitespace-nowrap">{row.pengirim || '-'}</td>
-                    <td className="p-3 text-slate-700 whitespace-nowrap">{row.penerima || '-'}</td>
-                    <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{row.nopol || '-'}</td>
-                    <td className="p-3 text-slate-700 whitespace-nowrap">{row.expedisi || '-'}</td>
-                    <td className="p-3 text-right font-mono font-bold whitespace-nowrap">
-                      {formatNumber(row.jumlah_ctn)}
-                    </td>
-                    <td className="p-3 text-right font-mono font-bold whitespace-nowrap">
-                      {formatNumber(row.jumlah_pcs)}
-                    </td>
-                    <td className="p-3 text-slate-600 max-w-[150px] truncate" title={row.keterangan}>
-                      {row.keterangan || '-'}
-                    </td>
-                    <td className="p-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleEdit(row)}
-                          className="p-1.5 rounded-md bg-white hover:bg-blue-50 border border-slate-200 text-slate-700 hover:text-blue-600 cursor-pointer transition-all shadow-2xs"
-                          title="Edit"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="p-1.5 rounded-md bg-white hover:bg-red-50 border border-slate-200 text-slate-700 hover:text-red-600 cursor-pointer transition-all shadow-2xs"
-                          title="Hapus"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                promosiList.map((row) => {
+                  const isSelected = selectedIds.includes(row.id);
+                  return (
+                    <tr key={row.id} className={`transition-colors ${isSelected ? 'bg-red-50/70 hover:bg-red-100/50' : 'hover:bg-blue-50/50'}`}>
+                      {isAdmin && (
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(row.id)}
+                            className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                            title="Pilih data"
+                          />
+                        </td>
+                      )}
+                      <td className="p-3 font-mono font-bold text-orange-600 whitespace-nowrap">
+                        {row.nomor}
+                      </td>
+                      <td className="p-3 whitespace-nowrap">{row.tgl_terima}</td>
+                      <td className="p-3 font-semibold text-slate-900 max-w-[180px] truncate" title={row.material}>
+                        {row.material}
+                      </td>
+                      <td className="p-3 text-slate-700 whitespace-nowrap">{row.pengirim || '-'}</td>
+                      <td className="p-3 text-slate-700 whitespace-nowrap">{row.penerima || '-'}</td>
+                      <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{row.nopol || '-'}</td>
+                      <td className="p-3 text-slate-700 whitespace-nowrap">{row.expedisi || '-'}</td>
+                      <td className="p-3 text-right font-mono font-bold whitespace-nowrap">
+                        {formatNumber(row.jumlah_ctn)}
+                      </td>
+                      <td className="p-3 text-right font-mono font-bold whitespace-nowrap">
+                        {formatNumber(row.jumlah_pcs)}
+                      </td>
+                      <td className="p-3 text-slate-600 max-w-[150px] truncate" title={row.keterangan}>
+                        {row.keterangan || '-'}
+                      </td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleEdit(row)}
+                            className="p-1.5 rounded-md bg-white hover:bg-blue-50 border border-slate-200 text-slate-700 hover:text-blue-600 cursor-pointer transition-all shadow-2xs"
+                            title="Edit"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(row.id)}
+                            className="p-1.5 rounded-md bg-white hover:bg-red-50 border border-slate-200 text-slate-700 hover:text-red-600 cursor-pointer transition-all shadow-2xs"
+                            title="Hapus"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

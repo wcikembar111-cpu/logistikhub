@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../hooks/useSupabase';
 
 const KINO_LOGO_URL = 'https://res.cloudinary.com/dedtb3vnj/image/upload/v1782568576/kino_yrhkmc.png';
 
@@ -76,9 +77,11 @@ type SJSubTab = 'dashboard' | 'form' | 'rekap' | 'settings' | 'print';
 
 export function SuratJalanModule() {
   const { showToast, showConfirm } = useNotification();
+  const { isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState<SJSubTab>('dashboard');
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   // Saved Rekap State
   const [savedRekapList, setSavedRekapList] = useState<SavedRekapSJ[]>([]);
@@ -418,6 +421,91 @@ export function SuratJalanModule() {
     setActiveTab('dashboard');
   };
 
+  // Selection Handlers (Khusus Admin)
+  const handleToggleSelectAllDocs = () => {
+    if (selectedDocIds.length === filteredDashDocs.length) {
+      setSelectedDocIds([]);
+    } else {
+      setSelectedDocIds(filteredDashDocs.map(d => d.id));
+    }
+  };
+
+  const handleToggleSelectDoc = (id: string) => {
+    setSelectedDocIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk Delete Documents (Khusus Admin)
+  const handleBulkDeleteDocs = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi hapus massal khusus untuk Admin.', 'danger');
+      return;
+    }
+    if (selectedDocIds.length === 0) {
+      showToast('Pilih Data', 'Pilih setidaknya satu dokumen Surat Jalan untuk dihapus.', 'info');
+      return;
+    }
+
+    showConfirm({
+      title: 'Konfirmasi Hapus Massal Surat Jalan (Admin)',
+      message: `Apakah Anda yakin ingin menghapus ${selectedDocIds.length} dokumen Surat Jalan yang dipilih beserta seluruh rincian barangnya secara permanen dari Database?`,
+      confirmText: `Ya, Hapus ${selectedDocIds.length} Dokumen`,
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          // Delete items first
+          await supabase.from('items').delete().in('doc_id', selectedDocIds);
+          // Delete documents
+          const { error } = await supabase.from('documents').delete().in('id', selectedDocIds);
+          if (error) {
+            console.error('Bulk delete doc error:', error);
+            showToast('Peringatan', error.message, 'danger');
+          } else {
+            showToast('Sukses Hapus Massal', `${selectedDocIds.length} dokumen Surat Jalan berhasil dihapus dari Database!`, 'success');
+          }
+        } catch (e: any) {
+          console.error(e);
+        }
+
+        const nextDocs = documents.filter(d => !selectedDocIds.includes(d.id));
+        setDocuments(nextDocs);
+        setSelectedDocIds([]);
+        setLoading(false);
+        fetchAllData();
+      }
+    });
+  };
+
+  // Clear All Documents (Khusus Admin)
+  const handleClearAllDocs = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi reset seluruh dokumen Surat Jalan khusus untuk Admin.', 'danger');
+      return;
+    }
+
+    showConfirm({
+      title: 'Kosongkan Semua Dokumen Surat Jalan (Admin)',
+      message: `PERINGATAN: Anda akan menghapus SELURUH (${documents.length}) dokumen Surat Jalan dan barangnya dari Database. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
+      confirmText: 'Ya, Kosongkan Semua',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await supabase.from('items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          await supabase.from('documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch {}
+        setDocuments([]);
+        setSelectedDocIds([]);
+        setLoading(false);
+        showToast('Dibersihkan', 'Seluruh dokumen Surat Jalan berhasil dikosongkan dari Database', 'info');
+      }
+    });
+  };
+
   // Delete Document
   const handleDeleteDocument = (id: string) => {
     showConfirm({
@@ -429,12 +517,13 @@ export function SuratJalanModule() {
       onConfirm: async () => {
         const updated = documents.filter(d => d.id !== id);
         setDocuments(updated);
+        setSelectedDocIds(prev => prev.filter(x => x !== id));
 
         try {
           await supabase.from('items').delete().eq('doc_id', id);
           const { error: delErr } = await supabase.from('documents').delete().eq('id', id);
           if (delErr) {
-            console.error('Supabase delete doc error:', delErr);
+            console.error('Database delete doc error:', delErr);
             showToast('Gagal Hapus DB', delErr.message, 'danger');
           } else {
             showToast('Terhapus', 'Dokumen SJ beserta barangnya berhasil dihapus dari Database', 'success');
@@ -1098,6 +1187,29 @@ export function SuratJalanModule() {
                     <option key={j.id} value={j.id}>{j.nama} ({j.kode})</option>
                   ))}
                 </select>
+
+                <button
+                  type="button"
+                  onClick={fetchAllData}
+                  disabled={loading}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-all shadow-2xs"
+                  title="Refresh Data"
+                >
+                  <RefreshCw size={15} className={loading ? 'animate-spin text-blue-600' : ''} />
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllDocs}
+                    disabled={loading || documents.length === 0}
+                    className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    title="Khusus Admin: Kosongkan seluruh dokumen Surat Jalan"
+                  >
+                    <Trash2 size={14} />
+                    <span>Reset Tabel SJ</span>
+                  </button>
+                )}
               </div>
 
               <button
@@ -1109,10 +1221,57 @@ export function SuratJalanModule() {
               </button>
             </div>
 
+            {/* Admin Bulk Delete Banner */}
+            {isAdmin && selectedDocIds.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-red-50 border-2 border-red-200 rounded-xl animate-in fade-in duration-150 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+                  <div>
+                    <span className="text-xs font-black text-red-950 uppercase tracking-wide">
+                      Mode Admin: {selectedDocIds.length} Dari {filteredDashDocs.length} Dokumen Dipilih
+                    </span>
+                    <p className="text-[11px] text-red-700 font-medium m-0">
+                      Pilih aksi massal untuk menghapus dokumen Surat Jalan terpilih beserta barangnya sekaligus.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDocIds([])}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition-all cursor-pointer shadow-2xs"
+                  >
+                    Batal Pilihan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteDocs}
+                    disabled={loading}
+                    className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                  >
+                    <Trash2 size={14} />
+                    <span>Hapus Massal Terpilih ({selectedDocIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 text-slate-700 font-extrabold uppercase border-b border-slate-200">
                   <tr>
+                    {isAdmin && (
+                      <th className="p-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredDashDocs.length > 0 && selectedDocIds.length === filteredDashDocs.length}
+                          onChange={handleToggleSelectAllDocs}
+                          title="Pilih Semua (Admin)"
+                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                        />
+                      </th>
+                    )}
                     <th className="p-3">Nomor SJ</th>
                     <th className="p-3">Tanggal</th>
                     <th className="p-3">Jenis</th>
@@ -1125,14 +1284,14 @@ export function SuratJalanModule() {
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-500">
+                      <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-slate-500">
                         <RefreshCw size={20} className="animate-spin inline-block mr-2 text-blue-600" />
                         Memuat data Surat Jalan...
                       </td>
                     </tr>
                   ) : filteredDashDocs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">
+                      <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-slate-400 font-bold">
                         Belum ada dokumen Surat Jalan. Klik <strong>"Buat SJ Baru"</strong> untuk menambah.
                       </td>
                     </tr>
@@ -1140,8 +1299,20 @@ export function SuratJalanModule() {
                     filteredDashDocs.map((doc) => {
                       const t = tujuanList.find(tuj => tuj.id === doc.tujuanId);
                       const j = jenisList.find(jen => jen.id === doc.jenisId);
+                      const isSelected = selectedDocIds.includes(doc.id);
                       return (
-                        <tr key={doc.id} className="hover:bg-blue-50/40 transition-colors">
+                        <tr key={doc.id} className={`transition-colors ${isSelected ? 'bg-red-50/70 hover:bg-red-100/50' : 'hover:bg-blue-50/40'}`}>
+                          {isAdmin && (
+                            <td className="p-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectDoc(doc.id)}
+                                className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                                title="Pilih dokumen"
+                              />
+                            </td>
+                          )}
                           <td className="p-3 font-mono font-bold text-amber-600 whitespace-nowrap">
                             {doc.nomorSJ}
                           </td>

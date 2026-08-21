@@ -25,9 +25,11 @@ import {
   Eye, 
   Clock, 
   ShieldCheck,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../hooks/useSupabase';
 
 const LOGO_URL = 'https://res.cloudinary.com/dedtb3vnj/image/upload/v1782568576/kino_yrhkmc.png';
 
@@ -60,7 +62,8 @@ function normKey(obj: Record<string, any>, candidates: string[]) {
 }
 
 export function StockOpnameModule() {
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
+  const { isAdmin } = useAuth();
 
   // Navigation & Route state: 'form' | 'ba'
   const [currentRoute, setCurrentRoute] = useState<'form' | 'ba'>('form');
@@ -71,6 +74,9 @@ export function StockOpnameModule() {
 
   // Preview overlay state
   const [previewMode, setPreviewMode] = useState<'none' | 'form' | 'ba'>('none');
+
+  // Admin Mass Delete State (Berita Acara Result Table)
+  const [selectedBaNos, setSelectedBaNos] = useState<number[]>([]);
 
   // ============================================================
   //  STATE MODUL 1: GENERATOR FORM SO
@@ -122,6 +128,68 @@ export function StockOpnameModule() {
   const [baTgl, setBaTgl] = useState(new Date().toISOString().slice(0, 10));
   const [baGudang, setBaGudang] = useState('Gudang Cikembar');
   const [baPaperSize, setBaPaperSize] = useState<'A4' | 'Letter'>('A4');
+
+  // Handlers Hapus Massal Admin
+  const handleToggleSelectAllBa = (visibleNos: number[]) => {
+    if (selectedBaNos.length === visibleNos.length) {
+      setSelectedBaNos([]);
+    } else {
+      setSelectedBaNos(visibleNos);
+    }
+  };
+
+  const handleToggleSelectBa = (no: number) => {
+    setSelectedBaNos(prev => 
+      prev.includes(no) ? prev.filter(x => x !== no) : [...prev, no]
+    );
+  };
+
+  const handleBulkDeleteBa = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi hapus massal khusus untuk Admin.', 'danger');
+      return;
+    }
+    if (selectedBaNos.length === 0) {
+      showToast('Pilih Data', 'Pilih setidaknya satu baris rekonsiliasi.', 'info');
+      return;
+    }
+
+    showConfirm({
+      title: 'Konfirmasi Hapus Massal Baris Rekonsiliasi (Admin)',
+      message: `Apakah Anda yakin ingin menghapus ${selectedBaNos.length} baris hasil rekonsiliasi terpilih?`,
+      confirmText: `Ya, Hapus ${selectedBaNos.length} Baris`,
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: () => {
+        const nextRows = joinedRows.filter(r => !selectedBaNos.includes(r.no));
+        // re-number rows
+        const renumbered = nextRows.map((r, idx) => ({ ...r, no: idx + 1 }));
+        setJoinedRows(renumbered);
+        setSelectedBaNos([]);
+        showToast('Sukses', `${selectedBaNos.length} baris rekonsiliasi berhasil dihapus.`, 'success');
+      }
+    });
+  };
+
+  const handleClearAllBa = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi reset tabel rekonsiliasi khusus untuk Admin.', 'danger');
+      return;
+    }
+
+    showConfirm({
+      title: 'Kosongkan Seluruh Tabel Rekonsiliasi (Admin)',
+      message: 'Apakah Anda yakin ingin mengosongkan seluruh baris tabel rekonsiliasi Berita Acara?',
+      confirmText: 'Ya, Kosongkan Semua',
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: () => {
+        setJoinedRows([]);
+        setSelectedBaNos([]);
+        showToast('Tabel Dikosongkan', 'Seluruh data rekonsiliasi telah dikosongkan.', 'info');
+      }
+    });
+  };
 
   // ============================================================
   //  LOGIKA RESET & ROUTER
@@ -1563,9 +1631,9 @@ export function StockOpnameModule() {
                 </div>
               )}
 
-              {/* Search Bar */}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
+              {/* Search Bar & Admin Actions */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="relative flex-1 min-w-[220px]">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
@@ -1575,13 +1643,72 @@ export function StockOpnameModule() {
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllBa}
+                    disabled={joinedRows.length === 0}
+                    className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    title="Khusus Admin: Kosongkan tabel rekonsiliasi"
+                  >
+                    <Trash2 size={14} />
+                    <span>Reset Tabel Rekonsiliasi</span>
+                  </button>
+                )}
               </div>
+
+              {/* Admin Bulk Action Banner */}
+              {isAdmin && selectedBaNos.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-red-50 border-2 border-red-200 rounded-xl animate-in fade-in duration-150 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+                    <div>
+                      <span className="text-xs font-black text-red-950 uppercase tracking-wide">
+                        Mode Admin: {selectedBaNos.length} Dari {filteredJoinedRows.length} Baris Dipilih
+                      </span>
+                      <p className="text-[11px] text-red-700 font-medium m-0">
+                        Hapus baris hasil rekonsiliasi terpilih sekaligus.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBaNos([])}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      Batal Pilihan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBulkDeleteBa}
+                      className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                    >
+                      <Trash2 size={14} />
+                      <span>Hapus Massal Terpilih ({selectedBaNos.length})</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Table Preview */}
               <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-[300px] overflow-y-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-900 text-white font-bold sticky top-0">
                     <tr>
+                      {isAdmin && (
+                        <th className="p-2 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={filteredJoinedRows.length > 0 && selectedBaNos.length === filteredJoinedRows.length}
+                            onChange={() => handleToggleSelectAllBa(filteredJoinedRows.map(r => r.no))}
+                            title="Pilih Semua (Admin)"
+                            className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                          />
+                        </th>
+                      )}
                       <th className="p-2 w-10 text-center">NO</th>
                       <th className="p-2 w-16 text-center">SLoc</th>
                       <th className="p-2 w-28">Material</th>
@@ -1593,22 +1720,36 @@ export function StockOpnameModule() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-mono">
-                    {filteredJoinedRows.slice(0, 100).map(r => (
-                      <tr key={r.no} className="hover:bg-slate-50">
-                        <td className="p-2 text-center text-slate-400">{r.no}</td>
-                        <td className="p-2 text-center font-bold text-blue-900">{r.sloc}</td>
-                        <td className="p-2">{r.material}</td>
-                        <td className="p-2 font-sans">{r.desc}</td>
-                        <td className="p-2 text-center text-slate-500">{r.bun}</td>
-                        <td className="p-2 text-right">{r.sapQty.toLocaleString('id-ID')}</td>
-                        <td className="p-2 text-right">{r.fisik.toLocaleString('id-ID')}</td>
-                        <td className={`p-2 text-right font-bold ${
-                          r.selisih > 0 ? 'text-emerald-600' : r.selisih < 0 ? 'text-red-600' : 'text-slate-400'
-                        }`}>
-                          {r.selisih > 0 ? `+${r.selisih.toLocaleString('id-ID')}` : r.selisih.toLocaleString('id-ID')}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredJoinedRows.slice(0, 100).map(r => {
+                      const isSelected = selectedBaNos.includes(r.no);
+                      return (
+                        <tr key={r.no} className={`transition-colors ${isSelected ? 'bg-red-50/70 hover:bg-red-100/50' : 'hover:bg-slate-50'}`}>
+                          {isAdmin && (
+                            <td className="p-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectBa(r.no)}
+                                className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                                title="Pilih baris"
+                              />
+                            </td>
+                          )}
+                          <td className="p-2 text-center text-slate-400">{r.no}</td>
+                          <td className="p-2 text-center font-bold text-blue-900">{r.sloc}</td>
+                          <td className="p-2">{r.material}</td>
+                          <td className="p-2 font-sans">{r.desc}</td>
+                          <td className="p-2 text-center text-slate-500">{r.bun}</td>
+                          <td className="p-2 text-right">{r.sapQty.toLocaleString('id-ID')}</td>
+                          <td className="p-2 text-right">{r.fisik.toLocaleString('id-ID')}</td>
+                          <td className={`p-2 text-right font-bold ${
+                            r.selisih > 0 ? 'text-emerald-600' : r.selisih < 0 ? 'text-red-600' : 'text-slate-400'
+                          }`}>
+                            {r.selisih > 0 ? `+${r.selisih.toLocaleString('id-ID')}` : r.selisih.toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

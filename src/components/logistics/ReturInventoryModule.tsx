@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../hooks/useSupabase';
 import { ReturInventoryItem } from '../../types';
 
 const COLOR_PALETTE = [
@@ -33,12 +34,14 @@ const COLOR_PALETTE = [
 
 export function ReturInventoryModule() {
   const { showToast, showConfirm } = useNotification();
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'data'>('dashboard');
   const [returData, setReturData] = useState<ReturInventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [lastUpdated, setLastUpdated] = useState<string>('-');
   const [uploadPreview, setUploadPreview] = useState<ReturInventoryItem[] | null>(null);
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination for table
@@ -333,11 +336,102 @@ export function ReturInventoryModule() {
     }
   };
 
-  const handleClearAll = () => {
+  // Selection Handlers (Khusus Admin)
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredData.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredData.map(r => r.id));
+    }
+  };
+
+  const handleToggleSelect = (id: string | number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk Delete Selected Data (Khusus Admin)
+  const handleBulkDelete = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi hapus massal khusus untuk Admin.', 'danger');
+      return;
+    }
+    if (selectedIds.length === 0) {
+      showToast('Pilih Data', 'Pilih setidaknya satu baris data retur untuk dihapus.', 'info');
+      return;
+    }
+
     showConfirm({
-      title: 'Kosongkan Semua Data Retur',
-      message: 'Apakah Anda yakin ingin menghapus seluruh data retur inventory?',
-      confirmText: 'Ya, Kosongkan',
+      title: 'Konfirmasi Hapus Massal Data Retur (Admin)',
+      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} baris data retur yang dipilih secara permanen dari database?`,
+      confirmText: `Ya, Hapus ${selectedIds.length} Data`,
+      cancelText: 'Batal',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const { error } = await supabase
+            .from('retur_inventory')
+            .delete()
+            .in('id', selectedIds);
+
+          if (error) {
+            console.error('Bulk delete error:', error);
+            showToast('Gagal Hapus DB', error.message, 'danger');
+          } else {
+            showToast('Sukses Hapus Massal', `${selectedIds.length} data retur berhasil dihapus dari database!`, 'success');
+          }
+        } catch (e: any) {
+          console.error(e);
+        }
+
+        const nextData = returData.filter(d => !selectedIds.includes(d.id));
+        setReturData(nextData);
+        localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
+        setSelectedIds([]);
+        setLoading(false);
+      }
+    });
+  };
+
+  // Delete Single Row (Khusus Admin)
+  const handleDeleteSingleRow = (item: ReturInventoryItem) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus data inventori khusus untuk Admin.', 'danger');
+      return;
+    }
+
+    showConfirm({
+      title: 'Hapus Data Retur',
+      message: `Hapus item "${item.item_code} - ${item.item_name || ''}" dari database?`,
+      confirmText: 'Ya, Hapus',
+      type: 'danger',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await supabase.from('retur_inventory').delete().eq('id', item.id);
+        } catch {}
+        const nextData = returData.filter(d => d.id !== item.id);
+        setReturData(nextData);
+        localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
+        setSelectedIds(prev => prev.filter(x => x !== item.id));
+        setLoading(false);
+        showToast('Dihapus', 'Data retur berhasil dihapus', 'info');
+      }
+    });
+  };
+
+  const handleClearAll = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Fungsi kosongkan seluruh tabel khusus untuk Admin.', 'danger');
+      return;
+    }
+
+    showConfirm({
+      title: 'Kosongkan Semua Data Retur (Admin)',
+      message: `PERINGATAN: Anda akan menghapus SELURUH (${returData.length}) data retur inventory dari database. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
+      confirmText: 'Ya, Kosongkan Semua',
       type: 'danger',
       onConfirm: async () => {
         setLoading(true);
@@ -346,8 +440,9 @@ export function ReturInventoryModule() {
         } catch {}
         localStorage.removeItem('logistics_retur_inventory');
         setReturData([]);
+        setSelectedIds([]);
         setLoading(false);
-        showToast('Dibersihkan', 'Seluruh data retur berhasil dikosongkan', 'info');
+        showToast('Dibersihkan', 'Seluruh data retur berhasil dikosongkan dari database', 'info');
       }
     });
   };
@@ -853,6 +948,42 @@ export function ReturInventoryModule() {
 
           {/* Search & Main Data Table */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
+            {/* Admin Bulk Action Banner */}
+            {isAdmin && selectedIds.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-red-50 border-b-2 border-red-200 animate-in fade-in duration-150">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+                  <div>
+                    <span className="text-xs font-black text-red-950 uppercase tracking-wide">
+                      Mode Admin: {selectedIds.length} Dari {filteredData.length} Data Retur Dipilih
+                    </span>
+                    <p className="text-[11px] text-red-700 font-medium m-0">
+                      Pilih aksi massal untuk menghapus data inventori retur sekaligus dari database.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds([])}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300 transition-all cursor-pointer shadow-2xs"
+                  >
+                    Batal Pilihan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkDelete}
+                    disabled={loading}
+                    className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                  >
+                    <Trash2 size={14} />
+                    <span>Hapus Massal Terpilih ({selectedIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Search Input Bar */}
             <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
               <div className="relative flex-1 max-w-md">
@@ -888,6 +1019,17 @@ export function ReturInventoryModule() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 bg-blue-50/90 backdrop-blur-xs text-blue-950 font-bold border-b border-slate-200 z-10 uppercase tracking-wider text-[10px]">
                   <tr>
+                    {isAdmin && (
+                      <th className="py-2.5 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
+                          onChange={handleToggleSelectAll}
+                          title="Pilih Semua (Admin)"
+                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                        />
+                      </th>
+                    )}
                     <th className="py-2.5 px-3 w-12 text-center">No</th>
                     <th className="py-2.5 px-3 min-w-[110px]">Item Code</th>
                     <th className="py-2.5 px-3 min-w-[180px]">Item Name</th>
@@ -898,50 +1040,79 @@ export function ReturInventoryModule() {
                     <th className="py-2.5 px-3 min-w-[100px]">Batch</th>
                     <th className="py-2.5 px-3 min-w-[100px]">Expired</th>
                     <th className="py-2.5 px-3 min-w-[120px]">By ED</th>
+                    {isAdmin && (
+                      <th className="py-2.5 px-3 text-center w-16">Aksi</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {paginatedData.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-slate-400">
+                      <td colSpan={isAdmin ? 12 : 10} className="py-8 text-center text-slate-400">
                         {searchQuery ? 'Tidak ada data yang cocok dengan pencarian.' : 'Belum ada data retur.'}
                       </td>
                     </tr>
                   ) : (
-                    paginatedData.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-2.5 px-3 text-center text-slate-400 font-bold">
-                          {(currentPage - 1) * itemsPerPage + idx + 1}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-blue-900">
-                          {item.item_code || '-'}
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-900">
-                          {item.item_name || '-'}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md font-semibold text-[10px] border border-amber-200">
-                            {item.category || '-'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-700">
-                          {item.location || '-'}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                          {formatNumber(item.last_qty_pcs)}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500 font-semibold">{item.uom || 'PCS'}</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{item.batch || '-'}</td>
-                        <td className="py-2.5 px-3 text-slate-600 text-[11px]">
-                          {item.expired ? item.expired.slice(0, 10) : '-'}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 bg-blue-50 text-blue-900 rounded-md font-bold text-[10px] border border-blue-200">
-                            {item.by_ed || '-'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    paginatedData.map((item, idx) => {
+                      const isSelected = selectedIds.includes(item.id);
+                      return (
+                        <tr key={item.id || idx} className={`transition-colors ${isSelected ? 'bg-red-50/70 hover:bg-red-100/50' : 'hover:bg-slate-50'}`}>
+                          {isAdmin && (
+                            <td className="py-2.5 px-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelect(item.id)}
+                                className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                                title="Pilih baris"
+                              />
+                            </td>
+                          )}
+                          <td className="py-2.5 px-3 text-center text-slate-400 font-bold">
+                            {(currentPage - 1) * itemsPerPage + idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-blue-900">
+                            {item.item_code || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">
+                            {item.item_name || '-'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md font-semibold text-[10px] border border-amber-200">
+                              {item.category || '-'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-slate-700">
+                            {item.location || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            {formatNumber(item.last_qty_pcs)}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500 font-semibold">{item.uom || 'PCS'}</td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{item.batch || '-'}</td>
+                          <td className="py-2.5 px-3 text-slate-600 text-[11px]">
+                            {item.expired ? item.expired.slice(0, 10) : '-'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-900 rounded-md font-bold text-[10px] border border-blue-200">
+                              {item.by_ed || '-'}
+                            </span>
+                          </td>
+                          {isAdmin && (
+                            <td className="py-2.5 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSingleRow(item)}
+                                className="p-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                                title="Hapus baris ini"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
