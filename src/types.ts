@@ -84,3 +84,17 @@ export function formatTodoTask(cleanTask: string, priority: TodoPriority, isBlin
   }
   return result;
 }
+
+export interface QrLabelItem {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  lpn: string;
+  batch: string;
+  ed: string;
+  dataUrl?: string;
+  createdAt: number;
+}
+
+export type LabelPresetSize = '100x80' | '80x100' | '50x30' | '70x50' | '100x150';
+

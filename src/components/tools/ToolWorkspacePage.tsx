@@ -152,17 +152,6 @@ export function ToolWorkspacePage({
           onSetBatchItems={onSetBatchQrItems}
         />
       </Suspense>
-
-      {/* QR Batch Results Section (displayed on this dedicated page when QR tool is active) */}
-      {activeTool === 'qr-generator' && batchQrItems.length > 0 && (
-        <div className="mt-6">
-          <BatchQrSection
-            items={batchQrItems}
-            onClear={() => onSetBatchQrItems([])}
-            onOpenModal={() => onOpenModal('qr-generator')}
-          />
-        </div>
-      )}
     </div>
   );
 }

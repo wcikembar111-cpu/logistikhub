@@ -155,7 +155,7 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5 sm:gap-3 pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3 pb-2">
           {filteredTools.map((t) => {
             const isActive = activeTool === t.id;
             return (
@@ -165,7 +165,7 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
                   onSelectTool(t.id);
                 }}
                 title={`${t.title} - Klik untuk Buka Halaman Tool`}
-                className={`bg-white border p-3 flex flex-col items-center justify-center relative min-h-[100px] sm:min-h-[110px] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:shadow-xs hover:border-orange-400 cursor-pointer group rounded-xl text-slate-800 ${
+                className={`bg-white border p-3 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[112px] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:shadow-xs hover:border-orange-400 cursor-pointer group rounded-xl text-slate-800 ${
                   isActive 
                     ? 'border-2 border-blue-900 ring-2 ring-blue-100 shadow-2xs' 
                     : 'border-slate-200 shadow-2xs'
@@ -199,14 +199,11 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
                   {t.icon}
                 </div>
 
-                {/* Title Info */}
-                <div className="w-full text-center mt-2 px-0.5 pointer-events-none">
-                  <h4 className="font-bold text-xs text-slate-900 m-0 tracking-tight leading-snug break-words group-hover:text-blue-900 transition-colors line-clamp-1">
+                {/* Title Info - Only title, never truncated */}
+                <div className="w-full text-center mt-2.5 px-0.5 pointer-events-none flex items-center justify-center min-h-[32px]">
+                  <h4 className="font-bold text-xs text-slate-900 m-0 tracking-tight leading-snug break-words group-hover:text-blue-900 transition-colors">
                     {t.title}
                   </h4>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5 line-clamp-1">
-                    {t.category}
-                  </p>
                 </div>
               </div>
             );

@@ -10,6 +10,7 @@ import { LazyFallback } from './common/LazyFallback';
 import { useNotification } from '../context/NotificationContext';
 import { QrItem } from './BatchQrSection';
 
+const QrGeneratorHoneywellModule = lazy(() => import('./logistics/QrGeneratorHoneywellModule').then(m => ({ default: m.QrGeneratorHoneywellModule })));
 const EdCheckerModule = lazy(() => import('./logistics/EdCheckerModule').then(m => ({ default: m.EdCheckerModule })));
 const StockOpnameModule = lazy(() => import('./logistics/StockOpnameModule').then(m => ({ default: m.StockOpnameModule })));
 const SnGeneratorModule = lazy(() => import('./logistics/SnGeneratorModule').then(m => ({ default: m.SnGeneratorModule })));
@@ -248,156 +249,10 @@ export function EmbeddedToolsWorkspace({
       <div className="bg-white border border-slate-200 shadow-xs rounded-2xl p-4 sm:p-6">
         {/* ACTIVE TOOL MODULE RENDERING */}
         <div className="w-full">
-          {activeTool === 'qr-generator' && (
-            <div className="space-y-4">
-              {/* QR Subtabs */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2 p-1 bg-slate-200/80 rounded-2xl border border-slate-300/80">
-                  <button
-                    onClick={() => setQrMode('single')}
-                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      qrMode === 'single' ? 'bg-blue-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-300/60'
-                    }`}
-                  >
-                    <QrCode size={14} />
-                    <span>QR Code Satuan</span>
-                  </button>
-
-                  <button
-                    onClick={() => setQrMode('batch')}
-                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      qrMode === 'batch' ? 'bg-blue-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-300/60'
-                    }`}
-                  >
-                    <Layers size={14} />
-                    <span>QR Code Massal ({batchItems.length})</span>
-                  </button>
-                </div>
-
-                {/* Color pickers */}
-                <div className="flex items-center gap-3 text-xs bg-white p-2 rounded-xl border border-slate-200">
-                  <span className="font-bold text-slate-700">Warna:</span>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <span className="text-slate-500 text-[10px]">Kode:</span>
-                    <input type="color" value={fgColor} onChange={(e) => setFgColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer p-0 bg-transparent border border-slate-300" />
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <span className="text-slate-500 text-[10px]">Latar:</span>
-                    <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer p-0 bg-transparent border border-slate-300" />
-                  </label>
-                </div>
-              </div>
-
-              {/* SINGLE MODE */}
-              {qrMode === 'single' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Teks / Link URL yang ingin dijadikan QR Code:
-                      </label>
-                      <input 
-                        type="text" 
-                        value={singleText}
-                        onChange={(e) => setSingleText(e.target.value)}
-                        placeholder="Ketik teks, link https://..., atau nomor kontak"
-                        className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2">
-                      <button
-                        onClick={handleCopySingle}
-                        disabled={!singleDataUrl}
-                        className="flex-1 py-2.5 px-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
-                      >
-                        {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                        <span>{copied ? 'Tersalin' : 'Salin Gambar'}</span>
-                      </button>
-
-                      <button
-                        onClick={handleDownloadSingle}
-                        disabled={!singleDataUrl}
-                        className="flex-1 py-2.5 px-3 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
-                      >
-                        <Download size={14} />
-                        <span>Unduh PNG</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Single QR Image Display */}
-                  <div className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                    {singleDataUrl ? (
-                      <div className="text-center space-y-2">
-                        <img src={singleDataUrl} alt="QR Preview" className="w-48 h-48 sm:w-52 sm:h-52 object-contain bg-white rounded-xl p-2 border border-slate-200 shadow-2xs mx-auto" />
-                        <div className="font-mono text-[11px] text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 max-w-xs truncate mx-auto">
-                          {singleText}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-slate-400 py-8">Ketik teks di samping untuk membuat QR Code</div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* BATCH MODE */}
-              {qrMode === 'batch' && (
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                      <label className="text-xs font-bold text-slate-700">Daftar Teks / Link (1 Item Per Baris):</label>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => setBatchText('')} className="text-[11px] text-red-600 hover:underline font-bold flex items-center gap-1">
-                          <Eraser size={12} /> Bersihkan Teks
-                        </button>
-                        <label className="text-[11px] text-blue-700 font-bold hover:underline cursor-pointer flex items-center gap-1">
-                          <Upload size={12} /> Impor TXT/CSV
-                          <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
-                        </label>
-                      </div>
-                    </div>
-                    <textarea
-                      rows={3}
-                      value={batchText}
-                      onChange={(e) => setBatchText(e.target.value)}
-                      placeholder="Judul 1, https://link-1.com&#10;Judul 2, https://link-2.com"
-                      className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs font-bold text-slate-700">Hasil Generated ({batchItems.length} QR Code):</span>
-                    <div className="flex items-center gap-2">
-                      <button onClick={generateBatchQrs} className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1">
-                        <RefreshCw size={13} className={isGeneratingBatch ? 'animate-spin' : ''} /> Perbarui
-                      </button>
-                      <button onClick={handleSendToBatchSection} disabled={batchItems.length === 0} className="px-3 py-1.5 rounded-lg bg-blue-900 text-white font-bold text-xs flex items-center gap-1 disabled:opacity-40">
-                        <Eye size={13} /> Kirim ke Grid Bawah
-                      </button>
-                      <button onClick={handleDownloadBatchZip} disabled={batchItems.length === 0 || isZipping} className="px-3.5 py-1.5 rounded-lg bg-orange-500 text-white font-bold text-xs flex items-center gap-1 disabled:opacity-40">
-                        <Download size={13} /> {isZipping ? 'Proses ZIP...' : 'Unduh ZIP'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Batch preview grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-3 bg-white rounded-xl border border-slate-200 custom-scrollbar">
-                    {batchItems.map((item, idx) => (
-                      <div key={item.id} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex flex-col items-center text-center gap-1.5 relative">
-                        <span className="absolute top-1 left-1.5 text-[9px] font-mono text-slate-400">#{idx + 1}</span>
-                        <img src={item.dataUrl} alt={item.label} className="w-28 h-28 object-contain bg-white rounded-md p-1 border border-slate-200" />
-                        <div className="text-[10px] font-bold text-slate-800 truncate w-full" title={item.label}>{item.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           <Suspense fallback={<LazyFallback title="Memuat lembar kerja modul..." />}>
+            {activeTool === 'qr-generator' && (
+              <QrGeneratorHoneywellModule onExportBatchItems={onSetBatchItems} />
+            )}
             {activeTool === 'ed-checker' && <EdCheckerModule />}
             {activeTool === 'stock-opname' && <StockOpnameModule />}
             {activeTool === 'sn-generator' && <SnGeneratorModule />}
