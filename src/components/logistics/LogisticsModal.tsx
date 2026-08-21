@@ -84,22 +84,22 @@ export function LogisticsModal({ isOpen, onClose, initialTab = 'ed-checker' }: L
   const currentTool = toolConfig[initialTab] || toolConfig['ed-checker'];
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-white p-5 sm:p-7 rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 relative max-h-[92vh] flex flex-col overflow-hidden text-left">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white p-4 sm:p-6 xl:p-7 rounded-2xl max-w-5xl xl:max-w-6xl 2xl:max-w-7xl w-full shadow-2xl border border-slate-200 relative max-h-[94vh] flex flex-col overflow-hidden text-left">
         {/* Header - Dedicated to Selected Tool */}
-        <div className="flex items-start justify-between pb-4 mb-4 border-b border-slate-200 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${currentTool.bgGradient} text-white flex items-center justify-center shadow-md shrink-0`}>
+        <div className="flex items-start justify-between pb-3 sm:pb-4 mb-3 sm:mb-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br ${currentTool.bgGradient} text-white flex items-center justify-center shadow-md shrink-0`}>
               {currentTool.icon}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800 m-0">{currentTool.title}</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-800 m-0">{currentTool.title}</h3>
               <p className="text-xs text-slate-500 m-0">{currentTool.subtitle}</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer shrink-0"
+            className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-1.5 sm:p-2 rounded-full transition-all cursor-pointer shrink-0"
             title="Tutup Form"
           >
             <X size={18} />

@@ -20,7 +20,10 @@ import {
   X,
   FileText,
   PieChart as PieIcon,
-  HelpCircle
+  HelpCircle,
+  Database,
+  Copy,
+  Check
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
@@ -32,6 +35,75 @@ const COLOR_PALETTE = [
   '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
 ];
 
+export const RETUR_INVENTORY_SQL_SCRIPT = `-- SCRIPT TABEL RETUR INVENTORY & UPDATE SCHEMA LENGKAP
+CREATE TABLE IF NOT EXISTS public.retur_inventory (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  no TEXT,
+  item_code TEXT,
+  item_name TEXT,
+  category TEXT,
+  location TEXT,
+  location_type TEXT,
+  first_qty NUMERIC DEFAULT 0,
+  last_qty_pcs NUMERIC DEFAULT 0,
+  uom TEXT DEFAULT 'PCS',
+  qty_convert_ctn NUMERIC DEFAULT 0,
+  uom_convert TEXT DEFAULT 'CTN',
+  lpn_serial TEXT,
+  batch TEXT,
+  vendor_batch TEXT,
+  sloc TEXT,
+  expired TEXT,
+  destination_code TEXT,
+  qc_code TEXT,
+  user_tally TEXT,
+  shelf_life TEXT,
+  source TEXT,
+  by_ed TEXT
+);
+
+-- Pastikan semua kolom terdaftar jika tabel sudah ada sebelumnya
+ALTER TABLE public.retur_inventory
+  ADD COLUMN IF NOT EXISTS no TEXT,
+  ADD COLUMN IF NOT EXISTS item_code TEXT,
+  ADD COLUMN IF NOT EXISTS item_name TEXT,
+  ADD COLUMN IF NOT EXISTS category TEXT,
+  ADD COLUMN IF NOT EXISTS location TEXT,
+  ADD COLUMN IF NOT EXISTS location_type TEXT,
+  ADD COLUMN IF NOT EXISTS first_qty NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_qty_pcs NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS uom TEXT DEFAULT 'PCS',
+  ADD COLUMN IF NOT EXISTS qty_convert_ctn NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS uom_convert TEXT DEFAULT 'CTN',
+  ADD COLUMN IF NOT EXISTS lpn_serial TEXT,
+  ADD COLUMN IF NOT EXISTS batch TEXT,
+  ADD COLUMN IF NOT EXISTS vendor_batch TEXT,
+  ADD COLUMN IF NOT EXISTS sloc TEXT,
+  ADD COLUMN IF NOT EXISTS expired TEXT,
+  ADD COLUMN IF NOT EXISTS destination_code TEXT,
+  ADD COLUMN IF NOT EXISTS qc_code TEXT,
+  ADD COLUMN IF NOT EXISTS user_tally TEXT,
+  ADD COLUMN IF NOT EXISTS shelf_life TEXT,
+  ADD COLUMN IF NOT EXISTS source TEXT,
+  ADD COLUMN IF NOT EXISTS by_ed TEXT;
+
+-- Row Level Security (RLS) & Akses
+ALTER TABLE public.retur_inventory ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public Read retur_inventory" ON public.retur_inventory;
+DROP POLICY IF EXISTS "Public Insert retur_inventory" ON public.retur_inventory;
+DROP POLICY IF EXISTS "Public Update retur_inventory" ON public.retur_inventory;
+DROP POLICY IF EXISTS "Public Delete retur_inventory" ON public.retur_inventory;
+
+CREATE POLICY "Public Read retur_inventory" ON public.retur_inventory FOR SELECT USING (true);
+CREATE POLICY "Public Insert retur_inventory" ON public.retur_inventory FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Update retur_inventory" ON public.retur_inventory FOR UPDATE USING (true);
+CREATE POLICY "Public Delete retur_inventory" ON public.retur_inventory FOR DELETE USING (true);
+
+-- Muat ulang schema cache PostgREST
+NOTIFY pgrst, 'reload schema';`;
+
 export function ReturInventoryModule() {
   const { showToast, showConfirm } = useNotification();
   const { isAdmin } = useAuth();
@@ -42,6 +114,8 @@ export function ReturInventoryModule() {
   const [lastUpdated, setLastUpdated] = useState<string>('-');
   const [uploadPreview, setUploadPreview] = useState<ReturInventoryItem[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
+  const [sqlModalOpen, setSqlModalOpen] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination for table
@@ -278,59 +352,130 @@ export function ReturInventoryModule() {
     reader.readAsArrayBuffer(file);
   };
 
+  // Helper to insert chunks with automatic missing column pruning
+  const insertChunkWithAutoPrune = async (rows: Record<string, any>[]) => {
+    let payload = rows.map(r => ({ ...r }));
+    const omittedColumns: string[] = [];
+    const maxRetries = 10;
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      attempt++;
+      const { error } = await supabase.from('retur_inventory').insert(payload);
+      if (!error) {
+        return { success: true, omittedColumns };
+      }
+
+      // Check if error is due to missing column in Supabase schema
+      const match = error.message.match(/Could not find the '([^']+)' column/i);
+      if (match && match[1]) {
+        const missingCol = match[1];
+        if (!omittedColumns.includes(missingCol)) {
+          omittedColumns.push(missingCol);
+        }
+        // Remove missing column from all rows in payload
+        payload = payload.map(row => {
+          const next = { ...row };
+          delete next[missingCol];
+          return next;
+        });
+        console.warn(`[Auto-Prune] Column '${missingCol}' not found in Supabase schema. Retrying without it...`);
+        continue;
+      }
+
+      return { success: false, error: error.message, omittedColumns };
+    }
+
+    return { success: false, error: 'Max retries reached', omittedColumns };
+  };
+
   const handleCommitUpload = async (mode: 'append' | 'replace') => {
     if (!uploadPreview || uploadPreview.length === 0) return;
 
     setLoading(true);
     try {
-      let nextData = [];
+      // 1. If replace mode, clear existing database records
       if (mode === 'replace') {
-        nextData = [...uploadPreview];
-      } else {
-        nextData = [...uploadPreview, ...returData];
+        const { error: delErr } = await supabase
+          .from('retur_inventory')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+        
+        if (delErr) {
+          console.warn('Supabase delete existing error:', delErr);
+        }
       }
 
-      // Sync Supabase
-      if (mode === 'replace') {
-        await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      }
-      
+      // 2. Prepare insert payloads
       const insertPayload = uploadPreview.map(item => ({
-        no: item.no,
-        item_code: item.item_code,
-        item_name: item.item_name,
-        category: item.category,
-        location: item.location,
-        location_type: item.location_type,
-        first_qty: item.first_qty,
-        last_qty_pcs: item.last_qty_pcs,
-        uom: item.uom,
-        qty_convert_ctn: item.qty_convert_ctn,
-        uom_convert: item.uom_convert,
-        lpn_serial: item.lpn_serial,
-        batch: item.batch,
-        vendor_batch: item.vendor_batch,
-        sloc: item.sloc,
-        expired: item.expired,
-        destination_code: item.destination_code,
-        qc_code: item.qc_code,
-        user_tally: item.user_tally,
-        shelf_life: item.shelf_life,
-        source: item.source,
-        by_ed: item.by_ed
+        no: item.no ? String(item.no) : '',
+        item_code: String(item.item_code || ''),
+        item_name: String(item.item_name || ''),
+        category: String(item.category || ''),
+        location: String(item.location || ''),
+        location_type: String(item.location_type || ''),
+        first_qty: Number(item.first_qty) || 0,
+        last_qty_pcs: Number(item.last_qty_pcs) || 0,
+        uom: String(item.uom || 'PCS'),
+        qty_convert_ctn: Number(item.qty_convert_ctn) || 0,
+        uom_convert: String(item.uom_convert || 'CTN'),
+        lpn_serial: String(item.lpn_serial || ''),
+        batch: String(item.batch || ''),
+        vendor_batch: String(item.vendor_batch || ''),
+        sloc: String(item.sloc || '8A04'),
+        expired: String(item.expired || ''),
+        destination_code: String(item.destination_code || ''),
+        qc_code: String(item.qc_code || ''),
+        user_tally: String(item.user_tally || ''),
+        shelf_life: String(item.shelf_life || ''),
+        source: String(item.source || ''),
+        by_ed: String(item.by_ed || 'Unassigned')
       }));
 
-      await supabase.from('retur_inventory').insert(insertPayload);
+      // 3. Batch insert in chunks with auto-pruning
+      const CHUNK_SIZE = 100;
+      let hasDbError = false;
+      let dbErrorMessage = '';
+      const allOmittedCols: string[] = [];
 
-      // Local fallback
-      localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
-      setReturData(nextData);
+      for (let i = 0; i < insertPayload.length; i += CHUNK_SIZE) {
+        const chunk = insertPayload.slice(i, i + CHUNK_SIZE);
+        const res = await insertChunkWithAutoPrune(chunk);
+
+        if (!res.success) {
+          hasDbError = true;
+          dbErrorMessage = res.error || 'Gagal menyimpan ke database';
+          break;
+        } else if (res.omittedColumns && res.omittedColumns.length > 0) {
+          res.omittedColumns.forEach(c => {
+            if (!allOmittedCols.includes(c)) allOmittedCols.push(c);
+          });
+        }
+      }
+
+      if (hasDbError) {
+        showToast('Peringatan Database', `Gagal simpan ke Supabase (${dbErrorMessage}). Data disimpan sementara di browser.`, 'warning');
+        let nextData = mode === 'replace' ? [...uploadPreview] : [...uploadPreview, ...returData];
+        localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
+        setReturData(nextData);
+      } else {
+        if (allOmittedCols.length > 0) {
+          showToast(
+            'Tersimpan dengan Catatan', 
+            `${uploadPreview.length} data tersimpan ke Supabase! (Catatan: Kolom '${allOmittedCols.join(', ')}' belum ada di tabel Supabase. Klik 'SQL Database' untuk menyesuaikan schema).`, 
+            'info'
+          );
+        } else {
+          showToast('Berhasil Tersimpan', `${uploadPreview.length} baris data retur berhasil disimpan ke Database Supabase!`, 'success');
+        }
+        await fetchReturData();
+      }
+
       setUploadPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      showToast('Berhasil', `${uploadPreview.length} baris data retur berhasil disimpan!`, 'success');
     } catch (e: any) {
-      console.error(e);
-      showToast('Peringatan', 'Disimpan secara lokal di browser', 'warning');
+      console.error('Upload handler exception:', e);
+      showToast('Error', e.message || 'Terjadi kesalahan saat menyimpan data', 'danger');
     } finally {
       setLoading(false);
     }
@@ -497,6 +642,19 @@ export function ReturInventoryModule() {
 
           <button
             type="button"
+            onClick={() => {
+              setSqlModalOpen(true);
+              setCopiedSql(false);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+            title="Lihat Script SQL Supabase untuk tabel retur_inventory"
+          >
+            <Database size={13} className="text-blue-900" />
+            <span className="hidden sm:inline">SQL Database</span>
+          </button>
+
+          <button
+            type="button"
             onClick={fetchReturData}
             disabled={loading}
             className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
@@ -510,133 +668,148 @@ export function ReturInventoryModule() {
 
       {/* VIEW A: DASHBOARD BY ED */}
       {activeTab === 'dashboard' && (
-        <div className="space-y-4">
-          {/* Top 4 KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="space-y-3 sm:space-y-3.5 animate-in fade-in duration-200">
+          {/* Top 4 KPI Cards - Ultra Compact & Responsive */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             {/* Card 1: Total Last Qty Pcs */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-900 flex items-center justify-center shrink-0 border border-blue-200 shadow-2xs">
-                <Layers size={22} />
+            <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 sm:p-3 xl:p-3.5 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center shrink-0 border border-blue-200/80 shadow-2xs">
+                <Layers size={18} className="sm:w-5 sm:h-5" />
               </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  TOTAL LAST QTY PCS
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  Total Last Qty Pcs
                 </div>
-                <div className="text-lg font-black text-blue-900 leading-tight mt-0.5 truncate">
-                  {formatNumber(grandTotalLastQtyPcs)} <span className="text-xs font-bold text-blue-700">PCS</span>
+                <div className="text-sm sm:text-base xl:text-lg font-black text-blue-950 leading-tight mt-0.5 truncate font-mono">
+                  {formatNumber(grandTotalLastQtyPcs)} <span className="text-[11px] font-bold text-blue-700">PCS</span>
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Total seluruh Last Qty</div>
+                <div className="text-[10px] text-slate-400 font-medium truncate hidden sm:block">Akumulasi kuantitas fisik</div>
               </div>
             </div>
 
             {/* Card 2: Total Convert Ctn */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
-                <Box size={22} />
+            <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 sm:p-3 xl:p-3.5 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200/80 shadow-2xs">
+                <Box size={18} className="sm:w-5 sm:h-5" />
               </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  TOTAL CONVERT CTN
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  Total Convert Ctn
                 </div>
-                <div className="text-lg font-black text-emerald-700 leading-tight mt-0.5 truncate">
-                  {formatNumber(grandTotalQtyConvertCtn)} <span className="text-xs font-bold text-emerald-600">CTN</span>
+                <div className="text-sm sm:text-base xl:text-lg font-black text-emerald-700 leading-tight mt-0.5 truncate font-mono">
+                  {formatNumber(grandTotalQtyConvertCtn)} <span className="text-[11px] font-bold text-emerald-600">CTN</span>
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Total konversi karton</div>
+                <div className="text-[10px] text-slate-400 font-medium truncate hidden sm:block">Total konversi karton</div>
               </div>
             </div>
 
             {/* Card 3: Jumlah Kategori By ED */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200 shadow-2xs">
-                <Tags size={22} />
+            <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 sm:p-3 xl:p-3.5 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200/80 shadow-2xs">
+                <Tags size={18} className="sm:w-5 sm:h-5" />
               </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  JUMLAH KATEGORI BY ED
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  Kategori By ED
                 </div>
-                <div className="text-lg font-black text-slate-900 leading-tight mt-0.5">
-                  {byEdList.length} <span className="text-xs font-bold text-slate-600">Kategori</span>
+                <div className="text-sm sm:text-base xl:text-lg font-black text-slate-900 leading-tight mt-0.5">
+                  {byEdList.length} <span className="text-[11px] font-bold text-slate-500">Grup</span>
                 </div>
-                <div className="text-[11px] text-slate-500 font-medium">Grup ED yang terdata</div>
+                <div className="text-[10px] text-slate-400 font-medium truncate hidden sm:block">Klasifikasi kategori ED</div>
               </div>
             </div>
 
             {/* Card 4: Kategori Terbesar */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 border border-purple-200 shadow-2xs">
-                <Trophy size={22} />
+            <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 sm:p-3 xl:p-3.5 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 border border-purple-200/80 shadow-2xs">
+                <Trophy size={18} className="sm:w-5 sm:h-5" />
               </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  KATEGORI TERBESAR
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  Kategori Terbesar
                 </div>
-                <div className="text-sm font-black text-slate-900 leading-tight mt-0.5 truncate" title={topKategori?.byEd}>
+                <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight mt-0.5 truncate" title={topKategori?.byEd}>
                   {topKategori?.byEd || '-'}
                 </div>
-                <div className="text-[11px] font-bold text-purple-700">
+                <div className="text-[10.5px] font-bold text-purple-700 font-mono truncate">
                   {formatNumber(topKategori?.lastQtyPcs)} PCS ({topKategori ? topKategori.pctPcs.toFixed(1) : 0}%)
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Left Bar Chart - 7 Cols */}
-            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 m-0">Last Qty Pcs per By ED</h4>
-                  <p className="text-xs text-slate-500 m-0">Perbandingan kuantitas fisik antar kategori By ED</p>
+          {/* Middle Charts & Distribution Row - Compact Desktop Responsive */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            {/* Left Bar Chart - 7 Cols on lg, 7 on xl */}
+            <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center pb-2.5 mb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 size={15} className="text-blue-900" />
+                    <div>
+                      <h4 className="font-bold text-xs sm:text-sm text-slate-900 m-0 leading-tight">Last Qty Pcs per By ED</h4>
+                      <p className="text-[11px] text-slate-500 m-0 hidden sm:block">Perbandingan kuantitas fisik antar kategori</p>
+                    </div>
+                  </div>
+                  <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
+                    {byEdList.length} Kategori
+                  </span>
                 </div>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
-                  {byEdList.length} Grup
-                </span>
+
+                {byEdList.length === 0 ? (
+                  <div className="h-44 flex items-center justify-center text-xs text-slate-400 font-medium border border-dashed border-slate-200 rounded-lg">
+                    Belum ada data retur.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[260px] xl:max-h-[300px] 2xl:max-h-[340px] overflow-y-auto pr-1.5 custom-scrollbar">
+                    {byEdList.map((item) => (
+                      <div key={item.byEd} className="space-y-0.5 group hover:bg-slate-50/80 p-1 rounded-md transition-colors">
+                        <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                          <span className="font-bold text-slate-800 truncate max-w-[55%] sm:max-w-[65%]" title={item.byEd}>
+                            {item.byEd}
+                          </span>
+                          <span className="font-bold font-mono text-blue-950 shrink-0 text-right">
+                            {formatNumber(item.lastQtyPcs)} <span className="text-[10px] text-slate-400 font-normal">PCS ({item.pctPcs.toFixed(1)}%)</span>
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-200/80">
+                          <div
+                            className="h-full rounded-full transition-all duration-300 ease-out"
+                            style={{
+                              width: `${Math.max(item.pctPcs, 1.5)}%`,
+                              backgroundColor: item.color
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {byEdList.length === 0 ? (
-                <div className="h-60 flex items-center justify-center text-xs text-slate-400 font-medium border border-dashed border-slate-200 rounded-xl">
-                  Belum ada data retur.
-                </div>
-              ) : (
-                <div className="space-y-3.5 pt-2">
-                  {byEdList.map((item) => (
-                    <div key={item.byEd} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-800">{item.byEd}</span>
-                        <span className="font-extrabold text-blue-950">
-                          {formatNumber(item.lastQtyPcs)} PCS <span className="text-slate-400 font-normal">({item.pctPcs.toFixed(1)}%)</span>
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200">
-                        <div
-                          className="h-full rounded-full transition-all duration-500 ease-out"
-                          style={{
-                            width: `${Math.max(item.pctPcs, 2)}%`,
-                            backgroundColor: item.color
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[10.5px] text-slate-400">
+                <span>Total: <strong className="text-slate-700">{formatNumber(grandTotalLastQtyPcs)} PCS</strong></span>
+                <span className="text-slate-500">Rasio tertinggi: <strong className="text-purple-700">{topKategori?.byEd || '-'}</strong></span>
+              </div>
             </div>
 
-            {/* Right Distribution Breakdown - 5 Cols */}
-            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+            {/* Right Distribution Breakdown - 5 Cols on lg, 5 on xl */}
+            <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-2xs flex flex-col justify-between">
               <div>
-                <div className="flex justify-between items-center mb-3">
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-900 m-0">Distribusi Last Qty (%)</h4>
-                    <p className="text-xs text-slate-500 m-0">Porsi persentase per kategori By ED</p>
+                <div className="flex justify-between items-center pb-2.5 mb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <PieIcon size={15} className="text-slate-600" />
+                    <div>
+                      <h4 className="font-bold text-xs sm:text-sm text-slate-900 m-0 leading-tight">Distribusi Last Qty (%)</h4>
+                      <p className="text-[11px] text-slate-500 m-0 hidden sm:block">Porsi persentase per kategori</p>
+                    </div>
                   </div>
-                  <PieIcon size={16} className="text-slate-400" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Share %</span>
                 </div>
 
-                {/* Donut Style Radial Visualizer */}
-                <div className="my-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center gap-6">
-                  <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+                {/* Donut Style Radial Visualizer - Compact */}
+                <div className="my-2 p-2.5 sm:p-3 rounded-xl bg-slate-50/80 border border-slate-200/70 flex items-center justify-center gap-4 sm:gap-5">
+                  <div className="relative w-20 h-20 sm:w-22 sm:h-22 flex items-center justify-center shrink-0">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                       <circle
                         cx="18"
@@ -644,7 +817,7 @@ export function ReturInventoryModule() {
                         r="15.91549430918954"
                         fill="transparent"
                         stroke="#e2e8f0"
-                        strokeWidth="4"
+                        strokeWidth="4.2"
                       />
                       {(() => {
                         let accumulated = 0;
@@ -660,112 +833,126 @@ export function ReturInventoryModule() {
                               r="15.91549430918954"
                               fill="transparent"
                               stroke={item.color}
-                              strokeWidth="4"
+                              strokeWidth="4.2"
                               strokeDasharray={strokeDasharray}
                               strokeDashoffset={strokeDashoffset}
-                              className="transition-all duration-500"
+                              className="transition-all duration-300"
                             />
                           );
                         });
                       })()}
                     </svg>
-                    <div className="absolute flex flex-col items-center justify-center text-center">
-                      <span className="text-xs font-black text-slate-800 leading-none">
+                    <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                      <span className="text-xs font-black text-slate-900 leading-none font-mono">
                         {byEdList.length}
                       </span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">Kategori</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight mt-0.5">Kategori</span>
                     </div>
                   </div>
 
-                  <div className="text-left space-y-1">
-                    <div className="text-[11px] text-slate-500 font-medium">Total Akumulasi:</div>
-                    <div className="text-base font-black text-blue-900">{formatNumber(grandTotalLastQtyPcs)} PCS</div>
-                    <div className="text-xs font-bold text-emerald-700">{formatNumber(grandTotalQtyConvertCtn)} CTN</div>
+                  <div className="text-left space-y-0.5 min-w-0">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Akumulasi:</div>
+                    <div className="text-sm sm:text-base font-black text-blue-950 font-mono leading-tight truncate">
+                      {formatNumber(grandTotalLastQtyPcs)} <span className="text-[10px] font-bold text-blue-700">PCS</span>
+                    </div>
+                    <div className="text-xs font-bold text-emerald-700 font-mono leading-tight truncate">
+                      {formatNumber(grandTotalQtyConvertCtn)} <span className="text-[10px] font-semibold text-emerald-600">CTN</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Legend list */}
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {byEdList.slice(0, 6).map((item) => (
-                    <div key={item.byEd} className="flex items-center gap-1.5 text-xs">
-                      <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: item.color }} />
+                {/* Legend list - Dense 2 Columns / Responsive */}
+                <div className="grid grid-cols-2 gap-1.5 mt-2 max-h-[140px] xl:max-h-[170px] overflow-y-auto pr-1 custom-scrollbar">
+                  {byEdList.map((item) => (
+                    <div key={item.byEd} className="flex items-center gap-1.5 text-[11px] p-1 rounded-md hover:bg-slate-50 transition-colors">
+                      <span className="w-2 h-2 rounded-xs shrink-0" style={{ backgroundColor: item.color }} />
                       <span className="font-semibold text-slate-700 truncate" title={item.byEd}>{item.byEd}</span>
-                      <span className="text-slate-400 font-bold ml-auto">{item.pctPcs.toFixed(1)}%</span>
+                      <span className="text-slate-400 font-bold font-mono text-[10px] ml-auto shrink-0">{item.pctPcs.toFixed(1)}%</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-3 mt-3 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
-                <span>Update Terakhir:</span>
-                <span className="font-semibold text-slate-700">{lastUpdated}</span>
+              <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400">
+                <span>Update:</span>
+                <span className="font-semibold text-slate-600 truncate max-w-[180px]">{lastUpdated}</span>
               </div>
             </div>
           </div>
 
-          {/* Bottom Table: Summary Table By ED */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/70">
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 m-0">Ringkasan Data By ED</h4>
-                <p className="text-xs text-slate-500 m-0">Rekapitulasi total kuantitas PCS dan karton konversi</p>
+          {/* Bottom Table: Summary Table By ED - Compact Responsive with Sticky Header */}
+          <div className="bg-white border border-slate-200/90 rounded-xl shadow-2xs overflow-hidden">
+            <div className="p-3 sm:p-3.5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <TableIcon size={15} className="text-blue-900" />
+                <div>
+                  <h4 className="font-bold text-xs sm:text-sm text-slate-900 m-0 leading-tight">Ringkasan Data By ED</h4>
+                  <p className="text-[11px] text-slate-500 m-0">Rekapitulasi total kuantitas PCS dan karton konversi</p>
+                </div>
               </div>
-              <span className="text-xs font-semibold text-slate-600">
-                Total: <strong>{byEdList.length}</strong> Kategori
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+                  Total: <strong className="text-blue-900">{byEdList.length}</strong> Kategori
+                </span>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[320px] xl:max-h-[400px] 2xl:max-h-[480px]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-blue-50/70 text-blue-950 border-b border-slate-200 font-bold uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 px-4 w-12 text-center">No</th>
-                    <th className="py-2.5 px-4">By ED</th>
-                    <th className="py-2.5 px-4 text-right">Last Qty Pcs</th>
-                    <th className="py-2.5 px-4 text-right">Qty Convert Ctn</th>
-                    <th className="py-2.5 px-4 w-48">% Last Qty Pcs</th>
-                    <th className="py-2.5 px-4 w-48">% Qty Convert Ctn</th>
+                <thead className="sticky top-0 bg-blue-50/95 backdrop-blur-xs text-blue-950 border-b border-slate-200 font-bold uppercase tracking-wider text-[10px] z-10">
+                  <tr>
+                    <th className="py-2 px-3 w-10 text-center">No</th>
+                    <th className="py-2 px-3 min-w-[140px]">By ED</th>
+                    <th className="py-2 px-3 text-right min-w-[100px]">Last Qty Pcs</th>
+                    <th className="py-2 px-3 text-right min-w-[100px]">Qty Convert Ctn</th>
+                    <th className="py-2 px-3 min-w-[140px]">% Last Qty Pcs</th>
+                    <th className="py-2 px-3 min-w-[140px]">% Qty Convert Ctn</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-[11px] sm:text-xs">
                   {byEdList.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                      <td colSpan={6} className="py-6 text-center text-slate-400">
                         Tidak ada data retur yang tersedia.
                       </td>
                     </tr>
                   ) : (
                     byEdList.map((item, idx) => (
-                      <tr key={item.byEd} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-2.5 px-4 text-center font-bold text-slate-400">{idx + 1}</td>
-                        <td className="py-2.5 px-4 font-bold text-slate-900">{item.byEd}</td>
-                        <td className="py-2.5 px-4 text-right font-mono font-bold text-blue-950">
+                      <tr key={item.byEd} className="hover:bg-slate-50/90 transition-colors">
+                        <td className="py-1.5 sm:py-2 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                        <td className="py-1.5 sm:py-2 px-3 font-bold text-slate-900 truncate" title={item.byEd}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-xs shrink-0" style={{ backgroundColor: item.color }} />
+                            <span>{item.byEd}</span>
+                          </div>
+                        </td>
+                        <td className="py-1.5 sm:py-2 px-3 text-right font-mono font-bold text-blue-950">
                           {formatNumber(item.lastQtyPcs)}
                         </td>
-                        <td className="py-2.5 px-4 text-right font-mono font-bold text-emerald-800">
+                        <td className="py-1.5 sm:py-2 px-3 text-right font-mono font-bold text-emerald-800">
                           {formatNumber(item.qtyConvertCtn)}
                         </td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-1.5 sm:py-2 px-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-700 w-12 text-right text-[11px]">
+                            <span className="font-bold font-mono text-slate-700 w-11 text-right text-[10.5px]">
                               {item.pctPcs.toFixed(2)}%
                             </span>
-                            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                            <div className="flex-1 bg-slate-100 rounded-full h-1.5 sm:h-2 overflow-hidden border border-slate-200/80">
                               <div
-                                className="h-full rounded-full"
+                                className="h-full rounded-full transition-all duration-300"
                                 style={{ width: `${item.pctPcs}%`, backgroundColor: item.color }}
                               />
                             </div>
                           </div>
                         </td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-1.5 sm:py-2 px-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-700 w-12 text-right text-[11px]">
+                            <span className="font-bold font-mono text-slate-700 w-11 text-right text-[10.5px]">
                               {item.pctCtn.toFixed(2)}%
                             </span>
-                            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                            <div className="flex-1 bg-slate-100 rounded-full h-1.5 sm:h-2 overflow-hidden border border-slate-200/80">
                               <div
-                                className="h-full rounded-full"
+                                className="h-full rounded-full transition-all duration-300"
                                 style={{ width: `${item.pctCtn}%`, backgroundColor: item.color }}
                               />
                             </div>
@@ -776,19 +963,19 @@ export function ReturInventoryModule() {
                   )}
                 </tbody>
                 {byEdList.length > 0 && (
-                  <tfoot>
-                    <tr className="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
-                      <td colSpan={2} className="py-3 px-4 uppercase tracking-wider text-xs">
+                  <tfoot className="sticky bottom-0 bg-slate-100 border-t-2 border-slate-300 text-slate-900 font-extrabold z-10">
+                    <tr>
+                      <td colSpan={2} className="py-2 sm:py-2.5 px-3 uppercase tracking-wider text-[11px]">
                         GRAND TOTAL
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-blue-950 text-sm">
+                      <td className="py-2 sm:py-2.5 px-3 text-right font-mono text-blue-950 text-xs sm:text-sm">
                         {formatNumber(grandTotalLastQtyPcs)}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-emerald-900 text-sm">
+                      <td className="py-2 sm:py-2.5 px-3 text-right font-mono text-emerald-900 text-xs sm:text-sm">
                         {formatNumber(grandTotalQtyConvertCtn)}
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-800 text-xs">100.00%</td>
-                      <td className="py-3 px-4 font-bold text-slate-800 text-xs">100.00%</td>
+                      <td className="py-2 sm:py-2.5 px-3 font-mono font-bold text-slate-800 text-[11px]">100.00%</td>
+                      <td className="py-2 sm:py-2.5 px-3 font-mono font-bold text-slate-800 text-[11px]">100.00%</td>
                     </tr>
                   </tfoot>
                 )}
@@ -1145,6 +1332,82 @@ export function ReturInventoryModule() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* SQL Setup Modal */}
+      {sqlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                  <Database size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold m-0 leading-tight">Script SQL Supabase: Tabel Retur Inventory</h4>
+                  <p className="text-[11px] text-slate-400 m-0">Salin & jalankan script di Supabase SQL Editor untuk memperbarui struktur tabel & schema cache</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSqlModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
+                <p className="font-bold mb-1">Panduan Cepat:</p>
+                <ol className="list-decimal ml-4 space-y-0.5 text-[11.5px] text-blue-800">
+                  <li>Buka <strong>Supabase Dashboard</strong> &gt; pilih project Anda.</li>
+                  <li>Klik menu <strong>SQL Editor</strong> di bilah kiri.</li>
+                  <li>Klik <strong>New Query</strong>, tempel (Paste) script SQL di bawah ini.</li>
+                  <li>Klik tombol hijau <strong>Run</strong> untuk mengeksekusi script.</li>
+                </ol>
+              </div>
+
+              <div className="relative">
+                <div className="flex items-center justify-between bg-slate-800 px-3.5 py-2 rounded-t-xl text-xs text-slate-300 font-mono">
+                  <span>retur_inventory_schema.sql</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(RETUR_INVENTORY_SQL_SCRIPT);
+                      setCopiedSql(true);
+                      showToast('Tersalin!', 'Script SQL berhasil disalin ke clipboard', 'success');
+                      setTimeout(() => setCopiedSql(false), 3000);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    {copiedSql ? <Check size={13} className="text-emerald-300" /> : <Copy size={13} />}
+                    <span>{copiedSql ? 'Tersalin!' : 'Salin Script SQL'}</span>
+                  </button>
+                </div>
+                <pre className="m-0 p-3.5 bg-slate-950 text-emerald-400 font-mono text-[11px] leading-relaxed rounded-b-xl overflow-x-auto max-h-[260px] border border-slate-800 selection:bg-blue-500 selection:text-white">
+                  {RETUR_INVENTORY_SQL_SCRIPT}
+                </pre>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                Otomatis menambahkan kolom yang hilang & reload schema PostgREST.
+              </span>
+              <button
+                type="button"
+                onClick={() => setSqlModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
