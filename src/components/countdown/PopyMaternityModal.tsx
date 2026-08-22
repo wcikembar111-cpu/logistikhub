@@ -17,12 +17,13 @@ export function PopyMaternityModal({
 
   if (!isOpen) return null;
 
-  const messageText = `🎉 *Selamat Cuti Melahirkan untuk Rekan Popy!* 👶🌸\n\n` +
-    `Keluarga besar & Tim Retur Logistik mengucapkan:\n` +
-    `✨ *Selamat menjalankan masa Cuti Lahiran untuk Teh/Mba Popy!*\n` +
-    `🙏 *Terima kasih yang sebesar-besarnya* atas segala dedikasi, kerja keras, dan support luar biasanya untuk Tim Retur selama ini.\n\n` +
-    `🤲 *Doa Terbaik Kami:*\n` +
-    `Semoga proses persalinannya dilancarkan dan dimudahkan dalam segala sesuatunya, ibu yang melahirkan diberikan keselamatan, kekuatan, dan kesembuhan yang cepat, serta buah hati yang dilahirkan senantiasa sehat, menjadi anak yang sholeh/sholehah, membawa berkah & kebahagiaan bagi keluarga. Aamiin yaa Rabbal 'aalamiin 🤲✨`;
+  const messageText = `🎉 *Selamat Menjelang Cuti Melahirkan untuk Rekan Popy!* 👶🌸\n\n` +
+    `Masa cuti resmi dimulai per tanggal *03 September 2026*.\n` +
+    `Di hari terakhir kerja bersama tim ini (02 September 2026), segenap Keluarga Besar & Tim Retur Logistik mengucapkan:\n\n` +
+    `✨ *Selamat menjalankan masa Cuti Melahirkan untuk Teh/Mba Popy!*\n` +
+    `🙏 *Terima kasih yang sebesar-besarnya* atas segala dedikasi, kerja keras, loyalitas, dan support luar biasanya untuk Tim Retur selama ini.\n\n` +
+    `🤲 *Doa Tulus Kami:*\n` +
+    `Semoga proses persalinannya dilancarkan dan dimudahkan dalam segala sesuatunya, ibu yang melahirkan diberikan keselamatan, kekuatan, dan lekas pulih sehat, serta buah hati yang dilahirkan senantiasa sehat, sholeh/sholehah, membawa berkah & kebahagiaan berlimpah bagi keluarga. Aamiin yaa Rabbal 'aalamiin 🤲✨`;
 
   const handleCopy = async () => {
     try {
@@ -123,17 +124,25 @@ export function PopyMaternityModal({
           </div>
 
           {/* Time Reference Badge */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2 text-[11px] text-slate-600 flex-wrap">
-            <div className="flex items-center gap-1.5 font-semibold">
-              <Calendar size={13} className="text-rose-500 shrink-0" />
-              <span>Target: 2 September 2026</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2 text-[11px] text-slate-700">
+            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/80">
+              <div className="flex items-center gap-1.5 font-semibold text-rose-700">
+                <Clock size={14} className="text-rose-500 shrink-0" />
+                <span>Momen Pelepasan Tim: <strong>02 September 2026 (11:00 WIB)</strong></span>
+              </div>
+              <span className="text-[10px] bg-rose-100/80 text-rose-700 font-bold px-2 py-0.5 rounded-full">
+                Hari Terakhir Kerja
+              </span>
             </div>
-            <div className="flex items-center gap-1.5 font-semibold">
-              <Clock size={13} className="text-amber-500 shrink-0" />
-              <span>Pukul 11:00 WIB</span>
-            </div>
-            <div className="font-extrabold text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-md text-[10px]">
-              Tim Retur Logistik Kino
+            
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-700">
+                <Calendar size={14} className="text-amber-500 shrink-0" />
+                <span>Mulai Efektif Cuti Melahirkan: <strong>03 September 2026</strong></span>
+              </div>
+              <div className="font-extrabold text-slate-700 bg-amber-100/70 px-2 py-0.5 rounded-md text-[10px]">
+                Tim Retur Logistik Kino
+              </div>
             </div>
           </div>
 

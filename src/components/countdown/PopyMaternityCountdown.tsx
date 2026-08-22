@@ -143,12 +143,12 @@ export function PopyMaternityCountdown({ isAdmin }: PopyMaternityCountdownProps)
           <Baby size={12} className="text-rose-500 shrink-0" />
           
           <span className="font-extrabold uppercase tracking-tight text-[9px] sm:text-[10px]">
-            Cuti Popy:
+            Menuju Cuti Popy:
           </span>
 
           {timeLeft.isFinished ? (
             <span className="text-rose-600 font-black flex items-center gap-1">
-              <PartyPopper size={11} /> TELAH TIBA 🎉
+              <PartyPopper size={11} /> HARI PELEPASAN 🎉
             </span>
           ) : (
             <span className="font-mono font-bold text-slate-800 text-[10px] sm:text-[11px] tracking-tight">
