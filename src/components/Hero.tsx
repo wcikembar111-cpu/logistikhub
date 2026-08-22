@@ -3,6 +3,7 @@ import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCi
 import { TodoData } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
 import { TIMEOUT_OPTIONS } from '../utils/pinAuth';
+import { PopyMaternityCountdown } from './countdown/PopyMaternityCountdown';
 
 interface HeroProps {
   isAdmin: boolean;
@@ -861,6 +862,9 @@ export function Hero({
                 )}
               </div>
             )}
+
+            {/* Countdown Cuti Melahirkan Popy & Test Preview Admin */}
+            <PopyMaternityCountdown isAdmin={isAdmin} />
 
             {/* Tombol Login/Logout */}
             {!isAdmin ? (
