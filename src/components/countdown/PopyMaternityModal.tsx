@@ -37,7 +37,7 @@ export function PopyMaternityModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-[10005] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 animate-fade-in"
       onClick={onClose}
     >
       <div 

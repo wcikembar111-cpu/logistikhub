@@ -13,6 +13,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { verifyPin } from '../../utils/pinAuth';
+import { PopyMaternityCountdown } from '../countdown/PopyMaternityCountdown';
 
 interface PinLockScreenProps {
   onUnlocked: () => void;
@@ -139,7 +140,12 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
         autoFocus
       />
 
-      <div className="relative w-full max-w-[380px] sm:max-w-[420px] rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 shadow-2xl text-white my-auto">
+      {/* Floating Countdown Bar on Top of Lock Screen */}
+      <div className="absolute top-3.5 sm:top-5 left-0 right-0 flex justify-center z-10 px-4 pointer-events-auto">
+        <PopyMaternityCountdown isAdmin={false} />
+      </div>
+
+      <div className="relative w-full max-w-[380px] sm:max-w-[420px] rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 shadow-2xl text-white my-auto mt-14 sm:my-auto">
         
         {/* Top Header & Logo */}
         <div className="text-center mb-6">
