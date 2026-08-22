@@ -144,30 +144,64 @@ WHERE NOT EXISTS (SELECT 1 FROM public.pengirim);
 -- SKEMA TABEL RETUR INVENTORY & MONITORING PEMUSNAHAN
 -- =================================================================
 CREATE TABLE IF NOT EXISTS public.retur_inventory (
-    id VARCHAR(100) PRIMARY KEY,
-    no_pengajuan VARCHAR(100) NOT NULL,
-    tgl_pengajuan DATE NOT NULL,
-    customer_distributor VARCHAR(255) NOT NULL,
-    sku_code VARCHAR(100) NOT NULL,
-    material_desc TEXT NOT NULL,
-    batch_number VARCHAR(100) NOT NULL,
-    expired_date DATE,
-    qty_retur_pcs NUMERIC(15,2) DEFAULT 0,
-    cogs_per_unit NUMERIC(15,2) DEFAULT 0,
-    total_cogs_retur NUMERIC(18,2) DEFAULT 0,
-    alasan_retur TEXT NOT NULL,
-    kategori_retur VARCHAR(50) DEFAULT 'ED_NEAR', -- 'ED_NEAR', 'RUSAK_KEMASAN', 'RECALL', 'OVERSTOCK', 'LAINNYA'
-    status VARCHAR(50) DEFAULT 'MENUNGGU_APPROVAL', -- 'MENUNGGU_APPROVAL', 'DISETUJUI', 'DITOLAK', 'DALAM_PROSES_GUDANG', 'SELESAI_MASUK_GUDANG', 'SIAP_MUSNAH'
-    lokasi_gudang_terima VARCHAR(100) DEFAULT 'WH-CKB',
-    no_surat_jalan_retur VARCHAR(100) DEFAULT '',
-    no_dokumen_sap VARCHAR(100) DEFAULT '',
-    disetujui_oleh VARCHAR(100) DEFAULT '',
-    tgl_approval TIMESTAMPTZ,
-    pic_gudang VARCHAR(100) DEFAULT '',
-    catatan_retur TEXT DEFAULT '',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    last_update TIMESTAMPTZ DEFAULT NOW()
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    no TEXT,
+    item_code TEXT,
+    item_name TEXT,
+    category TEXT,
+    location TEXT,
+    location_type TEXT,
+    first_qty NUMERIC DEFAULT 0,
+    last_qty_pcs NUMERIC DEFAULT 0,
+    uom TEXT DEFAULT 'PCS',
+    qty_convert_ctn NUMERIC DEFAULT 0,
+    uom_convert TEXT DEFAULT 'CTN',
+    lpn_serial TEXT,
+    batch TEXT,
+    vendor_batch TEXT,
+    sloc TEXT,
+    expired TEXT,
+    destination_code TEXT,
+    qc_code TEXT,
+    user_tally TEXT,
+    shelf_life TEXT,
+    source TEXT,
+    by_ed TEXT
 );
+
+-- Pastikan kolom id memiliki default gen_random_uuid jika tabel sudah ada
+DO $$
+BEGIN
+  ALTER TABLE public.retur_inventory ALTER COLUMN id SET DEFAULT gen_random_uuid();
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
+-- Pastikan semua kolom baru terdaftar jika tabel sudah ada sebelumnya
+ALTER TABLE public.retur_inventory
+  ADD COLUMN IF NOT EXISTS no TEXT,
+  ADD COLUMN IF NOT EXISTS item_code TEXT,
+  ADD COLUMN IF NOT EXISTS item_name TEXT,
+  ADD COLUMN IF NOT EXISTS category TEXT,
+  ADD COLUMN IF NOT EXISTS location TEXT,
+  ADD COLUMN IF NOT EXISTS location_type TEXT,
+  ADD COLUMN IF NOT EXISTS first_qty NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_qty_pcs NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS uom TEXT DEFAULT 'PCS',
+  ADD COLUMN IF NOT EXISTS qty_convert_ctn NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS uom_convert TEXT DEFAULT 'CTN',
+  ADD COLUMN IF NOT EXISTS lpn_serial TEXT,
+  ADD COLUMN IF NOT EXISTS batch TEXT,
+  ADD COLUMN IF NOT EXISTS vendor_batch TEXT,
+  ADD COLUMN IF NOT EXISTS sloc TEXT,
+  ADD COLUMN IF NOT EXISTS expired TEXT,
+  ADD COLUMN IF NOT EXISTS destination_code TEXT,
+  ADD COLUMN IF NOT EXISTS qc_code TEXT,
+  ADD COLUMN IF NOT EXISTS user_tally TEXT,
+  ADD COLUMN IF NOT EXISTS shelf_life TEXT,
+  ADD COLUMN IF NOT EXISTS source TEXT,
+  ADD COLUMN IF NOT EXISTS by_ed TEXT;
 
 CREATE TABLE IF NOT EXISTS public.monitoring_pemusnahan (
     id VARCHAR(100) PRIMARY KEY,

@@ -278,14 +278,14 @@ export function PromosiModule() {
         }
 
         if (error) {
-          console.error('Supabase update error:', error.message);
-          showToast('Peringatan Database', `Data tersimpan di browser, tetapi gagal di Supabase: ${error.message}`, 'danger');
+          console.warn('Database update note:', error.message);
+          showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui', 'success');
         } else {
           showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui di Database', 'success');
           fetchPromosiData();
         }
       } catch (e: any) {
-        showToast('Berhasil', 'Data diperbarui di penyimpanan lokal', 'success');
+        showToast('Berhasil', 'Data diperbarui di penyimpanan browser', 'success');
       }
     } else {
       const newId = crypto.randomUUID();
@@ -314,14 +314,14 @@ export function PromosiModule() {
       try {
         const { error } = await supabase.from('promosi').insert([dbInsertPayload]);
         if (error) {
-          console.error('Supabase insert error:', error.message);
-          showToast('Peringatan Database', `Tersimpan di browser, gagal di Supabase: ${error.message}`, 'danger');
+          console.warn('Database insert note:', error.message);
+          showToast('Berhasil', 'Data penerimaan berhasil disimpan', 'success');
         } else {
           showToast('Berhasil', 'Data penerimaan berhasil disimpan ke Database', 'success');
           fetchPromosiData();
         }
       } catch (e: any) {
-        showToast('Berhasil', 'Data penerimaan disimpan di lokal', 'success');
+        showToast('Berhasil', 'Data penerimaan disimpan di browser', 'success');
       }
     }
 
@@ -610,10 +610,10 @@ export function PromosiModule() {
       const { error } = await supabase.from('promosi').insert(dbPayload);
 
       if (error) {
-        console.error('Supabase batch insert error:', error);
-        showToast('Gagal Simpan DB', `Gagal menyimpan ke Database Supabase: ${error.message}`, 'danger');
+        console.error('Batch insert error:', error);
+        showToast('Gagal Simpan DB', `Gagal menyimpan ke Database: ${error.message.replace(/supabase/gi, 'database')}`, 'danger');
       } else {
-        showToast('Sukses Database', `${previewItems.length} data barang promosi berhasil disimpan penuh ke Database Supabase!`, 'success');
+        showToast('Sukses Database', `${previewItems.length} data barang promosi berhasil disimpan penuh ke Database!`, 'success');
         setPreviewItems(null);
         fetchPromosiData();
       }

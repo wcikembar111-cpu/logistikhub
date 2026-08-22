@@ -293,7 +293,7 @@ export function useAuth() {
       }
 
       if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        throw new Error("Kredensial Supabase (URL/KEY) belum diisi di Environment Variables.");
+        throw new Error("Kredensial database belum diisi di Environment Variables.");
       }
 
       // Coba autentikasi menggunakan tabel users
@@ -309,9 +309,9 @@ export function useAuth() {
            throw new Error('Email atau password salah (atau data tidak ditemukan).');
         }
         if (error.code === '42P01') {
-           throw new Error('Tabel users belum ada. Jalankan supabase_schema.sql di SQL Editor.');
+           throw new Error('Tabel users belum ada di database. Jalankan schema SQL di SQL Editor Database.');
         }
-        throw new Error(error.message);
+        throw new Error(error.message.replace(/supabase/gi, 'database'));
       }
 
       if (data) {

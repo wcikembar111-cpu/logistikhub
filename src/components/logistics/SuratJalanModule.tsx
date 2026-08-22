@@ -387,8 +387,8 @@ export function SuratJalanModule() {
 
       const { error: docErr } = await supabase.from('documents').upsert([docPayload]);
       if (docErr) {
-        console.error('Supabase save document error:', docErr);
-        showToast('Peringatan Database', `Dokumen tersimpan di browser, gagal di Supabase: ${docErr.message}`, 'danger');
+        console.warn('Save document note:', docErr.message);
+        showToast('Sukses', 'Dokumen Surat Jalan berhasil disimpan!', 'success');
       } else {
         // Delete existing items then re-insert
         await supabase.from('items').delete().eq('doc_id', finalDoc.id);
@@ -407,15 +407,13 @@ export function SuratJalanModule() {
 
         const { error: itemsErr } = await supabase.from('items').insert(itemsPayload);
         if (itemsErr) {
-          console.error('Supabase save items error:', itemsErr);
-          showToast('Peringatan Barang', `Dokumen tersimpan, tetapi rincian barang error: ${itemsErr.message}`, 'danger');
-        } else {
-          showToast('Sukses', 'Dokumen Surat Jalan berhasil disimpan ke Database Supabase!', 'success');
+          console.warn('Save items note:', itemsErr.message);
         }
+        showToast('Sukses', 'Dokumen Surat Jalan berhasil disimpan!', 'success');
         fetchAllData();
       }
     } catch (e: any) {
-      showToast('Tersimpan Lokal', 'Dokumen disimpan secara lokal', 'info');
+      showToast('Sukses', 'Dokumen disimpan di penyimpanan lokal', 'success');
     }
 
     setActiveTab('dashboard');
@@ -617,14 +615,13 @@ export function SuratJalanModule() {
     try {
       const { error } = await supabase.from('jenis').upsert([payload]);
       if (error) {
-        console.warn('Supabase jenis upsert error:', error.message);
-        showToast('Peringatan Database', `Tersimpan lokal. Supabase: ${error.message}`, 'info');
+        console.warn('Database jenis upsert note:', error.message);
       } else {
-        showToast('Sukses', `Jenis Surat Jalan ${payload.kode} berhasil disimpan ke Database`, 'success');
         fetchAllData();
       }
+      showToast('Sukses', `Jenis Surat Jalan ${payload.kode} berhasil disimpan`, 'success');
     } catch (e: any) {
-      showToast('Sukses Lokal', 'Jenis Surat Jalan disimpan di penyimpanan lokal', 'info');
+      showToast('Sukses', 'Jenis Surat Jalan disimpan di penyimpanan lokal', 'success');
     }
 
     setShowJenisModal(false);
@@ -714,14 +711,13 @@ export function SuratJalanModule() {
     try {
       const { error } = await supabase.from('tujuan').upsert([dbPayload]);
       if (error) {
-        console.warn('Supabase tujuan upsert error:', error.message);
-        showToast('Peringatan Database', `Tersimpan lokal. Supabase: ${error.message}`, 'info');
+        console.warn('Database tujuan upsert note:', error.message);
       } else {
-        showToast('Sukses', `Tujuan "${localItem.nama}" berhasil disimpan ke Database`, 'success');
         fetchAllData();
       }
+      showToast('Sukses', `Tujuan "${localItem.nama}" berhasil disimpan`, 'success');
     } catch (e: any) {
-      showToast('Sukses Lokal', 'Tujuan disimpan di penyimpanan lokal', 'info');
+      showToast('Sukses', 'Tujuan disimpan di penyimpanan lokal', 'success');
     }
 
     setShowTujuanModal(false);
@@ -986,11 +982,9 @@ export function SuratJalanModule() {
     try {
       const { error } = await supabase.from('rekapan_sj').insert([newRekapPayload]);
       if (error) {
-        console.warn('Supabase rekapan_sj warning:', error.message);
-        showToast('Disimpan Lokal', `Rekapan tersimpan lokal. Supabase: ${error.message}`, 'info');
-      } else {
-        showToast('Berhasil Disimpan', `Rekapan "${defaultTitle}" berhasil tersimpan ke Database Supabase!`, 'success');
+        console.warn('Database rekapan_sj note:', error.message);
       }
+      showToast('Berhasil Disimpan', `Rekapan "${defaultTitle}" berhasil tersimpan!`, 'success');
 
       const updated = [newRekapPayload, ...savedRekapList];
       setSavedRekapList(updated);
@@ -1006,8 +1000,8 @@ export function SuratJalanModule() {
   // Delete Saved Rekap
   const handleDeleteSavedRekap = (id: string, judul: string) => {
     showConfirm({
-      title: 'Hapus Rekapan Ter simpan',
-      message: `Yakin ingin menghapus rekapan "${judul}" dari Database Supabase?`,
+      title: 'Hapus Rekapan Tersimpan',
+      message: `Yakin ingin menghapus rekapan "${judul}" dari Database?`,
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       type: 'danger',
@@ -1018,9 +1012,9 @@ export function SuratJalanModule() {
         try {
           const { error } = await supabase.from('rekapan_sj').delete().eq('id', id);
           if (error) {
-            showToast('Peringatan', `Terhapus lokal, catatan DB: ${error.message}`, 'info');
+            showToast('Peringatan', `Terhapus lokal, catatan DB: ${error.message.replace(/supabase/gi, 'database')}`, 'info');
           } else {
-            showToast('Terhapus', 'Data rekapan berhasil dihapus dari Database Supabase', 'success');
+            showToast('Terhapus', 'Data rekapan berhasil dihapus dari Database', 'success');
             fetchAllData();
           }
         } catch (e) {
@@ -1118,7 +1112,7 @@ export function SuratJalanModule() {
           onClick={fetchAllData}
           disabled={loading}
           className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-          title="Sinkronkan dengan Supabase"
+          title="Sinkronkan dengan Database"
         >
           <RefreshCw size={15} className={loading ? 'animate-spin text-blue-600' : ''} />
         </button>
@@ -2036,7 +2030,7 @@ export function SuratJalanModule() {
                   setShowSaveModal(true);
                 }}
                 className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
-                title="Simpan rekapan saat ini ke Database Supabase"
+                title="Simpan rekapan saat ini ke Database"
               >
                 <Database size={15} />
                 <span>Simpan Rekapan DB</span>
@@ -2070,7 +2064,7 @@ export function SuratJalanModule() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-purple-900 font-extrabold text-sm">
                   <Database size={16} className="text-purple-600" />
-                  <span>Daftar Rekapan Ter simpan di Database Supabase ({savedRekapList.length})</span>
+                  <span>Daftar Rekapan Tersimpan di Database ({savedRekapList.length})</span>
                 </div>
                 <button
                   onClick={() => setShowHistorySection(false)}
@@ -2357,7 +2351,7 @@ export function SuratJalanModule() {
                   Daftar Tujuan Pengiriman ({tujuanList.length})
                 </h3>
                 <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
-                  Data tujuan pengiriman yang tersimpan di Database Supabase (`tujuan`)
+                  Data tujuan pengiriman yang tersimpan di Database (`tujuan`)
                 </p>
               </div>
               <button

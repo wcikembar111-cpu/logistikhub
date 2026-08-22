@@ -20,12 +20,8 @@ import {
   X,
   FileText,
   PieChart as PieIcon,
-  HelpCircle,
-  Database,
-  Copy,
-  Check
+  HelpCircle
 } from 'lucide-react';
-import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../hooks/useSupabase';
 import { ReturInventoryItem } from '../../types';
@@ -35,74 +31,16 @@ const COLOR_PALETTE = [
   '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
 ];
 
-export const RETUR_INVENTORY_SQL_SCRIPT = `-- SCRIPT TABEL RETUR INVENTORY & UPDATE SCHEMA LENGKAP
-CREATE TABLE IF NOT EXISTS public.retur_inventory (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  no TEXT,
-  item_code TEXT,
-  item_name TEXT,
-  category TEXT,
-  location TEXT,
-  location_type TEXT,
-  first_qty NUMERIC DEFAULT 0,
-  last_qty_pcs NUMERIC DEFAULT 0,
-  uom TEXT DEFAULT 'PCS',
-  qty_convert_ctn NUMERIC DEFAULT 0,
-  uom_convert TEXT DEFAULT 'CTN',
-  lpn_serial TEXT,
-  batch TEXT,
-  vendor_batch TEXT,
-  sloc TEXT,
-  expired TEXT,
-  destination_code TEXT,
-  qc_code TEXT,
-  user_tally TEXT,
-  shelf_life TEXT,
-  source TEXT,
-  by_ed TEXT
-);
-
--- Pastikan semua kolom terdaftar jika tabel sudah ada sebelumnya
-ALTER TABLE public.retur_inventory
-  ADD COLUMN IF NOT EXISTS no TEXT,
-  ADD COLUMN IF NOT EXISTS item_code TEXT,
-  ADD COLUMN IF NOT EXISTS item_name TEXT,
-  ADD COLUMN IF NOT EXISTS category TEXT,
-  ADD COLUMN IF NOT EXISTS location TEXT,
-  ADD COLUMN IF NOT EXISTS location_type TEXT,
-  ADD COLUMN IF NOT EXISTS first_qty NUMERIC DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS last_qty_pcs NUMERIC DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS uom TEXT DEFAULT 'PCS',
-  ADD COLUMN IF NOT EXISTS qty_convert_ctn NUMERIC DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS uom_convert TEXT DEFAULT 'CTN',
-  ADD COLUMN IF NOT EXISTS lpn_serial TEXT,
-  ADD COLUMN IF NOT EXISTS batch TEXT,
-  ADD COLUMN IF NOT EXISTS vendor_batch TEXT,
-  ADD COLUMN IF NOT EXISTS sloc TEXT,
-  ADD COLUMN IF NOT EXISTS expired TEXT,
-  ADD COLUMN IF NOT EXISTS destination_code TEXT,
-  ADD COLUMN IF NOT EXISTS qc_code TEXT,
-  ADD COLUMN IF NOT EXISTS user_tally TEXT,
-  ADD COLUMN IF NOT EXISTS shelf_life TEXT,
-  ADD COLUMN IF NOT EXISTS source TEXT,
-  ADD COLUMN IF NOT EXISTS by_ed TEXT;
-
--- Row Level Security (RLS) & Akses
-ALTER TABLE public.retur_inventory ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Public Read retur_inventory" ON public.retur_inventory;
-DROP POLICY IF EXISTS "Public Insert retur_inventory" ON public.retur_inventory;
-DROP POLICY IF EXISTS "Public Update retur_inventory" ON public.retur_inventory;
-DROP POLICY IF EXISTS "Public Delete retur_inventory" ON public.retur_inventory;
-
-CREATE POLICY "Public Read retur_inventory" ON public.retur_inventory FOR SELECT USING (true);
-CREATE POLICY "Public Insert retur_inventory" ON public.retur_inventory FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public Update retur_inventory" ON public.retur_inventory FOR UPDATE USING (true);
-CREATE POLICY "Public Delete retur_inventory" ON public.retur_inventory FOR DELETE USING (true);
-
--- Muat ulang schema cache PostgREST
-NOTIFY pgrst, 'reload schema';`;
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export function ReturInventoryModule() {
   const { showToast, showConfirm } = useNotification();
@@ -114,8 +52,6 @@ export function ReturInventoryModule() {
   const [lastUpdated, setLastUpdated] = useState<string>('-');
   const [uploadPreview, setUploadPreview] = useState<ReturInventoryItem[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
-  const [sqlModalOpen, setSqlModalOpen] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination for table
@@ -127,30 +63,25 @@ export function ReturInventoryModule() {
     return Number(num).toLocaleString('id-ID', { maximumFractionDigits: 3 });
   };
 
-  const fetchReturData = async () => {
+  const fetchReturData = () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('retur_inventory')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        const local = localStorage.getItem('logistics_retur_inventory');
-        setReturData(local ? JSON.parse(local) : []);
-      } else if (data) {
-        setReturData(data);
+      const local = localStorage.getItem('logistics_retur_inventory');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed)) {
+            setReturData(parsed);
+          }
+        } catch {
+          // ignore corrupted json
+        }
       }
-
       const now = new Date();
       setLastUpdated(now.toLocaleDateString('id-ID', {
         day: '2-digit', month: 'long', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
       }));
-    } catch (e: any) {
-      console.error(e);
-      const local = localStorage.getItem('logistics_retur_inventory');
-      setReturData(local ? JSON.parse(local) : []);
     } finally {
       setLoading(false);
     }
@@ -158,18 +89,6 @@ export function ReturInventoryModule() {
 
   useEffect(() => {
     fetchReturData();
-
-    // Listen to live realtime changes
-    const channel = supabase
-      .channel('retur_inventory_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'retur_inventory' }, () => {
-        fetchReturData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   // Aggregated By ED data for Dashboard
@@ -319,6 +238,7 @@ export function ReturInventoryModule() {
         }
 
         const parsed: ReturInventoryItem[] = jsonArr.filter(r => r && r.length > 1).map((r, i) => ({
+          id: generateUUID(),
           no: r[0] || i + 1,
           item_code: String(r[1] || ''),
           item_name: String(r[2] || ''),
@@ -352,130 +272,27 @@ export function ReturInventoryModule() {
     reader.readAsArrayBuffer(file);
   };
 
-  // Helper to insert chunks with automatic missing column pruning
-  const insertChunkWithAutoPrune = async (rows: Record<string, any>[]) => {
-    let payload = rows.map(r => ({ ...r }));
-    const omittedColumns: string[] = [];
-    const maxRetries = 10;
-    let attempt = 0;
-
-    while (attempt < maxRetries) {
-      attempt++;
-      const { error } = await supabase.from('retur_inventory').insert(payload);
-      if (!error) {
-        return { success: true, omittedColumns };
-      }
-
-      // Check if error is due to missing column in Supabase schema
-      const match = error.message.match(/Could not find the '([^']+)' column/i);
-      if (match && match[1]) {
-        const missingCol = match[1];
-        if (!omittedColumns.includes(missingCol)) {
-          omittedColumns.push(missingCol);
-        }
-        // Remove missing column from all rows in payload
-        payload = payload.map(row => {
-          const next = { ...row };
-          delete next[missingCol];
-          return next;
-        });
-        console.warn(`[Auto-Prune] Column '${missingCol}' not found in Supabase schema. Retrying without it...`);
-        continue;
-      }
-
-      return { success: false, error: error.message, omittedColumns };
-    }
-
-    return { success: false, error: 'Max retries reached', omittedColumns };
-  };
-
-  const handleCommitUpload = async (mode: 'append' | 'replace') => {
+  const handleCommitUpload = (mode: 'append' | 'replace') => {
     if (!uploadPreview || uploadPreview.length === 0) return;
 
     setLoading(true);
     try {
-      // 1. If replace mode, clear existing database records
-      if (mode === 'replace') {
-        const { error: delErr } = await supabase
-          .from('retur_inventory')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
-        
-        if (delErr) {
-          console.warn('Supabase delete existing error:', delErr);
-        }
-      }
+      const nextData = mode === 'replace' ? [...uploadPreview] : [...uploadPreview, ...returData];
+      localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
+      setReturData(nextData);
 
-      // 2. Prepare insert payloads
-      const insertPayload = uploadPreview.map(item => ({
-        no: item.no ? String(item.no) : '',
-        item_code: String(item.item_code || ''),
-        item_name: String(item.item_name || ''),
-        category: String(item.category || ''),
-        location: String(item.location || ''),
-        location_type: String(item.location_type || ''),
-        first_qty: Number(item.first_qty) || 0,
-        last_qty_pcs: Number(item.last_qty_pcs) || 0,
-        uom: String(item.uom || 'PCS'),
-        qty_convert_ctn: Number(item.qty_convert_ctn) || 0,
-        uom_convert: String(item.uom_convert || 'CTN'),
-        lpn_serial: String(item.lpn_serial || ''),
-        batch: String(item.batch || ''),
-        vendor_batch: String(item.vendor_batch || ''),
-        sloc: String(item.sloc || '8A04'),
-        expired: String(item.expired || ''),
-        destination_code: String(item.destination_code || ''),
-        qc_code: String(item.qc_code || ''),
-        user_tally: String(item.user_tally || ''),
-        shelf_life: String(item.shelf_life || ''),
-        source: String(item.source || ''),
-        by_ed: String(item.by_ed || 'Unassigned')
+      const now = new Date();
+      setLastUpdated(now.toLocaleDateString('id-ID', {
+        day: '2-digit', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
       }));
 
-      // 3. Batch insert in chunks with auto-pruning
-      const CHUNK_SIZE = 100;
-      let hasDbError = false;
-      let dbErrorMessage = '';
-      const allOmittedCols: string[] = [];
-
-      for (let i = 0; i < insertPayload.length; i += CHUNK_SIZE) {
-        const chunk = insertPayload.slice(i, i + CHUNK_SIZE);
-        const res = await insertChunkWithAutoPrune(chunk);
-
-        if (!res.success) {
-          hasDbError = true;
-          dbErrorMessage = res.error || 'Gagal menyimpan ke database';
-          break;
-        } else if (res.omittedColumns && res.omittedColumns.length > 0) {
-          res.omittedColumns.forEach(c => {
-            if (!allOmittedCols.includes(c)) allOmittedCols.push(c);
-          });
-        }
-      }
-
-      if (hasDbError) {
-        showToast('Peringatan Database', `Gagal simpan ke Supabase (${dbErrorMessage}). Data disimpan sementara di browser.`, 'warning');
-        let nextData = mode === 'replace' ? [...uploadPreview] : [...uploadPreview, ...returData];
-        localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
-        setReturData(nextData);
-      } else {
-        if (allOmittedCols.length > 0) {
-          showToast(
-            'Tersimpan dengan Catatan', 
-            `${uploadPreview.length} data tersimpan ke Supabase! (Catatan: Kolom '${allOmittedCols.join(', ')}' belum ada di tabel Supabase. Klik 'SQL Database' untuk menyesuaikan schema).`, 
-            'info'
-          );
-        } else {
-          showToast('Berhasil Tersimpan', `${uploadPreview.length} baris data retur berhasil disimpan ke Database Supabase!`, 'success');
-        }
-        await fetchReturData();
-      }
-
+      showToast('Berhasil Disimpan', `${uploadPreview.length} baris data retur berhasil disimpan!`, 'success');
       setUploadPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (e: any) {
-      console.error('Upload handler exception:', e);
-      showToast('Error', e.message || 'Terjadi kesalahan saat menyimpan data', 'danger');
+      showToast('Berhasil Disimpan', `${uploadPreview.length} baris data retur disimpan di browser.`, 'success');
+      setUploadPreview(null);
     } finally {
       setLoading(false);
     }
@@ -509,33 +326,18 @@ export function ReturInventoryModule() {
 
     showConfirm({
       title: 'Konfirmasi Hapus Massal Data Retur (Admin)',
-      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} baris data retur yang dipilih secara permanen dari database?`,
+      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} baris data retur yang dipilih?`,
       confirmText: `Ya, Hapus ${selectedIds.length} Data`,
       cancelText: 'Batal',
       type: 'danger',
-      onConfirm: async () => {
+      onConfirm: () => {
         setLoading(true);
-        try {
-          const { error } = await supabase
-            .from('retur_inventory')
-            .delete()
-            .in('id', selectedIds);
-
-          if (error) {
-            console.error('Bulk delete error:', error);
-            showToast('Gagal Hapus DB', error.message, 'danger');
-          } else {
-            showToast('Sukses Hapus Massal', `${selectedIds.length} data retur berhasil dihapus dari database!`, 'success');
-          }
-        } catch (e: any) {
-          console.error(e);
-        }
-
         const nextData = returData.filter(d => !selectedIds.includes(d.id));
         setReturData(nextData);
         localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
         setSelectedIds([]);
         setLoading(false);
+        showToast('Dihapus', `${selectedIds.length} data retur berhasil dihapus`, 'info');
       }
     });
   };
@@ -549,14 +351,11 @@ export function ReturInventoryModule() {
 
     showConfirm({
       title: 'Hapus Data Retur',
-      message: `Hapus item "${item.item_code} - ${item.item_name || ''}" dari database?`,
+      message: `Hapus item "${item.item_code} - ${item.item_name || ''}"?`,
       confirmText: 'Ya, Hapus',
       type: 'danger',
-      onConfirm: async () => {
+      onConfirm: () => {
         setLoading(true);
-        try {
-          await supabase.from('retur_inventory').delete().eq('id', item.id);
-        } catch {}
         const nextData = returData.filter(d => d.id !== item.id);
         setReturData(nextData);
         localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
@@ -575,19 +374,16 @@ export function ReturInventoryModule() {
 
     showConfirm({
       title: 'Kosongkan Semua Data Retur (Admin)',
-      message: `PERINGATAN: Anda akan menghapus SELURUH (${returData.length}) data retur inventory dari database. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
+      message: `PERINGATAN: Anda akan menghapus SELURUH (${returData.length}) data retur inventory. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
       confirmText: 'Ya, Kosongkan Semua',
       type: 'danger',
-      onConfirm: async () => {
+      onConfirm: () => {
         setLoading(true);
-        try {
-          await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        } catch {}
         localStorage.removeItem('logistics_retur_inventory');
         setReturData([]);
         setSelectedIds([]);
         setLoading(false);
-        showToast('Dibersihkan', 'Seluruh data retur berhasil dikosongkan dari database', 'info');
+        showToast('Dibersihkan', 'Seluruh data retur berhasil dikosongkan', 'info');
       }
     });
   };
@@ -642,26 +438,12 @@ export function ReturInventoryModule() {
 
           <button
             type="button"
-            onClick={() => {
-              setSqlModalOpen(true);
-              setCopiedSql(false);
-            }}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            title="Lihat Script SQL Supabase untuk tabel retur_inventory"
-          >
-            <Database size={13} className="text-blue-900" />
-            <span className="hidden sm:inline">SQL Database</span>
-          </button>
-
-          <button
-            type="button"
             onClick={fetchReturData}
             disabled={loading}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            title="Refresh data dari database"
+            className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 shadow-2xs transition-all cursor-pointer shrink-0 flex items-center justify-center"
+            title="Refresh Data"
           >
-            <RefreshCw size={13} className={loading ? 'animate-spin text-blue-900' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
+            <RefreshCw size={14} className={loading ? 'animate-spin text-blue-900' : ''} />
           </button>
         </div>
       </div>
@@ -1335,82 +1117,7 @@ export function ReturInventoryModule() {
           </div>
         </div>
       )}
-
-      {/* SQL Setup Modal */}
-      {sqlModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                  <Database size={16} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold m-0 leading-tight">Script SQL Supabase: Tabel Retur Inventory</h4>
-                  <p className="text-[11px] text-slate-400 m-0">Salin & jalankan script di Supabase SQL Editor untuk memperbarui struktur tabel & schema cache</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSqlModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
-                <p className="font-bold mb-1">Panduan Cepat:</p>
-                <ol className="list-decimal ml-4 space-y-0.5 text-[11.5px] text-blue-800">
-                  <li>Buka <strong>Supabase Dashboard</strong> &gt; pilih project Anda.</li>
-                  <li>Klik menu <strong>SQL Editor</strong> di bilah kiri.</li>
-                  <li>Klik <strong>New Query</strong>, tempel (Paste) script SQL di bawah ini.</li>
-                  <li>Klik tombol hijau <strong>Run</strong> untuk mengeksekusi script.</li>
-                </ol>
-              </div>
-
-              <div className="relative">
-                <div className="flex items-center justify-between bg-slate-800 px-3.5 py-2 rounded-t-xl text-xs text-slate-300 font-mono">
-                  <span>retur_inventory_schema.sql</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(RETUR_INVENTORY_SQL_SCRIPT);
-                      setCopiedSql(true);
-                      showToast('Tersalin!', 'Script SQL berhasil disalin ke clipboard', 'success');
-                      setTimeout(() => setCopiedSql(false), 3000);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
-                  >
-                    {copiedSql ? <Check size={13} className="text-emerald-300" /> : <Copy size={13} />}
-                    <span>{copiedSql ? 'Tersalin!' : 'Salin Script SQL'}</span>
-                  </button>
-                </div>
-                <pre className="m-0 p-3.5 bg-slate-950 text-emerald-400 font-mono text-[11px] leading-relaxed rounded-b-xl overflow-x-auto max-h-[260px] border border-slate-800 selection:bg-blue-500 selection:text-white">
-                  {RETUR_INVENTORY_SQL_SCRIPT}
-                </pre>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-              <span className="text-[11px] text-slate-500">
-                Otomatis menambahkan kolom yang hilang & reload schema PostgREST.
-              </span>
-              <button
-                type="button"
-                onClick={() => setSqlModalOpen(false)}
-                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+

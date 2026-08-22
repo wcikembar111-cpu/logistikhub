@@ -122,7 +122,7 @@ export function BroadcastModal({
 
     showConfirm({
       title: 'Kosongkan Seluruh Pesan Siaran?',
-      message: 'Semua riwayat pesan siaran akan dihapus secara permanen dari database Supabase agar kapasitas database tetap bersih dan tidak penuh. Lanjutkan?',
+      message: 'Semua riwayat pesan siaran akan dihapus secara permanen dari database agar kapasitas tetap bersih dan tidak penuh. Lanjutkan?',
       confirmText: 'Ya, Hapus Semua di Database',
       type: 'danger',
       onConfirm: async () => {
@@ -349,10 +349,10 @@ export function BroadcastModal({
                     </div>
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold text-red-950 m-0 leading-tight">
-                        Database Supabase ({messages.length} pesan)
+                        Database Siaran ({messages.length} pesan)
                       </p>
                       <p className="text-[10px] text-red-700 m-0 leading-tight truncate">
-                        Kosongkan agar database tidak penuh
+                        Kosongkan agar kapasitas database tetap rapi
                       </p>
                     </div>
                   </div>
