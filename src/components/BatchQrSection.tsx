@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import JSZip from 'jszip';
 import { Download, Printer, Trash2, Search, Copy, Check, QrCode, Sliders, X, Tag, ExternalLink } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
+import { useAuth } from '../hooks/useSupabase';
 
 export interface QrItem {
   id: string;
@@ -26,6 +27,7 @@ const THERMAL_SIZES = {
 
 export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionProps) {
   const { showToast } = useNotification();
+  const { isAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isZipping, setIsZipping] = useState(false);
@@ -343,13 +345,15 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
               <span>{isZipping ? 'Membuat ZIP...' : 'Unduh Semua (ZIP)'}</span>
             </button>
 
-            <button
-              onClick={onClear}
-              className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 hover:text-white border border-red-500/30 transition-all cursor-pointer ml-1"
-              title="Sembunyikan / Hapus Hasil"
-            >
-              <Trash2 size={16} />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={onClear}
+                className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 hover:text-white border border-red-500/30 transition-all cursor-pointer ml-1"
+                title="Sembunyikan / Hapus Hasil (Admin)"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </div>
         </div>
 

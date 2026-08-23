@@ -431,8 +431,13 @@ export function PromosiModule() {
   };
 
   const handleDelete = (id: string) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus data penerimaan barang khusus untuk Admin.', 'danger');
+      return;
+    }
+
     showConfirm({
-      title: 'Hapus Data Penerimaan',
+      title: 'Hapus Data Penerimaan (Admin)',
       message: 'Yakin ingin menghapus data penerimaan ini dari Database?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
@@ -1103,13 +1108,15 @@ export function PromosiModule() {
                           >
                             <Edit size={14} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(row.id)}
-                            className="p-1.5 rounded-md bg-white hover:bg-red-50 border border-slate-200 text-slate-700 hover:text-red-600 cursor-pointer transition-all shadow-2xs"
-                            title="Hapus"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDelete(row.id)}
+                              className="p-1.5 rounded-md bg-white hover:bg-red-50 border border-slate-200 text-slate-700 hover:text-red-600 cursor-pointer transition-all shadow-2xs"
+                              title="Hapus (Admin)"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

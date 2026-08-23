@@ -104,12 +104,9 @@ export function PopyMaternityCountdown({ isAdmin }: PopyMaternityCountdownProps)
   }, [playCelebrationChime]);
 
   const handleBadgeClick = () => {
-    // Jika bukan admin dan belum tiba waktunya, tidak bisa diklik
-    if (!isAdmin && !timeLeft.isFinished) {
-      return;
-    }
     setIsTestPreview(false);
     setShowModal(true);
+    playCelebrationChime();
   };
 
   const handleAdminTestPreview = (e: React.MouseEvent) => {
@@ -119,26 +116,19 @@ export function PopyMaternityCountdown({ isAdmin }: PopyMaternityCountdownProps)
     playCelebrationChime();
   };
 
-  const canClickBadge = isAdmin || timeLeft.isFinished;
-
   return (
     <>
       <div className="flex items-center gap-1">
-        {/* Countdown Badge */}
-        <div
-          onClick={canClickBadge ? handleBadgeClick : undefined}
-          className={`py-1 px-2 sm:px-2.5 text-[10px] font-bold rounded-lg border flex items-center gap-1.5 transition-all shadow-2xs select-none ${
-            canClickBadge ? 'cursor-pointer active:scale-95' : 'cursor-default'
-          } ${
+        {/* Countdown Badge (Dapat diklik oleh semua user) */}
+        <button
+          type="button"
+          onClick={handleBadgeClick}
+          className={`py-1 px-2 sm:px-2.5 text-[10px] font-bold rounded-lg border flex items-center gap-1.5 transition-all shadow-2xs select-none cursor-pointer active:scale-95 ${
             timeLeft.isFinished
               ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 animate-pulse'
-              : 'bg-rose-50/70 text-rose-800 border-rose-200'
+              : 'bg-rose-50/80 hover:bg-rose-100/90 text-rose-800 border-rose-200 hover:border-rose-300'
           }`}
-          title={
-            canClickBadge
-              ? 'Countdown Cuti Melahirkan Popy (2 Sep 2026 11:00 WIB) - Klik untuk lihat ucapan'
-              : 'Countdown Cuti Melahirkan Popy (2 Sep 2026 11:00 WIB)'
-          }
+          title="Countdown Cuti Melahirkan Popy (02 Sep 2026 11:00 WIB) - Klik untuk lihat ucapan doa & apresiasi"
         >
           <Baby size={12} className="text-rose-500 shrink-0" />
           
@@ -155,7 +145,7 @@ export function PopyMaternityCountdown({ isAdmin }: PopyMaternityCountdownProps)
               {timeLeft.days}h {timeLeft.hours}j {timeLeft.minutes}m {timeLeft.seconds}d
             </span>
           )}
-        </div>
+        </button>
 
         {/* Khusus Admin: Tombol Test Tampilan Popup Pesan */}
         {isAdmin && (

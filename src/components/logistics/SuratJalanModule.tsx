@@ -506,8 +506,13 @@ export function SuratJalanModule() {
 
   // Delete Document
   const handleDeleteDocument = (id: string) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus dokumen Surat Jalan khusus untuk Admin.', 'danger');
+      return;
+    }
+
     showConfirm({
-      title: 'Hapus Dokumen SJ',
+      title: 'Hapus Dokumen SJ (Admin)',
       message: 'Yakin ingin menghapus dokumen Surat Jalan ini dari Database?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
@@ -630,8 +635,13 @@ export function SuratJalanModule() {
   };
 
   const handleDeleteJenis = (id: string) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus jenis surat jalan khusus untuk Admin.', 'danger');
+      return;
+    }
+
     showConfirm({
-      title: 'Hapus Jenis Surat Jalan',
+      title: 'Hapus Jenis Surat Jalan (Admin)',
       message: 'Yakin ingin menghapus Jenis Surat Jalan ini dari Database?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
@@ -726,8 +736,13 @@ export function SuratJalanModule() {
   };
 
   const handleDeleteTujuanMaster = (id: string) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus tujuan pengiriman khusus untuk Admin.', 'danger');
+      return;
+    }
+
     showConfirm({
-      title: 'Hapus Tujuan Pengiriman',
+      title: 'Hapus Tujuan Pengiriman (Admin)',
       message: 'Yakin ingin menghapus Tujuan Pengiriman ini dari Database?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
@@ -999,8 +1014,13 @@ export function SuratJalanModule() {
 
   // Delete Saved Rekap
   const handleDeleteSavedRekap = (id: string, judul: string) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus rekapan tersimpan khusus untuk Admin.', 'danger');
+      return;
+    }
+
     showConfirm({
-      title: 'Hapus Rekapan Tersimpan',
+      title: 'Hapus Rekapan Tersimpan (Admin)',
       message: `Yakin ingin menghapus rekapan "${judul}" dari Database?`,
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
@@ -1337,13 +1357,15 @@ export function SuratJalanModule() {
                               >
                                 <Edit size={14} />
                               </button>
-                              <button
-                                onClick={() => handleDeleteDocument(doc.id)}
-                                className="p-1.5 rounded bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-700 cursor-pointer transition-colors"
-                                title="Hapus"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="p-1.5 rounded bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-700 cursor-pointer transition-colors"
+                                  title="Hapus (Admin)"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2127,13 +2149,15 @@ export function SuratJalanModule() {
                           <Download size={12} />
                           <span>Excel</span>
                         </button>
-                        <button
-                          onClick={() => handleDeleteSavedRekap(rk.id, rk.judul)}
-                          className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                          title="Hapus Rekapan"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteSavedRekap(rk.id, rk.judul)}
+                            className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            title="Hapus Rekapan (Admin)"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2328,13 +2352,15 @@ export function SuratJalanModule() {
                         >
                           <Edit size={13} />
                         </button>
-                        <button
-                          onClick={() => handleDeleteJenis(j.id)}
-                          className="p-1.5 rounded bg-white hover:bg-red-100 text-slate-600 hover:text-red-700 cursor-pointer border border-slate-200"
-                          title="Hapus Jenis"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteJenis(j.id)}
+                            className="p-1.5 rounded bg-white hover:bg-red-100 text-slate-600 hover:text-red-700 cursor-pointer border border-slate-200"
+                            title="Hapus Jenis (Admin)"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -2400,13 +2426,15 @@ export function SuratJalanModule() {
                             >
                               <Edit size={13} />
                             </button>
-                            <button
-                              onClick={() => handleDeleteTujuanMaster(t.id)}
-                              className="p-1.5 rounded bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-700 cursor-pointer"
-                              title="Hapus Tujuan"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteTujuanMaster(t.id)}
+                                className="p-1.5 rounded bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-700 cursor-pointer"
+                                title="Hapus Tujuan (Admin)"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

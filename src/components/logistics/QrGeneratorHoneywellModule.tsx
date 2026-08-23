@@ -27,6 +27,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../hooks/useSupabase';
 import { QrLabelItem, LabelPresetSize } from '../../types';
 
 interface QrGeneratorHoneywellModuleProps {
@@ -90,6 +91,7 @@ const INITIAL_SAMPLE_ITEMS: Omit<QrLabelItem, 'id' | 'dataUrl' | 'createdAt'>[] 
 
 export function QrGeneratorHoneywellModule({ onExportBatchItems }: QrGeneratorHoneywellModuleProps) {
   const { showToast } = useNotification();
+  const { isAdmin } = useAuth();
 
   // Label Configuration & Geometrics
   const [labelSize, setLabelSize] = useState<LabelPresetSize>('100x80');
@@ -690,11 +692,19 @@ export function QrGeneratorHoneywellModule({ onExportBatchItems }: QrGeneratorHo
   };
 
   const handleDeleteItem = (id: string) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hapus label QR Code khusus untuk Admin.', 'danger');
+      return;
+    }
     setItems(prev => prev.filter(i => i.id !== id));
     showToast('Dihapus', 'Label berhasil dihapus', 'info');
   };
 
   const handleClearAll = () => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Kosongkan daftar label QR khusus untuk Admin.', 'danger');
+      return;
+    }
     if (items.length === 0) return;
     if (window.confirm('Hapus semua label dari daftar antrean?')) {
       setItems([]);
@@ -807,12 +817,12 @@ export function QrGeneratorHoneywellModule({ onExportBatchItems }: QrGeneratorHo
               <span>{isZipping ? 'Membuat ZIP...' : 'Unduh ZIP'}</span>
             </button>
 
-            {items.length > 0 && (
+            {isAdmin && items.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearAll}
                 className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all cursor-pointer ml-1"
-                title="Sembunyikan / Kosongkan Hasil"
+                title="Sembunyikan / Kosongkan Hasil (Admin)"
               >
                 <Trash2 size={16} />
               </button>
@@ -910,14 +920,16 @@ export function QrGeneratorHoneywellModule({ onExportBatchItems }: QrGeneratorHo
                 >
                   <Edit3 size={13} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteItem(item.id)}
-                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                  title="Hapus Label Ini"
-                >
-                  <Trash2 size={13} />
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteItem(item.id)}
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                    title="Hapus Label Ini (Admin)"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
               </div>
 
               {/* QR Image Container - Big, Crisp & Directly Scannable */}
