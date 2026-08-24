@@ -86,8 +86,7 @@ export function MonitoringPemusnahanModule() {
     try {
       const { data, error } = await supabase
         .from('monitoring_pemusnahan')
-        .select('*')
-        .order('tahun', { ascending: false });
+        .select('*');
 
       if (error) {
         const local = localStorage.getItem('logistics_monitoring_pemusnahan');
