@@ -1607,11 +1607,11 @@ export function MonitoringPemusnahanModule() {
         </div>
       )}
 
-      {/* Main Wide Scrollable Table (27 Columns) */}
+      {/* Main Wide Scrollable Table (25 Columns) */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
         <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-[11px] text-slate-500 font-medium">
           <span>
-            💡 Petunjuk: Tabel dapat digeser horizontal hingga <strong>26 kolom data lengkap</strong> (Kolom terakhir: LAST_UPDATE).
+            💡 Petunjuk: Tabel dapat digeser horizontal hingga <strong>25 kolom data lengkap</strong> (Kolom terakhir: KETERANGAN).
           </span>
           <div className="flex items-center gap-1">
             <button onClick={() => handleScroll('left')} className="p-1 hover:text-blue-900"><ArrowLeft size={14} /></button>
@@ -1620,7 +1620,7 @@ export function MonitoringPemusnahanModule() {
         </div>
 
         <div ref={scrollContainerRef} className="overflow-x-auto max-h-[580px] overflow-y-auto">
-          <table className="w-full text-left text-xs border-collapse whitespace-nowrap min-w-[2800px]">
+          <table className="w-full text-left text-xs border-collapse whitespace-nowrap min-w-[2600px]">
             <thead className="sticky top-0 bg-blue-50/95 backdrop-blur-xs text-blue-950 font-bold border-b border-slate-200 z-20 uppercase tracking-wider text-[10px]">
               <tr>
                 <th className={`sticky left-0 bg-blue-100/90 py-3 px-2 text-center z-30 shadow-xs border-r border-blue-200 ${isAdmin ? 'w-36' : 'w-28'}`}>
@@ -1661,7 +1661,6 @@ export function MonitoringPemusnahanModule() {
                 <th className="py-3 px-3 min-w-[150px]">BAP_KAPSUL</th>
                 <th className="py-3 px-3 min-w-[130px]">CHECK_KAPSUL</th>
                 <th className="py-3 px-3 min-w-[180px]">KETERANGAN</th>
-                <th className="py-3 px-3 min-w-[160px]">LAST_UPDATE</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -1737,14 +1736,13 @@ export function MonitoringPemusnahanModule() {
                     </select>
                   </td>
                   <td className="p-1.5"><input type="text" value={inlineDraft.keterangan || ''} onChange={e => setInlineDraft({...inlineDraft, keterangan: e.target.value})} className="w-40 p-1 text-xs border rounded bg-white" /></td>
-                  <td className="p-1.5 text-slate-400">-</td>
                 </tr>
               )}
 
               {/* Data Rows */}
               {filteredRecords.length === 0 && editingRowId !== 'NEW' ? (
                 <tr>
-                  <td colSpan={26} className="py-8 text-center text-slate-400">
+                  <td colSpan={25} className="py-8 text-center text-slate-400">
                     Tidak ada data monitoring pemusnahan yang sesuai filter.
                   </td>
                 </tr>
@@ -1824,7 +1822,6 @@ export function MonitoringPemusnahanModule() {
                           </select>
                         </td>
                         <td className="p-1.5"><input type="text" value={inlineDraft.keterangan || ''} onChange={e => setInlineDraft({...inlineDraft, keterangan: e.target.value})} className="w-40 p-1 text-xs border rounded bg-white" /></td>
-                        <td className="p-1.5 text-slate-400">{r.last_update || '-'}</td>
                       </tr>
                     );
                   }
@@ -1922,7 +1919,6 @@ export function MonitoringPemusnahanModule() {
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-[11px] text-slate-600">{r.keterangan || '-'}</td>
-                      <td className="py-2.5 px-3 text-[11px] text-slate-400 font-mono">{r.last_update || '-'}</td>
                     </tr>
                   );
                 })
