@@ -14,7 +14,7 @@ export interface QrItem {
 interface BatchQrSectionProps {
   items: QrItem[];
   onClear: () => void;
-  onOpenModal: () => void;
+  onOpenModal?: () => void;
 }
 
 const THERMAL_SIZES = {
@@ -310,13 +310,15 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
           {/* Actions toolbar */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={onOpenModal}
-              className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-            >
-              <QrCode size={15} />
-              <span>Tambah / Edit Batch</span>
-            </button>
+            {onOpenModal && (
+              <button
+                onClick={onOpenModal}
+                className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <QrCode size={15} />
+                <span>Tambah / Edit Batch</span>
+              </button>
+            )}
 
             <button
               onClick={() => setShowPrintModal(true)}

@@ -9,7 +9,7 @@ interface SidebarProps {
   isAdmin: boolean;
   isOpen: boolean;
   onToggle: () => void;
-  onAddTodo: (task: string, priority?: TodoPriority, isBlinking?: boolean) => void;
+  onAddTodo: (task: string, priority?: TodoPriority, isBlinking?: boolean, senderName?: string) => void;
   onUpdateStatus: (id: string, status: TodoData['status']) => void;
   onUpdateTodo?: (id: string, updates: Partial<Omit<TodoData, 'id'>>) => void;
   onDeleteTodo: (id: string) => void;
@@ -95,8 +95,9 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
       showToast('Perhatian', 'Silakan ketik isi tugas terlebih dahulu', 'warning');
       return;
     }
-    onAddTodo(newTask.trim(), newPriority, newIsBlinking || newPriority === 'mendesak');
-    showToast('Tersimpan', 'Tugas baru berhasil ditambahkan', 'success');
+    const savedSenderName = localStorage.getItem('broadcast_sender_name') || (isAdmin ? 'Admin' : 'Pengguna Public Todo');
+    onAddTodo(newTask.trim(), newPriority, newIsBlinking || newPriority === 'mendesak', savedSenderName);
+    showToast('Tersimpan & Disiarkan', 'Tugas baru berhasil disimpan dan disiarkan ke seluruh perangkat!', 'success');
     setNewTask('');
     setNewPriority('rendah');
     setNewIsBlinking(false);
@@ -787,6 +788,19 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                 </label>
               </div>
 
+              {/* Siaran Otomatis Alert Info */}
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-300/80 flex items-center gap-2.5 text-slate-800">
+                <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 shadow-2xs">
+                  <BellRing size={16} className="animate-pulse" />
+                </div>
+                <div className="min-w-0 text-xs">
+                  <div className="font-extrabold text-amber-900 leading-tight">Siaran Otomatis Realtime</div>
+                  <div className="text-[11px] text-amber-800 font-medium">
+                    Saat disimpan, tugas langsung muncul sebagai <strong>popup siaran di semua perangkat</strong>.
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2 pt-2">
                 <button 
                   onClick={() => setShowFormModal(false)}
@@ -796,9 +810,9 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                 </button>
                 <button 
                   onClick={handleAdd}
-                  className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white text-xs font-black shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
-                  <Plus size={16} /> Simpan Tugas
+                  <Plus size={16} /> Simpan & Siarkan Tugas
                 </button>
               </div>
             </div>

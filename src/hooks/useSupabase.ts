@@ -1,6 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { LinkData, TodoData, TodoPriority, parseTodoTask, formatTodoTask } from '../types';
+import { playBroadcastSound } from '../utils/broadcastSound';
+import { triggerSystemBroadcastNotification } from '../utils/systemNotification';
+
+// Unique session ID to identify the local tab / browser instance
+const SESSION_CLIENT_ID = typeof crypto !== 'undefined' && crypto.randomUUID 
+  ? crypto.randomUUID() 
+  : 'client-' + Math.random().toString(36).substring(2, 9);
 
 export function useLinks() {
   const [links, setLinks] = useState<LinkData[]>([]);
@@ -70,8 +77,36 @@ export function useLinks() {
 export function useTodos() {
   const [todos, setTodos] = useState<TodoData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [incomingNewTodo, setIncomingNewTodo] = useState<(TodoData & { created_at?: string; sender_name?: string; sessionId?: string }) | null>(null);
 
-  const fetchTodos = async () => {
+  const dismissIncomingTodo = useCallback(() => {
+    setIncomingNewTodo(null);
+  }, []);
+
+  const triggerTodoPopupAlert = useCallback((item: TodoData & { created_at?: string; sender_name?: string; sessionId?: string }, isOwnSession = false) => {
+    setIncomingNewTodo(item);
+    
+    // Play alert chime
+    const isUrgent = item.priority === 'mendesak' || item.is_blinking;
+    const isHigh = item.priority === 'tinggi';
+    const soundCategory = isUrgent ? 'urgent' : isHigh ? 'warning' : 'announcement';
+    playBroadcastSound(soundCategory);
+
+    // Trigger system notification for other devices or background tabs
+    if (!isOwnSession) {
+      triggerSystemBroadcastNotification({
+        id: item.id || Date.now().toString(),
+        sender_name: item.sender_name || `Public Todo (${(item.priority || 'BIASA').toUpperCase()})`,
+        message: `Tugas Baru: "${item.task}"`,
+        category: isUrgent ? 'urgent' : isHigh ? 'warning' : 'announcement',
+        created_at: item.created_at || new Date().toISOString()
+      }, () => {
+        setIncomingNewTodo(item);
+      });
+    }
+  }, []);
+
+  const fetchTodos = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('todos').select('*').order('created_at', { ascending: false });
       if (!error && data) {
@@ -91,13 +126,50 @@ export function useTodos() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTodos();
-    const channel = supabase
-      .channel('todos_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => {
+
+    // Listen to real-time WebSockets broadcast channel and DB postgres_changes
+    const channel = (supabase.channel('todos_realtime_broadcast_room') as any)
+      .on('broadcast', { event: 'new_todo_broadcast' }, (payload: any) => {
+        const item = payload.payload;
+        if (!item) return;
+
+        // Trigger popup across all other devices/tabs
+        if (item.sessionId !== SESSION_CLIENT_ID) {
+          triggerTodoPopupAlert(item, false);
+          fetchTodos();
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'todos' }, (payload: any) => {
+        const newRow = payload.new;
+        if (newRow) {
+          const parsed = parseTodoTask(newRow.task, newRow.priority, newRow.is_blinking);
+          const item = {
+            id: newRow.id,
+            task: parsed.cleanTask,
+            priority: parsed.priority,
+            is_blinking: parsed.isBlinking,
+            status: newRow.status,
+            created_at: newRow.created_at || new Date().toISOString(),
+            sender_name: 'Pengguna Public Todo'
+          };
+
+          // If incoming popup not yet displayed
+          setIncomingNewTodo(prev => {
+            if (prev && prev.id === item.id) return prev;
+            // Only trigger sound/popup if from different action
+            return prev;
+          });
+        }
+        fetchTodos();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'todos' }, () => {
+        fetchTodos();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'todos' }, () => {
         fetchTodos();
       })
       .subscribe();
@@ -105,22 +177,40 @@ export function useTodos() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchTodos, triggerTodoPopupAlert]);
 
-  const addTodo = async (task: string, priority: TodoPriority = 'rendah', isBlinking: boolean = false) => {
+  const addTodo = async (task: string, priority: TodoPriority = 'rendah', isBlinking: boolean = false, senderName?: string) => {
     const formattedTask = formatTodoTask(task, priority, isBlinking);
     const tempId = crypto.randomUUID();
-    const newTodo: TodoData = { 
+    const createdAt = new Date().toISOString();
+
+    const newTodoPayload = { 
       id: tempId, 
       task, 
-      status: 'no', 
+      status: 'no' as const, 
       priority, 
       is_blinking: isBlinking, 
-      created_at: new Date().toISOString() 
-    } as any;
+      created_at: createdAt,
+      sender_name: senderName || 'Public Todo',
+      sessionId: SESSION_CLIENT_ID
+    };
     
-    setTodos(prev => [newTodo, ...prev]);
+    // 1. Optimistic local update
+    setTodos(prev => [newTodoPayload, ...prev]);
 
+    // 2. Broadcast immediately over WebSockets channel to all connected devices in realtime
+    try {
+      const channel = supabase.channel('todos_realtime_broadcast_room');
+      await channel.send({
+        type: 'broadcast',
+        event: 'new_todo_broadcast',
+        payload: newTodoPayload
+      });
+    } catch (err) {
+      console.warn('Realtime todo broadcast channel note:', err);
+    }
+
+    // 3. Save to Supabase DB
     const { error } = await supabase.from('todos').insert([{ task: formattedTask, status: 'no' }]);
     if (error) {
       alert(`Gagal menyimpan tugas. Pesan: ${error.message}.`);
@@ -202,7 +292,17 @@ export function useTodos() {
     }
   };
 
-  return { todos, loading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos };
+  return { 
+    todos, 
+    loading, 
+    addTodo, 
+    updateTodoStatus, 
+    updateTodo, 
+    deleteTodo, 
+    deleteCompletedTodos,
+    incomingNewTodo,
+    dismissIncomingTodo
+  };
 }
 
 export function useMenuOrder() {

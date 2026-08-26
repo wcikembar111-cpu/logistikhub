@@ -3,22 +3,19 @@ import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
 import { useInactivityLock } from './hooks/useInactivityLock';
 import { BroadcastBar } from './components/broadcast/BroadcastBar';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
+import { FloatingTodoBroadcast } from './components/todo/FloatingTodoBroadcast';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
 import { ToolsGrid } from './components/ToolsGrid';
 import { ToolWorkspacePage } from './components/tools/ToolWorkspacePage';
 import { QrItem } from './components/BatchQrSection';
 import { Sidebar } from './components/Sidebar';
-import { MainToolTab } from './components/EmbeddedToolsWorkspace';
-import { LogisticsTab } from './components/logistics/LogisticsModal';
 import { PinLockScreen } from './components/auth/PinLockScreen';
-import { isPinUnlocked, lockApp } from './utils/pinAuth';
-import { LinkData } from './types';
+import { isPinUnlocked } from './utils/pinAuth';
+import { LinkData, MainToolTab } from './types';
 
-// Lazy Loaded Modals and Workspaces for Ultra-Fast Initial Page Load
+// Lazy Loaded Modals for Ultra-Fast Initial Page Load
 const BroadcastModal = lazy(() => import('./components/broadcast/BroadcastModal').then(m => ({ default: m.BroadcastModal })));
-const QrGeneratorModal = lazy(() => import('./components/QrGeneratorModal').then(m => ({ default: m.QrGeneratorModal })));
-const LogisticsModal = lazy(() => import('./components/logistics/LogisticsModal').then(m => ({ default: m.LogisticsModal })));
 const LoginModal = lazy(() => import('./components/LoginModal').then(m => ({ default: m.LoginModal })));
 const LinkModal = lazy(() => import('./components/LinkModal').then(m => ({ default: m.LinkModal })));
 
@@ -41,7 +38,17 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'tool-workspace'>('home');
 
   const { links, loading: linksLoading, addLink, updateLink, deleteLink } = useLinks();
-  const { todos, loading: todosLoading, addTodo, updateTodoStatus, updateTodo, deleteTodo, deleteCompletedTodos } = useTodos();
+  const { 
+    todos, 
+    loading: todosLoading, 
+    addTodo, 
+    updateTodoStatus, 
+    updateTodo, 
+    deleteTodo, 
+    deleteCompletedTodos,
+    incomingNewTodo,
+    dismissIncomingTodo
+  } = useTodos();
   const { isAdmin, logout } = useAuth();
   
   // Realtime Broadcast Hook
@@ -65,9 +72,6 @@ export default function App() {
 
   const [showLogin, setShowLogin] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [showLogisticsModal, setShowLogisticsModal] = useState(false);
-  const [logisticsTab, setLogisticsTab] = useState<LogisticsTab>('ed-checker');
   const [activeWorkspaceTool, setActiveWorkspaceTool] = useState<MainToolTab>('qr-generator');
   const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
@@ -97,15 +101,6 @@ export default function App() {
       await addLink(data);
     }
     setShowLinkModal(false);
-  };
-
-  const handleOpenToolModal = (tool: MainToolTab) => {
-    if (tool === 'qr-generator') {
-      setShowQrModal(true);
-    } else {
-      setLogisticsTab(tool as LogisticsTab);
-      setShowLogisticsModal(true);
-    }
   };
 
   const handleReplyBroadcast = (senderName: string) => {
@@ -174,7 +169,6 @@ export default function App() {
                 setActiveWorkspaceTool(tool);
                 setCurrentView('tool-workspace');
               }}
-              onOpenModal={handleOpenToolModal}
             />
           </>
         ) : (
@@ -183,7 +177,6 @@ export default function App() {
             activeTool={activeWorkspaceTool}
             onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
             onBackToHome={() => setCurrentView('home')}
-            onOpenModal={handleOpenToolModal}
             onLockApp={handleLockApplication}
             batchQrItems={batchQrItems}
             onSetBatchQrItems={setBatchQrItems}
@@ -218,6 +211,18 @@ export default function App() {
         />
       )}
 
+      {/* Siaran Popup Tugas Baru Public Todo ke Semua Perangkat */}
+      <FloatingTodoBroadcast
+        incomingTodo={incomingNewTodo}
+        onClose={dismissIncomingTodo}
+        onOpenTodo={() => {
+          dismissIncomingTodo();
+          setCurrentView('home');
+          setIsSidebarOpen(true);
+        }}
+        soundEnabled={broadcastSoundEnabled}
+      />
+
       {/* Lazy Modals Suspense Container */}
       <Suspense fallback={null}>
         {showBroadcastModal && (
@@ -236,23 +241,6 @@ export default function App() {
             notificationPermission={notificationPermission}
             onRequestNotificationPermission={requestNotificationPermission}
             isNotificationSupported={isNotificationSupported}
-          />
-        )}
-
-        {showQrModal && (
-          <QrGeneratorModal 
-            isOpen={showQrModal} 
-            onClose={() => setShowQrModal(false)} 
-            onSetBatchItems={(items) => setBatchQrItems(items)}
-            existingBatchCount={batchQrItems.length}
-          />
-        )}
-
-        {showLogisticsModal && (
-          <LogisticsModal
-            isOpen={showLogisticsModal}
-            onClose={() => setShowLogisticsModal(false)}
-            initialTab={logisticsTab}
           />
         )}
 

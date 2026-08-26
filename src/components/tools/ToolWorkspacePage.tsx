@@ -1,7 +1,6 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { 
   Home, 
-  Wrench, 
   QrCode, 
   Calendar, 
   Layers, 
@@ -11,19 +10,17 @@ import {
   FileText, 
   Undo2,
   Flame,
-  ExternalLink,
-  Sparkles,
   KeyRound
 } from 'lucide-react';
-import { MainToolTab, EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
-import { BatchQrSection, QrItem } from '../BatchQrSection';
+import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
+import { QrItem } from '../BatchQrSection';
 import { LazyFallback } from '../common/LazyFallback';
+import { MainToolTab } from '../../types';
 
 interface ToolWorkspacePageProps {
   activeTool: MainToolTab;
   onSelectTool: (tool: MainToolTab) => void;
   onBackToHome: () => void;
-  onOpenModal: (tool: MainToolTab) => void;
   onLockApp?: () => void;
   batchQrItems: QrItem[];
   onSetBatchQrItems: (items: QrItem[]) => void;
@@ -90,7 +87,6 @@ export function ToolWorkspacePage({
   activeTool,
   onSelectTool,
   onBackToHome,
-  onOpenModal,
   onLockApp,
   batchQrItems,
   onSetBatchQrItems
@@ -130,7 +126,7 @@ export function ToolWorkspacePage({
           </div>
         </div>
 
-        {/* Right: Actions (Lock PIN + Pop-Up Trigger) */}
+        {/* Right: Actions (Lock PIN) */}
         <div className="flex items-center gap-2">
           {onLockApp && (
             <button
@@ -143,16 +139,6 @@ export function ToolWorkspacePage({
               <span className="hidden sm:inline">Kunci PIN</span>
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={() => onOpenModal(activeTool)}
-            className="px-3 py-2 rounded-xl bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-900 font-semibold text-xs border border-slate-200 hover:border-blue-300 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Buka dalam mode Pop-up Modal terpisah"
-          >
-            <ExternalLink size={13} className="text-blue-900" />
-            <span className="hidden sm:inline">Layar Pop-Up</span>
-          </button>
         </div>
       </div>
 
@@ -161,7 +147,6 @@ export function ToolWorkspacePage({
         <EmbeddedToolsWorkspace
           activeTool={activeTool}
           onSelectTool={onSelectTool}
-          onOpenModal={onOpenModal}
           onCloseWorkspace={onBackToHome}
           onSetBatchItems={onSetBatchQrItems}
         />

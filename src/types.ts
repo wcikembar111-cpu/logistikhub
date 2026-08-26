@@ -125,6 +125,18 @@ export interface ReturInventoryItem {
   by_ed?: string;
 }
 
+export type LogisticsTab = 
+  | 'ed-checker' 
+  | 'stock-opname' 
+  | 'sn-generator' 
+  | 'batch-checker' 
+  | 'promosi' 
+  | 'surat-jalan' 
+  | 'retur-inventory' 
+  | 'monitoring-pemusnahan';
+
+export type MainToolTab = 'qr-generator' | LogisticsTab;
+
 export interface MonitoringPemusnahanItem {
   id: string;
   tahun: number;

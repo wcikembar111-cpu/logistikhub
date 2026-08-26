@@ -1,14 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, ExternalLink, Search, X } from 'lucide-react';
-import { MainToolTab } from './EmbeddedToolsWorkspace';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X } from 'lucide-react';
+import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
   activeTool?: MainToolTab | null;
   onSelectTool: (tool: MainToolTab) => void;
-  onOpenModal: (tool: MainToolTab) => void;
 }
 
-export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridProps) {
+export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const tools: {
@@ -192,22 +191,6 @@ export function ToolsGrid({ activeTool, onSelectTool, onOpenModal }: ToolsGridPr
                   <div className="absolute top-1.5 right-1.5 bg-blue-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shadow-2xs z-20">
                     AKTIF
                   </div>
-                )}
-
-                {/* Pop-Up Button on Hover */}
-                {!isActive && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenModal(t.id);
-                    }}
-                    className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-semibold text-slate-700 hover:text-white bg-slate-100 hover:bg-blue-900 px-1.5 py-0.5 rounded-md border border-slate-200 shadow-2xs flex items-center gap-1 cursor-pointer"
-                    title="Buka dalam Pop-Up Modal"
-                  >
-                    <span>Pop-Up</span>
-                    <ExternalLink size={9} />
-                  </button>
                 )}
 
                 {/* Main Icon Container - Minimalist Blue / Orange / White */}
