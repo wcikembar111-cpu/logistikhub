@@ -218,12 +218,12 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
               <RefreshCw size={14} className={loading ? 'animate-spin text-blue-900' : ''} />
             </button>
 
-            {/* Delete Completed Tasks Button */}
-            {close > 0 && onDeleteCompletedTodos && (
+            {/* Delete Completed Tasks Button (Khusus Admin) */}
+            {isAdmin && close > 0 && onDeleteCompletedTodos && (
               <button 
                 onClick={() => {
                   showConfirm({
-                    title: 'Hapus Tugas Selesai',
+                    title: 'Hapus Tugas Selesai (Admin)',
                     message: `Hapus masal ${close} tugas yang sudah berstatus Done/Selesai?`,
                     confirmText: 'Hapus Selesai',
                     cancelText: 'Batal',
@@ -234,7 +234,7 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                     }
                   });
                 }}
-                title="Hapus masal semua tugas yang sudah selesai (Done)"
+                title="Khusus Admin: Hapus masal semua tugas yang sudah selesai (Done)"
                 className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all cursor-pointer"
               >
                 <Trash2 size={14} />
@@ -335,25 +335,27 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                         <Edit2 size={13} />
                       </button>
 
-                      <button 
-                        onClick={() => {
-                          showConfirm({
-                            title: 'Hapus Tugas',
-                            message: 'Apakah Anda yakin ingin menghapus tugas ini?',
-                            confirmText: 'Hapus',
-                            cancelText: 'Batal',
-                            type: 'danger',
-                            onConfirm: () => {
-                              onDeleteTodo(t.id);
-                              showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
-                            }
-                          });
-                        }}
-                        className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-100/60 transition-all cursor-pointer"
-                        title="Hapus tugas ini"
-                      >
-                        <X size={13} />
-                      </button>
+                      {isAdmin && (
+                        <button 
+                          onClick={() => {
+                            showConfirm({
+                              title: 'Hapus Tugas (Admin)',
+                              message: 'Apakah Anda yakin ingin menghapus tugas ini?',
+                              confirmText: 'Hapus',
+                              cancelText: 'Batal',
+                              type: 'danger',
+                              onConfirm: () => {
+                                onDeleteTodo(t.id);
+                                showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
+                              }
+                            });
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-100/60 transition-all cursor-pointer"
+                          title="Hapus tugas ini (Admin)"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -615,27 +617,29 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    showConfirm({
-                      title: 'Hapus Tugas',
-                      message: 'Apakah Anda yakin ingin menghapus tugas ini?',
-                      confirmText: 'Hapus',
-                      cancelText: 'Batal',
-                      type: 'danger',
-                      onConfirm: () => {
-                        onDeleteTodo(editingTodo.id);
-                        setEditingTodo(null);
-                        showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
-                      }
-                    });
-                  }}
-                  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border border-red-200"
-                >
-                  <Trash2 size={14} /> Hapus
-                </button>
+              <div className={`flex items-center ${isAdmin ? 'justify-between' : 'justify-end'} gap-2 pt-3 border-t border-slate-200`}>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      showConfirm({
+                        title: 'Hapus Tugas (Admin)',
+                        message: 'Apakah Anda yakin ingin menghapus tugas ini?',
+                        confirmText: 'Hapus',
+                        cancelText: 'Batal',
+                        type: 'danger',
+                        onConfirm: () => {
+                          onDeleteTodo(editingTodo.id);
+                          setEditingTodo(null);
+                          showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
+                        }
+                      });
+                    }}
+                    className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border border-red-200"
+                  >
+                    <Trash2 size={14} /> Hapus
+                  </button>
+                )}
 
                 <div className="flex items-center gap-2">
                   <button 

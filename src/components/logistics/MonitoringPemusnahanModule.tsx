@@ -20,8 +20,14 @@ import {
   PieChart as PieIcon,
   Check,
   Building,
-  FileText
+  FileText,
+  UploadCloud,
+  Download,
+  ArrowUpDown,
+  CheckCheck,
+  Database
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../hooks/useSupabase';
@@ -62,8 +68,17 @@ export function MonitoringPemusnahanModule() {
   const [loading, setLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [sortMode, setSortMode] = useState<'db' | 'year-desc' | 'qty-desc' | 'value-desc'>('db');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Excel Upload States
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadPreview, setUploadPreview] = useState<MonitoringPemusnahanItem[] | null>(null);
+  const [uploadFileName, setUploadFileName] = useState('');
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [isUploadingBatch, setIsUploadingBatch] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Inline editing / draft state
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -92,6 +107,7 @@ export function MonitoringPemusnahanModule() {
         const local = localStorage.getItem('logistics_monitoring_pemusnahan');
         setDataList(local ? JSON.parse(local) : []);
       } else if (data) {
+        // Natural database order
         setDataList(data.map(d => ({ ...d, status: computeStatus(d) })));
       }
     } catch (e: any) {
@@ -119,10 +135,10 @@ export function MonitoringPemusnahanModule() {
     };
   }, []);
 
-  // Filtered dataset
+  // Filtered & Sorted dataset (Defaults strictly to database order)
   const filteredRecords = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return dataList.filter(item => {
+    let records = dataList.filter(item => {
       if (selectedYear !== 'all' && String(item.tahun) !== selectedYear) return false;
       if (selectedStatus !== 'all' && item.status !== selectedStatus) return false;
       if (q) {
@@ -136,7 +152,18 @@ export function MonitoringPemusnahanModule() {
       }
       return true;
     });
-  }, [dataList, selectedYear, selectedStatus, searchQuery]);
+
+    // Apply sorting if user chooses other options; otherwise keep exact database order
+    if (sortMode === 'year-desc') {
+      records = [...records].sort((a, b) => (Number(b.tahun) || 0) - (Number(a.tahun) || 0));
+    } else if (sortMode === 'qty-desc') {
+      records = [...records].sort((a, b) => (Number(b.qty_pcs) || 0) - (Number(a.qty_pcs) || 0));
+    } else if (sortMode === 'value-desc') {
+      records = [...records].sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0));
+    }
+
+    return records;
+  }, [dataList, selectedYear, selectedStatus, searchQuery, sortMode]);
 
   // Dynamic Year list
   const availableYears = useMemo(() => {
@@ -239,17 +266,13 @@ export function MonitoringPemusnahanModule() {
         last_update: nowStr
       } as MonitoringPemusnahanItem;
 
-      let nextList = [];
       if (editingRowId === 'NEW') {
-        nextList = [updatedItem, ...dataList];
         await supabase.from('monitoring_pemusnahan').insert([updatedItem]);
       } else {
-        nextList = dataList.map(d => d.id === editingRowId ? updatedItem : d);
         await supabase.from('monitoring_pemusnahan').update(updatedItem).eq('id', editingRowId);
       }
 
-      setDataList(nextList);
-      localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+      await fetchMonitoringData();
       setEditingRowId(null);
       setInlineDraft({});
       showToast('Tersimpan', 'Data monitoring pemusnahan berhasil disimpan!', 'success');
@@ -320,17 +343,13 @@ export function MonitoringPemusnahanModule() {
         last_update: nowStr
       } as MonitoringPemusnahanItem;
 
-      let nextList = [];
       if (isNew) {
-        nextList = [fullItem, ...dataList];
         await supabase.from('monitoring_pemusnahan').insert([fullItem]);
       } else {
-        nextList = dataList.map(d => d.id === id ? fullItem : d);
         await supabase.from('monitoring_pemusnahan').update(fullItem).eq('id', id);
       }
 
-      setDataList(nextList);
-      localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+      await fetchMonitoringData();
       setFormModalOpen(false);
       showToast('Sukses', `Data pengajuan (${id}) berhasil disimpan`, 'success');
     } catch (err: any) {
@@ -338,6 +357,297 @@ export function MonitoringPemusnahanModule() {
       showToast('Info', 'Data tersimpan di penyimpanan lokal browser', 'info');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Excel: Download Template (.xlsx)
+  const handleDownloadTemplate = () => {
+    const headers = [
+      [
+        'TAHUN', 'BULAN_PENGAJUAN', 'QTY_PCS', 'VALUE', 'COGS', 'SLOC', 'LOCATION', 'KATEGORI',
+        'NO_PERSETUJUAN', 'NO_PENGAJUAN', 'NO_PENOLAKAN_QA', 'APPROVED_HEAD_LOG', 'APPROVED_HO_DIREKSI',
+        'SERAH_TERIMA_GUDANG_REJECT', 'ACC_TEAMS_BAP', 'KIRIM_DOKUMEN_BAP_KE_HO', 'MUSNAH_SISTEM_Z87',
+        'COMPLETED_APPROVAL', 'COMPLETED_BA', 'COMPLETED_MIGO', 'SJ_KAPSUL', 'BAP_KAPSUL',
+        'CHECK_KAPSUL', 'KETERANGAN'
+      ]
+    ];
+    const sampleRows = [
+      [
+        2026, 'Pengajuan Jan W1 - 26', 15420, 48500000, 32100000, '8A04', 'Cikembar', 'REGULER',
+        'SCM/APP/2026/01/001', 'PGJ/CKB/2026/01/001', '-', 'APP-HEAD-01', 'APP-DIR-01',
+        'ST-REJ-260101', 'ACC-BAP-01', 'CLOSE', 'Z87-202601-09',
+        'CLOSE', 'CLOSE', 'CLOSE', 'SJ-KAP-001', 'BAP-KAP-001',
+        'CLOSE', 'Pemusnahan Batch Expired Awal Tahun'
+      ],
+      [
+        2026, 'Pengajuan Feb W2 - 26', 8200, 24600000, 16400000, '8A04', 'Cikembar', 'REGULER',
+        'SCM/APP/2026/02/004', 'PGJ/CKB/2026/02/004', 'QA/REJ/2026/02/001', 'APP-HEAD-02', 'OPEN',
+        'OPEN', 'OPEN', 'OPEN', 'OPEN',
+        'OPEN', 'OPEN', 'OPEN', 'OPEN', 'OPEN',
+        'OPEN', 'Dalam proses persetujuan Direksi'
+      ]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...sampleRows]);
+    ws['!cols'] = Array(24).fill({ wch: 18 });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template_Monitoring');
+    XLSX.writeFile(wb, 'Template_Upload_Monitoring_Pemusnahan.xlsx');
+    showToast('Template Terunduh', 'Template Excel Monitoring Pemusnahan siap digunakan.', 'success');
+  };
+
+  // Excel: Export Current Records to Excel (.xlsx)
+  const handleExportExcel = () => {
+    if (filteredRecords.length === 0) {
+      showToast('Data Kosong', 'Tidak ada data untuk diekspor ke Excel', 'warning');
+      return;
+    }
+
+    const rows = filteredRecords.map((r, idx) => ({
+      'NO': idx + 1,
+      'TAHUN': r.tahun,
+      'BULAN_PENGAJUAN': r.bulan_pengajuan,
+      'QTY_PCS': r.qty_pcs,
+      'VALUE': r.value,
+      'COGS': r.cogs,
+      'SLOC': r.sloc,
+      'LOCATION': r.location,
+      'KATEGORI': r.kategori,
+      'NO_PERSETUJUAN': r.no_persetujuan,
+      'NO_PENGAJUAN': r.no_pengajuan,
+      'NO_PENOLAKAN_QA': r.no_penolakan_qa,
+      'APPROVED_HEAD_LOG': r.approved_head_log,
+      'APPROVED_HO_DIREKSI': r.approved_ho_direksi,
+      'SERAH_TERIMA_GUDANG_REJECT': r.serah_terima_gudang_reject,
+      'ACC_TEAMS_BAP': r.acc_teams_bap,
+      'KIRIM_DOKUMEN_BAP_KE_HO': r.kirim_dokumen_bap_ke_ho,
+      'MUSNAH_SISTEM_Z87': r.musnah_sistem_z87,
+      'COMPLETED_APPROVAL': r.completed_approval,
+      'COMPLETED_BA': r.completed_ba,
+      'COMPLETED_MIGO': r.completed_migo,
+      'SJ_KAPSUL': r.sj_kapsul,
+      'BAP_KAPSUL': r.bap_kapsul,
+      'CHECK_KAPSUL': r.check_kapsul,
+      'KETERANGAN': r.keterangan,
+      'STATUS': r.status,
+      'LAST_UPDATE': r.last_update
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = Array(27).fill({ wch: 18 });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Monitoring_Pemusnahan');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Data_Monitoring_Pemusnahan_${dateStr}.xlsx`);
+    showToast('Ekspor Berhasil', `${filteredRecords.length} data monitoring pemusnahan berhasil diekspor ke Excel.`, 'success');
+  };
+
+  // Excel: Handle File Upload & Parse (.xlsx, .xls, .csv)
+  const handleExcelSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const jsonArr: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        if (!jsonArr || jsonArr.length === 0) {
+          showToast('File Kosong', 'File Excel yang dipilih tidak memiliki data baris.', 'warning');
+          return;
+        }
+
+        // Detect if first row is header
+        let headerRow = (jsonArr[0] || []).map(h => String(h || '').trim().toUpperCase().replace(/[\s_-]+/g, ''));
+        let dataRows = jsonArr.slice(1);
+
+        const isHeader = headerRow.some(h => 
+          h.includes('TAHUN') || h.includes('BULAN') || h.includes('PENGAJUAN') || h.includes('QTY') || h.includes('VALUE') || h.includes('SLOC')
+        );
+
+        if (!isHeader) {
+          dataRows = jsonArr;
+          headerRow = [];
+        }
+
+        const findCol = (aliases: string[]) => {
+          if (headerRow.length === 0) return -1;
+          for (let i = 0; i < headerRow.length; i++) {
+            const h = headerRow[i];
+            for (const a of aliases) {
+              const cleanA = a.toUpperCase().replace(/[\s_-]+/g, '');
+              if (h === cleanA || h.includes(cleanA)) return i;
+            }
+          }
+          return -1;
+        };
+
+        const colTahun = findCol(['TAHUN', 'YEAR']);
+        const colBulan = findCol(['BULAN_PENGAJUAN', 'BULAN', 'PENGAJUAN']);
+        const colQty = findCol(['QTY_PCS', 'QTY', 'PCS', 'JUMLAH']);
+        const colValue = findCol(['VALUE', 'NILAI', 'RP', 'HARGA']);
+        const colCogs = findCol(['COGS', 'HPP']);
+        const colSloc = findCol(['SLOC', 'GUDANG', 'STORAGELOCATION']);
+        const colLocation = findCol(['LOCATION', 'LOKASI']);
+        const colKategori = findCol(['KATEGORI', 'CATEGORY']);
+        const colNoPersetujuan = findCol(['NO_PERSETUJUAN', 'PERSETUJUAN_SCM', 'PERSETUJUAN']);
+        const colNoPengajuan = findCol(['NO_PENGAJUAN', 'PENGAJUAN_AWAL']);
+        const colNoPenolakanQa = findCol(['NO_PENOLAKAN_QA', 'PENOLAKAN_QA', 'QA']);
+        const colApprovedHeadLog = findCol(['APPROVED_HEAD_LOG', 'HEAD_LOG', 'HEADLOG']);
+        const colApprovedHoDireksi = findCol(['APPROVED_HO_DIREKSI', 'HO_DIREKSI', 'DIREKSI']);
+        const colSerahTerima = findCol(['SERAH_TERIMA_GUDANG_REJECT', 'SERAH_TERIMA', 'GUDANG_REJECT']);
+        const colAccTeamsBap = findCol(['ACC_TEAMS_BAP', 'ACC_TEAMS', 'BAP']);
+        const colKirimBap = findCol(['KIRIM_DOKUMEN_BAP_KE_HO', 'KIRIM_BAP', 'KIRIM_HO']);
+        const colMusnahZ87 = findCol(['MUSNAH_SISTEM_Z87', 'MUSNAH_SISTEM', 'Z87']);
+        const colCompAppr = findCol(['COMPLETED_APPROVAL', 'APPROVAL']);
+        const colCompBa = findCol(['COMPLETED_BA', 'BA']);
+        const colCompMigo = findCol(['COMPLETED_MIGO', 'MIGO']);
+        const colSjKapsul = findCol(['SJ_KAPSUL', 'SJ']);
+        const colBapKapsul = findCol(['BAP_KAPSUL']);
+        const colCheckKapsul = findCol(['CHECK_KAPSUL', 'KAPSUL']);
+        const colKeterangan = findCol(['KETERANGAN', 'REMARK', 'CATATAN', 'NOTES']);
+
+        const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const parsed: MonitoringPemusnahanItem[] = [];
+
+        dataRows.forEach((r, idx) => {
+          if (!r || r.length === 0) return;
+          const hasContent = r.some((c: any) => c !== undefined && c !== null && String(c).trim() !== '');
+          if (!hasContent) return;
+
+          const getVal = (colIdx: number, defaultPos: number) => {
+            if (colIdx >= 0 && r[colIdx] !== undefined) return r[colIdx];
+            if (defaultPos >= 0 && defaultPos < r.length && r[defaultPos] !== undefined) return r[defaultPos];
+            return '';
+          };
+
+          const rawTahun = getVal(colTahun, 0);
+          const rawBulan = getVal(colBulan, 1);
+          const rawQty = getVal(colQty, 2);
+          const rawValue = getVal(colValue, 3);
+          const rawCogs = getVal(colCogs, 4);
+
+          const tahunNum = parseInt(String(rawTahun)) || new Date().getFullYear();
+          const bulanStr = String(rawBulan || `Pengajuan Baris #${idx + 1}`).trim();
+          const qtyNum = parseFloat(String(rawQty).replace(/[^0-9.-]/g, '')) || 0;
+          const valNum = parseFloat(String(rawValue).replace(/[^0-9.-]/g, '')) || 0;
+          const cogsNum = parseFloat(String(rawCogs).replace(/[^0-9.-]/g, '')) || 0;
+
+          const cleanStatusVal = (val: any) => {
+            const s = String(val || 'OPEN').trim().toUpperCase();
+            return s === 'CLOSE' || s === 'CLOSED' || s === 'SELESAI' || s === 'DONE' ? 'CLOSE' : (s || 'OPEN');
+          };
+
+          const itemDraft: Partial<MonitoringPemusnahanItem> = {
+            id: `TRX-${new Date().toISOString().slice(0,10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}-${idx + 1}`,
+            tahun: tahunNum,
+            bulan_pengajuan: bulanStr,
+            qty_pcs: qtyNum,
+            value: valNum,
+            cogs: cogsNum,
+            sloc: String(getVal(colSloc, 5) || '8A04').trim(),
+            location: String(getVal(colLocation, 6) || 'Cikembar').trim(),
+            kategori: String(getVal(colKategori, 7) || 'REGULER').trim(),
+            no_persetujuan: String(getVal(colNoPersetujuan, 8) || 'OPEN').trim(),
+            no_pengajuan: String(getVal(colNoPengajuan, 9) || 'OPEN').trim(),
+            no_penolakan_qa: String(getVal(colNoPenolakanQa, 10) || 'OPEN').trim(),
+            approved_head_log: String(getVal(colApprovedHeadLog, 11) || 'OPEN').trim(),
+            approved_ho_direksi: String(getVal(colApprovedHoDireksi, 12) || 'OPEN').trim(),
+            serah_terima_gudang_reject: String(getVal(colSerahTerima, 13) || 'OPEN').trim(),
+            acc_teams_bap: String(getVal(colAccTeamsBap, 14) || 'OPEN').trim(),
+            kirim_dokumen_bap_ke_ho: cleanStatusVal(getVal(colKirimBap, 15)),
+            musnah_sistem_z87: String(getVal(colMusnahZ87, 16) || 'OPEN').trim(),
+            completed_approval: cleanStatusVal(getVal(colCompAppr, 17)),
+            completed_ba: cleanStatusVal(getVal(colCompBa, 18)),
+            completed_migo: cleanStatusVal(getVal(colCompMigo, 19)),
+            sj_kapsul: String(getVal(colSjKapsul, 20) || 'OPEN').trim(),
+            bap_kapsul: String(getVal(colBapKapsul, 21) || 'OPEN').trim(),
+            check_kapsul: cleanStatusVal(getVal(colCheckKapsul, 22)),
+            keterangan: String(getVal(colKeterangan, 23) || '').trim(),
+            last_update: nowStr
+          };
+
+          itemDraft.status = computeStatus(itemDraft);
+          parsed.push(itemDraft as MonitoringPemusnahanItem);
+        });
+
+        if (parsed.length === 0) {
+          showToast('Data Tidak Ditemukan', 'Tidak ada baris data valid yang terbaca dalam file Excel.', 'warning');
+          return;
+        }
+
+        setUploadPreview(parsed);
+        setUploadModalOpen(true);
+        showToast('File Terbaca', `${parsed.length} baris data berhasil diparsing. Silakan tinjau dan simpan ke database.`, 'info');
+      } catch (err: any) {
+        console.error('Error reading Excel:', err);
+        showToast('Gagal Membaca File', err.message || 'Format file Excel tidak dapat dibaca.', 'danger');
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Excel: Commit parsed upload rows into Supabase / Local
+  const handleCommitUpload = async (mode: 'append' | 'replace') => {
+    if (!uploadPreview || uploadPreview.length === 0) return;
+
+    if (mode === 'replace' && !isAdmin) {
+      showToast('Akses Ditolak', 'Mode Gantikan Semua Data (Replace) hanya dapat dilakukan oleh Admin.', 'danger');
+      return;
+    }
+
+    setIsUploadingBatch(true);
+    setUploadProgress(10);
+    try {
+      if (mode === 'replace') {
+        const { error: delErr } = await supabase
+          .from('monitoring_pemusnahan')
+          .delete()
+          .neq('id', '___empty_dummy___');
+        if (delErr) {
+          console.warn('Replace delete warning:', delErr);
+        }
+      }
+
+      // Insert in chunks of 50
+      const chunkSize = 50;
+      for (let i = 0; i < uploadPreview.length; i += chunkSize) {
+        const chunk = uploadPreview.slice(i, i + chunkSize);
+        const { error: insErr } = await supabase
+          .from('monitoring_pemusnahan')
+          .insert(chunk);
+        if (insErr) {
+          console.error('Batch insert chunk error:', insErr);
+        }
+        setUploadProgress(Math.round(((i + chunk.length) / uploadPreview.length) * 90));
+      }
+
+      setUploadProgress(100);
+      await fetchMonitoringData();
+
+      showToast(
+        'Upload Berhasil',
+        `${uploadPreview.length} data monitoring pemusnahan berhasil ${mode === 'replace' ? 'menggantikan seluruh database' : 'ditambahkan ke database'}!`,
+        'success'
+      );
+      setUploadModalOpen(false);
+      setUploadPreview(null);
+    } catch (e: any) {
+      console.error(e);
+      const nextList = mode === 'replace' ? [...uploadPreview] : [...dataList, ...uploadPreview];
+      setDataList(nextList);
+      localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+      showToast('Tersimpan Lokal', `${uploadPreview.length} data disimpan di browser.`, 'info');
+      setUploadModalOpen(false);
+      setUploadPreview(null);
+    } finally {
+      setIsUploadingBatch(false);
+      setUploadProgress(0);
     }
   };
 
@@ -561,121 +871,184 @@ export function MonitoringPemusnahanModule() {
         </div>
       </div>
 
+      {/* Hidden Excel File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx, .xls, .csv"
+        onChange={handleExcelSelected}
+        className="hidden"
+      />
+
       {/* Toolbar Filter & Controls */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          {/* Year Filter */}
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs outline-none focus:ring-2 focus:ring-blue-600 text-slate-800"
-          >
-            <option value="all">Semua Tahun</option>
-            {availableYears.map(y => (
-              <option key={y} value={String(y)}>{y}</option>
-            ))}
-          </select>
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col gap-3">
+        {/* Top Row: Search & Filters */}
+        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {/* Sort Mode Filter (Urutan Database Default) */}
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1">
+              <Database size={13} className="text-blue-900 shrink-0" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Urutan:</span>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as any)}
+                className="text-xs font-bold bg-transparent outline-none text-blue-950 cursor-pointer"
+                title="Urutan Tampilan Tabel"
+              >
+                <option value="db">Urutan Database (Asli)</option>
+                <option value="year-desc">Tahun Terbaru</option>
+                <option value="qty-desc">Qty Terbanyak</option>
+                <option value="value-desc">Nilai (Value) Terbesar</option>
+              </select>
+            </div>
 
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs outline-none focus:ring-2 focus:ring-blue-600 text-slate-800"
-          >
-            <option value="all">Semua Status</option>
-            <option value="SELESAI">Selesai</option>
-            <option value="PROSES">Proses</option>
-          </select>
+            {/* Year Filter */}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs outline-none focus:ring-2 focus:ring-blue-600 text-slate-800"
+            >
+              <option value="all">Semua Tahun</option>
+              {availableYears.map(y => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
 
-          {/* Search Box */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari bulan pengajuan, no dokumen, SLOC..."
-              className="w-full pl-8 pr-7 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
-            />
-            {searchQuery && (
+            {/* Status Filter */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="text-xs font-semibold bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs outline-none focus:ring-2 focus:ring-blue-600 text-slate-800"
+            >
+              <option value="all">Semua Status</option>
+              <option value="SELESAI">Selesai</option>
+              <option value="PROSES">Proses</option>
+            </select>
+
+            {/* Search Box */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari bulan pengajuan, no dokumen, SLOC..."
+                className="w-full pl-8 pr-7 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <span className="text-[11px] font-bold text-slate-500 px-2 py-1 bg-slate-100 rounded-lg">
+              {filteredRecords.length} / {dataList.length} data
+            </span>
+          </div>
+
+          {/* Action Controls */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Scroll Nav */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                onClick={() => handleScroll('left')}
+                className="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg hover:bg-white transition-all flex items-center gap-1 cursor-pointer"
+                title="Gulir Tabel ke Sisi Kiri"
               >
-                <X size={12} />
+                <ArrowLeft size={12} />
+                <span>Kiri</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScroll('right')}
+                className="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg hover:bg-white transition-all flex items-center gap-1 cursor-pointer"
+                title="Gulir Tabel ke Kolom Terakhir (Kolom 27)"
+              >
+                <span>Kanan (Kolom 27)</span>
+                <ArrowRight size={12} />
+              </button>
+            </div>
+
+            {/* Excel Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Unggah Data dari File Excel (.xlsx / .xls / .csv)"
+            >
+              <UploadCloud size={14} />
+              <span>Upload Data Excel</span>
+            </button>
+
+            {/* Download Template */}
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Unduh Format Template Excel untuk Upload"
+            >
+              <Download size={13} />
+              <span>Template Excel</span>
+            </button>
+
+            {/* Export Excel */}
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={filteredRecords.length === 0}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Ekspor Data Tampil ke File Excel"
+            >
+              <FileSpreadsheet size={13} className="text-emerald-600" />
+              <span>Export</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenFormModal()}
+              className="px-3 py-1.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>+ Form Baru</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddNewInlineRow}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 text-blue-900 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>+ Inline</span>
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleDeleteAll}
+                disabled={loading || dataList.length === 0}
+                className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                title="Khusus Admin: Kosongkan seluruh data di database"
+              >
+                <Trash2 size={13} />
+                <span>Reset Tabel</span>
               </button>
             )}
-          </div>
-          <span className="text-[11px] font-bold text-slate-500 px-2 py-1 bg-slate-100 rounded-lg">
-            {filteredRecords.length} / {dataList.length} data
-          </span>
-        </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Scroll Nav */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
             <button
               type="button"
-              onClick={() => handleScroll('left')}
-              className="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg hover:bg-white transition-all flex items-center gap-1 cursor-pointer"
-              title="Gulir Tabel ke Sisi Kiri"
+              onClick={fetchMonitoringData}
+              disabled={loading}
+              className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
+              title="Refresh data"
             >
-              <ArrowLeft size={12} />
-              <span>Kiri</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleScroll('right')}
-              className="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg hover:bg-white transition-all flex items-center gap-1 cursor-pointer"
-              title="Gulir Tabel ke Kolom Terakhir (Kolom 27)"
-            >
-              <span>Kanan (Kolom 27)</span>
-              <ArrowRight size={12} />
+              <RefreshCw size={13} className={loading ? 'animate-spin text-blue-900' : ''} />
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => handleOpenFormModal()}
-            className="px-3 py-1.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>+ Form Baru</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddNewInlineRow}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 text-blue-900 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>+ Inline</span>
-          </button>
-
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={handleDeleteAll}
-              disabled={loading || dataList.length === 0}
-              className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-              title="Khusus Admin: Kosongkan seluruh data di database"
-            >
-              <Trash2 size={13} />
-              <span>Reset Tabel</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={fetchMonitoringData}
-            disabled={loading}
-            className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
-            title="Refresh data"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin text-blue-900' : ''} />
-          </button>
         </div>
       </div>
 
@@ -1432,6 +1805,199 @@ export function MonitoringPemusnahanModule() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Upload Preview Modal */}
+      {uploadModalOpen && uploadPreview && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200">
+            {/* Header */}
+            <div className="px-6 py-4 bg-emerald-700 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-800 rounded-xl">
+                  <UploadCloud size={20} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wide">
+                    Pratinjau Data Upload Excel
+                  </h3>
+                  <p className="text-[11px] text-emerald-100 font-medium">
+                    File: <span className="font-bold underline">{uploadFileName}</span> — Terbaca <strong>{uploadPreview.length}</strong> baris data
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadModalOpen(false);
+                  setUploadPreview(null);
+                }}
+                disabled={isUploadingBatch}
+                className="text-emerald-200 hover:text-white p-1.5 rounded-lg hover:bg-emerald-800 transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {/* Summary KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Total Baris</span>
+                  <div className="text-base font-black text-slate-900">{uploadPreview.length} Data</div>
+                </div>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-blue-700 uppercase">Total Qty Pcs</span>
+                  <div className="text-base font-black text-blue-950">
+                    {formatNumber(uploadPreview.reduce((s, r) => s + (Number(r.qty_pcs) || 0), 0))} Pcs
+                  </div>
+                </div>
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase">Total Value (Rp)</span>
+                  <div className="text-base font-black text-emerald-950 truncate">
+                    Rp {formatNumber(uploadPreview.reduce((s, r) => s + (Number(r.value) || 0), 0))}
+                  </div>
+                </div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <span className="text-[10px] font-bold text-amber-700 uppercase">Total COGS (Rp)</span>
+                  <div className="text-base font-black text-amber-950 truncate">
+                    Rp {formatNumber(uploadPreview.reduce((s, r) => s + (Number(r.cogs) || 0), 0))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Bar if uploading */}
+              {isUploadingBatch && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2 animate-in fade-in">
+                  <div className="flex justify-between items-center text-xs font-bold text-blue-900">
+                    <span className="flex items-center gap-2">
+                      <RefreshCw size={14} className="animate-spin text-blue-700" />
+                      Sedang memproses dan menyimpan data ke database...
+                    </span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-blue-100 rounded-full overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Data Table Sample Preview */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                    Tabel Pratinjau (Menampilkan {Math.min(uploadPreview.length, 10)} dari {uploadPreview.length} baris):
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Geser tabel untuk melihat kolom lainnya
+                  </span>
+                </div>
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto max-h-60 overflow-y-auto shadow-inner bg-white">
+                  <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
+                    <thead className="sticky top-0 bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
+                      <tr>
+                        <th className="py-2 px-3">No</th>
+                        <th className="py-2 px-3">Tahun</th>
+                        <th className="py-2 px-3">Bulan Pengajuan</th>
+                        <th className="py-2 px-3 text-right">Qty (Pcs)</th>
+                        <th className="py-2 px-3 text-right">Value (Rp)</th>
+                        <th className="py-2 px-3 text-right">COGS (Rp)</th>
+                        <th className="py-2 px-3">SLOC</th>
+                        <th className="py-2 px-3">Lokasi</th>
+                        <th className="py-2 px-3">Kategori</th>
+                        <th className="py-2 px-3">No Pengajuan</th>
+                        <th className="py-2 px-3">No Persetujuan</th>
+                        <th className="py-2 px-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                      {uploadPreview.slice(0, 10).map((r, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="py-2 px-3 text-slate-400 font-bold">{idx + 1}</td>
+                          <td className="py-2 px-3">{r.tahun}</td>
+                          <td className="py-2 px-3 font-bold text-blue-950">{r.bulan_pengajuan}</td>
+                          <td className="py-2 px-3 text-right">{formatNumber(r.qty_pcs)}</td>
+                          <td className="py-2 px-3 text-right">{formatNumber(r.value)}</td>
+                          <td className="py-2 px-3 text-right">{formatNumber(r.cogs)}</td>
+                          <td className="py-2 px-3 font-mono">{r.sloc}</td>
+                          <td className="py-2 px-3">{r.location}</td>
+                          <td className="py-2 px-3">{r.kategori}</td>
+                          <td className="py-2 px-3 font-mono text-[11px]">{r.no_pengajuan}</td>
+                          <td className="py-2 px-3 font-mono text-[11px]">{r.no_persetujuan}</td>
+                          <td className="py-2 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                              r.status === 'SELESAI' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {uploadPreview.length > 10 && (
+                  <p className="text-[11px] text-slate-400 text-right mt-1 font-medium">
+                    + {uploadPreview.length - 10} baris data lainnya akan ikut disimpan ke database.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer / Commit Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadModalOpen(false);
+                  setUploadPreview(null);
+                }}
+                disabled={isUploadingBatch}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 cursor-pointer w-full sm:w-auto"
+              >
+                Batal
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      showConfirm({
+                        title: 'Gantikan Seluruh Data? (Replace)',
+                        message: `PERINGATAN: Aksi ini akan menghapus data lama di database dan menggantikannya dengan ${uploadPreview.length} data baru dari file Excel. Lanjutkan?`,
+                        confirmText: 'Ya, Gantikan Seluruh Data',
+                        cancelText: 'Batal',
+                        type: 'danger',
+                        onConfirm: () => handleCommitUpload('replace')
+                      });
+                    }}
+                    disabled={isUploadingBatch}
+                    className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-300 text-red-700 font-bold text-xs cursor-pointer shadow-2xs transition-all flex items-center gap-1.5"
+                    title="Khusus Admin: Ganti seluruh isi tabel dengan data Excel"
+                  >
+                    <Trash2 size={13} />
+                    <span>Gantikan Seluruh Data (Replace)</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleCommitUpload('append')}
+                  disabled={isUploadingBatch}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <CheckCheck size={15} />
+                  <span>Tambahkan ke Database ({uploadPreview.length} Data)</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
