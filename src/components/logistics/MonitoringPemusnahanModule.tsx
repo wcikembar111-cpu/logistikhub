@@ -110,10 +110,11 @@ function cleanStatusVal(val: any): 'OPEN' | 'CLOSE' {
 }
 
 function toDatabaseItem(item: Partial<MonitoringPemusnahanItem>, idx?: number): MonitoringPemusnahanItem {
-  const nowStr = new Date().toISOString();
+  const baseTime = Date.now() + (idx || 0) * 10;
+  const nowIso = new Date(baseTime).toISOString();
   const cleanId = item.id && String(item.id).trim()
     ? String(item.id).trim().slice(0, 100)
-    : `TRX-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}-${(idx || 0) + 1}`;
+    : `TRX-${nowIso.slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}-${String((idx || 0) + 1).padStart(4, '0')}`;
 
   return {
     id: cleanId,
@@ -142,7 +143,8 @@ function toDatabaseItem(item: Partial<MonitoringPemusnahanItem>, idx?: number): 
     check_kapsul: cleanStatusVal(item.check_kapsul),
     keterangan: String(item.keterangan || '').trim(),
     status: computeStatus(item),
-    last_update: nowStr
+    created_at: item.created_at || nowIso,
+    last_update: nowIso
   };
 }
 
@@ -195,9 +197,22 @@ export function MonitoringPemusnahanModule() {
   const fetchMonitoringData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Urutkan sesuai urutan baris database (created_at ASC) agar tidak teracak oleh kolom ID
+      let { data, error } = await supabase
         .from('monitoring_pemusnahan')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: true, nullsFirst: false });
+
+      if (error) {
+        // Fallback jika database belum memiliki kolom created_at
+        const fallback = await supabase
+          .from('monitoring_pemusnahan')
+          .select('*');
+        if (!fallback.error && fallback.data) {
+          data = fallback.data;
+          error = null;
+        }
+      }
 
       if (error || !data) {
         const local = localStorage.getItem('logistics_monitoring_pemusnahan');
@@ -391,9 +406,9 @@ export function MonitoringPemusnahanModule() {
         ? await supabase.from('monitoring_pemusnahan').upsert(updatedItem, { onConflict: 'id' })
         : await supabase.from('monitoring_pemusnahan').update(updatedItem).eq('id', editingRowId);
 
-      // Always maintain synchronous local cache
+      // Always maintain synchronous local cache with sequence preserved
       const nextList = editingRowId === 'NEW'
-        ? [updatedItem, ...dataList]
+        ? [...dataList, updatedItem]
         : dataList.map(d => d.id === editingRowId ? updatedItem : d);
       setDataList(nextList);
       localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
@@ -470,9 +485,9 @@ export function MonitoringPemusnahanModule() {
         ? await supabase.from('monitoring_pemusnahan').upsert(fullItem, { onConflict: 'id' })
         : await supabase.from('monitoring_pemusnahan').update(fullItem).eq('id', id);
 
-      // Update local state immediately
+      // Update local state immediately with sequence preserved
       const nextList = isNew
-        ? [fullItem, ...dataList]
+        ? [...dataList, fullItem]
         : dataList.map(d => d.id === id ? fullItem : d);
       setDataList(nextList);
       localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
@@ -824,7 +839,7 @@ export function MonitoringPemusnahanModule() {
     // 2. Immediately update local state & local storage so user sees data in table instantly
     setUploadProgress(15);
     setUploadStageText('Menyimpan ke memori tabel lokal...');
-    const nextList = mode === 'replace' ? [...cleanRecords] : [...cleanRecords, ...dataList];
+    const nextList = mode === 'replace' ? [...cleanRecords] : [...dataList, ...cleanRecords];
     setDataList(nextList);
     localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
 
@@ -1285,7 +1300,7 @@ export function MonitoringPemusnahanModule() {
                 className="text-xs font-bold bg-transparent outline-none text-blue-950 cursor-pointer"
                 title="Urutan Tampilan Tabel"
               >
-                <option value="db">Urutan Database (Asli)</option>
+                <option value="db">Urutan Database (Bulan Pengajuan Sesuai Baris Database)</option>
                 <option value="year-desc">Tahun Terbaru</option>
                 <option value="qty-desc">Qty Terbanyak</option>
                 <option value="value-desc">Nilai (Value) Terbesar</option>
