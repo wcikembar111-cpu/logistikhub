@@ -220,19 +220,27 @@ CREATE TABLE IF NOT EXISTS public.monitoring_pemusnahan (
     approved_ho_direksi VARCHAR(255) DEFAULT '',
     serah_terima_gudang_reject VARCHAR(255) DEFAULT '',
     acc_teams_bap VARCHAR(255) DEFAULT '',
-    kirim_dokumen_bap_ke_ho VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    kirim_dokumen_bap_ke_ho TEXT DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
     musnah_sistem_z87 VARCHAR(255) DEFAULT '',
-    completed_approval VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
-    completed_ba VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
-    completed_migo VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    completed_approval TEXT DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    completed_ba TEXT DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    completed_migo TEXT DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
     sj_kapsul VARCHAR(150) DEFAULT '',
     bap_kapsul VARCHAR(150) DEFAULT '',
-    check_kapsul VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
+    check_kapsul TEXT DEFAULT 'OPEN', -- 'OPEN', 'CLOSE'
     keterangan TEXT DEFAULT '',
     status VARCHAR(50) DEFAULT 'PROSES', -- 'SELESAI', 'PROSES'
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_update TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Pastikan kolom tabel monitoring_pemusnahan dapat menampung teks deskriptif
+ALTER TABLE public.monitoring_pemusnahan
+  ALTER COLUMN kirim_dokumen_bap_ke_ho TYPE TEXT,
+  ALTER COLUMN completed_approval TYPE TEXT,
+  ALTER COLUMN completed_ba TYPE TEXT,
+  ALTER COLUMN completed_migo TYPE TEXT,
+  ALTER COLUMN check_kapsul TYPE TEXT;
 
 -- =========================================================
 -- AKSES HAK AKSES & RLS (Row Level Security)

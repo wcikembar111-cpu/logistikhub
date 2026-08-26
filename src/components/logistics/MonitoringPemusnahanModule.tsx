@@ -25,7 +25,15 @@ import {
   Download,
   ArrowUpDown,
   CheckCheck,
-  Database
+  Database,
+  AlertCircle,
+  AlertTriangle,
+  FileCheck2,
+  Server,
+  Cloud,
+  Copy,
+  HelpCircle,
+  Code2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../supabase';
@@ -51,6 +59,30 @@ const PIPELINE_STEPS = [
   { key: 'check_kapsul', label: 'Check Kapsul' }
 ];
 
+function parseNumeric(val: any): number {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) || !isFinite(val) ? 0 : val;
+  let str = String(val).trim();
+  // Remove currency prefix and whitespace
+  str = str.replace(/^Rp\.?\s*/i, '').replace(/\s+/g, '');
+  if (!str) return 0;
+  // Indonesian style: 48.500.000,00 or 15.420
+  if (/\.\d{3}/.test(str) && str.includes(',')) {
+    str = str.replace(/\./g, '').replace(',', '.');
+  } else if (/\.\d{3}/.test(str) && !str.includes(',')) {
+    // 48.500.000
+    str = str.replace(/\./g, '');
+  } else if (/,\d{3}/.test(str) && !str.includes('.')) {
+    // 48,500,000
+    str = str.replace(/,/g, '');
+  } else {
+    str = str.replace(/,/g, '.');
+  }
+  const clean = str.replace(/[^0-9.-]/g, '');
+  const num = parseFloat(clean);
+  return isNaN(num) || !isFinite(num) ? 0 : num;
+}
+
 function computeStatus(item: Partial<MonitoringPemusnahanItem>): 'SELESAI' | 'PROSES' {
   const isKirim = String(item.kirim_dokumen_bap_ke_ho || '').toUpperCase() === 'CLOSE';
   const isAppr = String(item.completed_approval || '').toUpperCase() === 'CLOSE';
@@ -59,6 +91,59 @@ function computeStatus(item: Partial<MonitoringPemusnahanItem>): 'SELESAI' | 'PR
   const isKapsul = String(item.check_kapsul || '').toUpperCase() === 'CLOSE';
 
   return (isKirim && isAppr && isBa && isMigo && isKapsul) ? 'SELESAI' : 'PROSES';
+}
+
+function cleanStatusVal(val: any): 'OPEN' | 'CLOSE' {
+  if (val === undefined || val === null) return 'OPEN';
+  const s = String(val).trim().toUpperCase();
+  if (
+    ['CLOSE', 'CLOSED', 'SELESAI', 'DONE', 'YA', 'YES', 'TRUE', '1', 'OK', 'V', '✓', 'SUDAH', 'ACC', 'SUDAH KIRIM', 'SUDAH ACC', 'TERKIRIM'].includes(s) ||
+    s.startsWith('CLOSE') ||
+    s.startsWith('SELESAI') ||
+    s.startsWith('DONE') ||
+    s.startsWith('ACC') ||
+    s.startsWith('SUDAH')
+  ) {
+    return 'CLOSE';
+  }
+  return 'OPEN';
+}
+
+function toDatabaseItem(item: Partial<MonitoringPemusnahanItem>, idx?: number): MonitoringPemusnahanItem {
+  const nowStr = new Date().toISOString();
+  const cleanId = item.id && String(item.id).trim()
+    ? String(item.id).trim().slice(0, 100)
+    : `TRX-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}-${(idx || 0) + 1}`;
+
+  return {
+    id: cleanId,
+    tahun: Number(item.tahun) || new Date().getFullYear(),
+    bulan_pengajuan: String(item.bulan_pengajuan || `Pengajuan ${(idx || 0) + 1}`).trim().slice(0, 150),
+    qty_pcs: parseNumeric(item.qty_pcs),
+    value: parseNumeric(item.value),
+    cogs: parseNumeric(item.cogs),
+    sloc: String(item.sloc || '8A04').trim().slice(0, 50),
+    location: String(item.location || 'Cikembar').trim().slice(0, 100),
+    kategori: String(item.kategori || 'REGULER').trim().slice(0, 100),
+    no_persetujuan: String(item.no_persetujuan || 'OPEN').trim().slice(0, 150),
+    no_pengajuan: String(item.no_pengajuan || 'OPEN').trim().slice(0, 150),
+    no_penolakan_qa: String(item.no_penolakan_qa || 'OPEN').trim().slice(0, 150),
+    approved_head_log: String(item.approved_head_log || 'OPEN').trim().slice(0, 255),
+    approved_ho_direksi: String(item.approved_ho_direksi || 'OPEN').trim().slice(0, 255),
+    serah_terima_gudang_reject: String(item.serah_terima_gudang_reject || 'OPEN').trim().slice(0, 255),
+    acc_teams_bap: String(item.acc_teams_bap || 'OPEN').trim().slice(0, 255),
+    kirim_dokumen_bap_ke_ho: cleanStatusVal(item.kirim_dokumen_bap_ke_ho),
+    musnah_sistem_z87: String(item.musnah_sistem_z87 || 'OPEN').trim().slice(0, 255),
+    completed_approval: cleanStatusVal(item.completed_approval),
+    completed_ba: cleanStatusVal(item.completed_ba),
+    completed_migo: cleanStatusVal(item.completed_migo),
+    sj_kapsul: String(item.sj_kapsul || 'OPEN').trim().slice(0, 150),
+    bap_kapsul: String(item.bap_kapsul || 'OPEN').trim().slice(0, 150),
+    check_kapsul: cleanStatusVal(item.check_kapsul),
+    keterangan: String(item.keterangan || '').trim(),
+    status: computeStatus(item),
+    last_update: nowStr
+  };
 }
 
 export function MonitoringPemusnahanModule() {
@@ -79,6 +164,17 @@ export function MonitoringPemusnahanModule() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [isUploadingBatch, setIsUploadingBatch] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStageText, setUploadStageText] = useState('');
+  const [sqlGuideModalOpen, setSqlGuideModalOpen] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
+  const [uploadResultStatus, setUploadResultStatus] = useState<{
+    type: 'success' | 'warning' | 'error';
+    title: string;
+    message: string;
+    recordsCount: number;
+    dbSynced: boolean;
+    timestamp: string;
+  } | null>(null);
 
   // Inline editing / draft state
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -103,17 +199,48 @@ export function MonitoringPemusnahanModule() {
         .from('monitoring_pemusnahan')
         .select('*');
 
-      if (error) {
+      if (error || !data) {
         const local = localStorage.getItem('logistics_monitoring_pemusnahan');
-        setDataList(local ? JSON.parse(local) : []);
-      } else if (data) {
+        if (local) {
+          try {
+            setDataList(JSON.parse(local));
+          } catch {
+            setDataList([]);
+          }
+        }
+      } else if (data && data.length > 0) {
         // Natural database order
-        setDataList(data.map(d => ({ ...d, status: computeStatus(d) })));
+        const mapped = data.map(d => ({ ...d, status: computeStatus(d) }));
+        setDataList(mapped);
+        localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(mapped));
+      } else {
+        // Data is empty array from Supabase, check if local storage has existing records
+        const local = localStorage.getItem('logistics_monitoring_pemusnahan');
+        if (local) {
+          try {
+            const parsedLocal = JSON.parse(local);
+            if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
+              setDataList(parsedLocal);
+            } else {
+              setDataList([]);
+            }
+          } catch {
+            setDataList([]);
+          }
+        } else {
+          setDataList([]);
+        }
       }
     } catch (e: any) {
-      console.error(e);
+      console.error('Fetch error:', e);
       const local = localStorage.getItem('logistics_monitoring_pemusnahan');
-      setDataList(local ? JSON.parse(local) : []);
+      if (local) {
+        try {
+          setDataList(JSON.parse(local));
+        } catch {
+          setDataList([]);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -258,24 +385,29 @@ export function MonitoringPemusnahanModule() {
 
     setLoading(true);
     try {
-      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-      const computed = computeStatus(inlineDraft);
-      const updatedItem: MonitoringPemusnahanItem = {
-        ...inlineDraft,
-        status: computed,
-        last_update: nowStr
-      } as MonitoringPemusnahanItem;
+      const updatedItem = toDatabaseItem(inlineDraft);
 
-      if (editingRowId === 'NEW') {
-        await supabase.from('monitoring_pemusnahan').insert([updatedItem]);
+      const { error } = editingRowId === 'NEW'
+        ? await supabase.from('monitoring_pemusnahan').upsert(updatedItem, { onConflict: 'id' })
+        : await supabase.from('monitoring_pemusnahan').update(updatedItem).eq('id', editingRowId);
+
+      // Always maintain synchronous local cache
+      const nextList = editingRowId === 'NEW'
+        ? [updatedItem, ...dataList]
+        : dataList.map(d => d.id === editingRowId ? updatedItem : d);
+      setDataList(nextList);
+      localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+
+      if (error) {
+        console.warn('Supabase save error:', error);
+        showToast('Tersimpan Lokal', `Data tersimpan di tabel lokal. Server: ${error.message}`, 'warning');
       } else {
-        await supabase.from('monitoring_pemusnahan').update(updatedItem).eq('id', editingRowId);
+        await fetchMonitoringData();
+        showToast('Tersimpan di Cloud', 'Data monitoring pemusnahan berhasil tersimpan di database Supabase!', 'success');
       }
 
-      await fetchMonitoringData();
       setEditingRowId(null);
       setInlineDraft({});
-      showToast('Tersimpan', 'Data monitoring pemusnahan berhasil disimpan!', 'success');
     } catch (e: any) {
       console.error(e);
       showToast('Tersimpan Lokal', 'Data disimpan di penyimpanan lokal browser', 'info');
@@ -330,28 +462,30 @@ export function MonitoringPemusnahanModule() {
 
     setLoading(true);
     try {
-      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
       const isNew = !formModalItem.id;
-      const id = isNew 
-        ? `TRX-${new Date().toISOString().slice(0,10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase().slice(-4)}`
-        : formModalItem.id!;
+      const fullItem = toDatabaseItem(formModalItem);
+      const id = fullItem.id;
 
-      const fullItem: MonitoringPemusnahanItem = {
-        ...formModalItem,
-        id,
-        status: computeStatus(formModalItem),
-        last_update: nowStr
-      } as MonitoringPemusnahanItem;
+      const { error } = isNew
+        ? await supabase.from('monitoring_pemusnahan').upsert(fullItem, { onConflict: 'id' })
+        : await supabase.from('monitoring_pemusnahan').update(fullItem).eq('id', id);
 
-      if (isNew) {
-        await supabase.from('monitoring_pemusnahan').insert([fullItem]);
+      // Update local state immediately
+      const nextList = isNew
+        ? [fullItem, ...dataList]
+        : dataList.map(d => d.id === id ? fullItem : d);
+      setDataList(nextList);
+      localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+
+      if (error) {
+        console.warn('Supabase form save error:', error);
+        showToast('Tersimpan Lokal', `Data tersimpan di tabel. Server: ${error.message}`, 'warning');
       } else {
-        await supabase.from('monitoring_pemusnahan').update(fullItem).eq('id', id);
+        await fetchMonitoringData();
+        showToast('Sukses di Cloud', `Data pengajuan (${id}) tersimpan di database Supabase!`, 'success');
       }
 
-      await fetchMonitoringData();
       setFormModalOpen(false);
-      showToast('Sukses', `Data pengajuan (${id}) berhasil disimpan`, 'success');
     } catch (err: any) {
       console.error(err);
       showToast('Info', 'Data tersimpan di penyimpanan lokal browser', 'info');
@@ -453,62 +587,135 @@ export function MonitoringPemusnahanModule() {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const jsonArr: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        const rawJsonArr: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-        if (!jsonArr || jsonArr.length === 0) {
+        if (!rawJsonArr || rawJsonArr.length === 0) {
           showToast('File Kosong', 'File Excel yang dipilih tidak memiliki data baris.', 'warning');
           return;
         }
 
-        // Detect if first row is header
-        let headerRow = (jsonArr[0] || []).map(h => String(h || '').trim().toUpperCase().replace(/[\s_-]+/g, ''));
-        let dataRows = jsonArr.slice(1);
-
-        const isHeader = headerRow.some(h => 
-          h.includes('TAHUN') || h.includes('BULAN') || h.includes('PENGAJUAN') || h.includes('QTY') || h.includes('VALUE') || h.includes('SLOC')
+        // Filter out completely empty rows
+        const nonEmptyRows = rawJsonArr.filter(r => 
+          Array.isArray(r) && r.some(c => c !== undefined && c !== null && String(c).trim() !== '')
         );
 
-        if (!isHeader) {
-          dataRows = jsonArr;
-          headerRow = [];
+        if (nonEmptyRows.length === 0) {
+          showToast('File Kosong', 'Tidak ada data terbaca dalam file Excel.', 'warning');
+          return;
         }
 
-        const findCol = (aliases: string[]) => {
+        // Helper to normalize header string for comparisons
+        const normalizeKey = (str: any) => 
+          String(str || '')
+            .toUpperCase()
+            .replace(/[\s_\-\/\(\)\.\:]+/g, '')
+            .trim();
+
+        // 1. Find best matching header row among the first 10 rows
+        let bestHeaderIdx = -1;
+        let maxMatchCount = 0;
+        const keySignatures = [
+          'TAHUN', 'YEAR', 'THN',
+          'BULAN', 'PERIODE', 'BULANPENGAJUAN',
+          'QTY', 'PCS', 'JUMLAH', 'QUANTITY',
+          'VALUE', 'NILAI', 'RP', 'HARGA', 'NOMINAL',
+          'COGS', 'HPP',
+          'SLOC', 'GUDANG', 'STORAGELOCATION',
+          'LOCATION', 'LOKASI', 'PLANT',
+          'KATEGORI', 'CATEGORY',
+          'NOPERSETUJUAN', 'PERSETUJUAN',
+          'NOPENGAJUAN', 'PENGAJUAN',
+          'NOPENOLAKANQA', 'PENOLAKANQA', 'QAREJECT', 'QA',
+          'APPROVEDHEADLOG', 'HEADLOG',
+          'APPROVEDHODIREKSI', 'HODIREKSI', 'DIREKSI',
+          'SERAHTERIMAGUDANGREJECT', 'SERAHTERIMA', 'GUDANGREJECT',
+          'ACCTEAMSBAP', 'ACCTEAMS', 'TEAMSBAP',
+          'KIRIMDOKUMENBAPKEHO', 'KIRIMBAP', 'KIRIMHO',
+          'MUSNAHSISTEMZ87', 'MUSNAHSISTEM', 'Z87',
+          'COMPLETEDAPPROVAL', 'APPROVAL',
+          'COMPLETEDBA',
+          'COMPLETEDMIGO', 'MIGO',
+          'SJKAPSUL',
+          'BAPKAPSUL',
+          'CHECKKAPSUL', 'CEKKAPSUL',
+          'KETERANGAN', 'REMARK', 'CATATAN', 'NOTES'
+        ];
+
+        const searchLimit = Math.min(nonEmptyRows.length, 10);
+        for (let r = 0; r < searchLimit; r++) {
+          const rowKeys = (nonEmptyRows[r] || []).map(normalizeKey);
+          let matchCount = 0;
+          rowKeys.forEach(k => {
+            if (k && keySignatures.some(sig => k === sig || k.includes(sig))) {
+              matchCount++;
+            }
+          });
+          if (matchCount > maxMatchCount) {
+            maxMatchCount = matchCount;
+            bestHeaderIdx = r;
+          }
+        }
+
+        let headerRow: string[] = [];
+        let dataRows: any[][] = [];
+
+        if (bestHeaderIdx !== -1 && maxMatchCount >= 2) {
+          headerRow = (nonEmptyRows[bestHeaderIdx] || []).map(normalizeKey);
+          dataRows = nonEmptyRows.slice(bestHeaderIdx + 1);
+        } else {
+          // No clear header row detected; assume all rows are data (using standard column positions)
+          headerRow = [];
+          dataRows = nonEmptyRows;
+        }
+
+        // Two-phase column finder:
+        // Pass 1: exact match
+        // Pass 2: strict targeted token match
+        const findCol = (exactKeys: string[], tokenKeys: string[] = []) => {
           if (headerRow.length === 0) return -1;
+          const exactNorm = exactKeys.map(normalizeKey);
           for (let i = 0; i < headerRow.length; i++) {
             const h = headerRow[i];
-            for (const a of aliases) {
-              const cleanA = a.toUpperCase().replace(/[\s_-]+/g, '');
-              if (h === cleanA || h.includes(cleanA)) return i;
+            if (!h) continue;
+            if (exactNorm.includes(h)) return i;
+          }
+          if (tokenKeys.length > 0) {
+            const tokenNorm = tokenKeys.map(normalizeKey);
+            for (let i = 0; i < headerRow.length; i++) {
+              const h = headerRow[i];
+              if (!h) continue;
+              for (const tok of tokenNorm) {
+                if (tok && h.includes(tok)) return i;
+              }
             }
           }
           return -1;
         };
 
-        const colTahun = findCol(['TAHUN', 'YEAR']);
-        const colBulan = findCol(['BULAN_PENGAJUAN', 'BULAN', 'PENGAJUAN']);
-        const colQty = findCol(['QTY_PCS', 'QTY', 'PCS', 'JUMLAH']);
-        const colValue = findCol(['VALUE', 'NILAI', 'RP', 'HARGA']);
-        const colCogs = findCol(['COGS', 'HPP']);
-        const colSloc = findCol(['SLOC', 'GUDANG', 'STORAGELOCATION']);
-        const colLocation = findCol(['LOCATION', 'LOKASI']);
-        const colKategori = findCol(['KATEGORI', 'CATEGORY']);
-        const colNoPersetujuan = findCol(['NO_PERSETUJUAN', 'PERSETUJUAN_SCM', 'PERSETUJUAN']);
-        const colNoPengajuan = findCol(['NO_PENGAJUAN', 'PENGAJUAN_AWAL']);
-        const colNoPenolakanQa = findCol(['NO_PENOLAKAN_QA', 'PENOLAKAN_QA', 'QA']);
-        const colApprovedHeadLog = findCol(['APPROVED_HEAD_LOG', 'HEAD_LOG', 'HEADLOG']);
-        const colApprovedHoDireksi = findCol(['APPROVED_HO_DIREKSI', 'HO_DIREKSI', 'DIREKSI']);
-        const colSerahTerima = findCol(['SERAH_TERIMA_GUDANG_REJECT', 'SERAH_TERIMA', 'GUDANG_REJECT']);
-        const colAccTeamsBap = findCol(['ACC_TEAMS_BAP', 'ACC_TEAMS', 'BAP']);
-        const colKirimBap = findCol(['KIRIM_DOKUMEN_BAP_KE_HO', 'KIRIM_BAP', 'KIRIM_HO']);
-        const colMusnahZ87 = findCol(['MUSNAH_SISTEM_Z87', 'MUSNAH_SISTEM', 'Z87']);
-        const colCompAppr = findCol(['COMPLETED_APPROVAL', 'APPROVAL']);
-        const colCompBa = findCol(['COMPLETED_BA', 'BA']);
-        const colCompMigo = findCol(['COMPLETED_MIGO', 'MIGO']);
-        const colSjKapsul = findCol(['SJ_KAPSUL', 'SJ']);
-        const colBapKapsul = findCol(['BAP_KAPSUL']);
-        const colCheckKapsul = findCol(['CHECK_KAPSUL', 'KAPSUL']);
-        const colKeterangan = findCol(['KETERANGAN', 'REMARK', 'CATATAN', 'NOTES']);
+        const colTahun = findCol(['TAHUN', 'YEAR', 'THN'], ['TAHUN', 'YEAR']);
+        const colBulan = findCol(['BULAN_PENGAJUAN', 'BULANPENGAJUAN', 'BULAN', 'PERIODE', 'BULAN_PERIODE', 'PENGAJUAN_BULAN'], ['BULANPENGAJUAN', 'BULAN', 'PERIODE']);
+        const colQty = findCol(['QTY_PCS', 'QTYPCS', 'QTY', 'JUMLAH_PCS', 'JUMLAHPCS', 'QUANTITY', 'PCS', 'TOTAL_PCS'], ['QTY', 'JUMLAH', 'QUANTITY', 'PCS']);
+        const colValue = findCol(['VALUE', 'NILAI', 'RP', 'TOTAL_VALUE', 'HARGA', 'NOMINAL', 'NILAI_RP', 'VALUER'], ['VALUE', 'NILAI', 'NOMINAL']);
+        const colCogs = findCol(['COGS', 'HPP', 'COGS_RP', 'HPP_RP', 'COST'], ['COGS', 'HPP', 'COST']);
+        const colSloc = findCol(['SLOC', 'GUDANG', 'STORAGE_LOCATION', 'STORAGELOCATION', 'KODE_SLOC'], ['SLOC', 'STORAGELOC']);
+        const colLocation = findCol(['LOCATION', 'LOKASI', 'PLANT', 'SITE', 'AREA', 'LOKASI_GUDANG'], ['LOCATION', 'LOKASI', 'PLANT']);
+        const colKategori = findCol(['KATEGORI', 'CATEGORY', 'JENIS', 'JENIS_BARANG', 'TIPE'], ['KATEGORI', 'CATEGORY']);
+        const colNoPersetujuan = findCol(['NO_PERSETUJUAN', 'NOPERSETUJUAN', 'PERSETUJUAN_SCM', 'PERSETUJUANSCM', 'PERSETUJUAN'], ['PERSETUJUAN']);
+        const colNoPengajuan = findCol(['NO_PENGAJUAN', 'NOPENGAJUAN', 'PENGAJUAN_AWAL', 'PENGAJUANAWAL', 'NO_DOKUMEN_PENGAJUAN'], ['NOPENGAJUAN', 'PENGAJUANAWAL']);
+        const colNoPenolakanQa = findCol(['NO_PENOLAKAN_QA', 'PENOLAKAN_QA', 'NOPENOLAKANQA', 'QA_REJECT', 'PENOLAKANQA', 'QA'], ['PENOLAKAN', 'QAREJECT', 'QA']);
+        const colApprovedHeadLog = findCol(['APPROVED_HEAD_LOG', 'APPROVEDHEADLOG', 'HEAD_LOG', 'HEADLOG', 'HEAD_LOGISTIC', 'APPROVED_HEAD_LOGISTIC'], ['HEADLOG', 'HEADLOGISTIC']);
+        const colApprovedHoDireksi = findCol(['APPROVED_HO_DIREKSI', 'APPROVEDHODIREKSI', 'HO_DIREKSI', 'HODIREKSI', 'DIREKSI', 'APPROVED_DIREKSI'], ['HODIREKSI', 'DIREKSI']);
+        const colSerahTerima = findCol(['SERAH_TERIMA_GUDANG_REJECT', 'SERAHTERIMAGUDANGREJECT', 'SERAH_TERIMA', 'SERAHTERIMA', 'GUDANG_REJECT', 'GUDANGREJECT', 'ST_REJECT'], ['SERAHTERIMA', 'GUDANGREJECT']);
+        const colAccTeamsBap = findCol(['ACC_TEAMS_BAP', 'ACCTEAMSBAP', 'ACC_TEAMS', 'ACCTEAMS', 'TEAMS_BAP', 'TEAMSBAP', 'ACC_BAP', 'ACCBAP'], ['ACCTEAM', 'TEAMSBAP']);
+        const colKirimBap = findCol(['KIRIM_DOKUMEN_BAP_KE_HO', 'KIRIMDOKUMENBAPKEHO', 'KIRIM_DOKUMEN_BAP', 'KIRIM_BAP_KE_HO', 'KIRIM_BAP', 'KIRIMBAP', 'KIRIM_HO'], ['KIRIMBAP', 'KIRIMDOKUMEN', 'KIRIMHO']);
+        const colMusnahZ87 = findCol(['MUSNAH_SISTEM_Z87', 'MUSNAHSISTEMZ87', 'MUSNAH_SISTEM', 'MUSNAHSISTEM', 'Z87', 'MUSNAH_Z87', 'SISTEM_Z87'], ['Z87', 'MUSNAHSISTEM']);
+        const colCompAppr = findCol(['COMPLETED_APPROVAL', 'COMPLETEDAPPROVAL', 'COMP_APPROVAL', 'STATUS_APPROVAL', 'APPROVAL_COMPLETED'], ['COMPLETEDAPPROVAL', 'COMPAPPROVAL']);
+        const colCompBa = findCol(['COMPLETED_BA', 'COMPLETEDBA', 'STATUS_BA', 'BA_COMPLETED', 'COMP_BA'], ['COMPLETEDBA', 'COMPBA']);
+        const colCompMigo = findCol(['COMPLETED_MIGO', 'COMPLETEDMIGO', 'STATUS_MIGO', 'MIGO_COMPLETED', 'COMP_MIGO'], ['COMPLETEDMIGO', 'COMPMIGO', 'MIGO']);
+        const colSjKapsul = findCol(['SJ_KAPSUL', 'SJKAPSUL', 'NO_SJ_KAPSUL', 'SURAT_JALAN_KAPSUL'], ['SJKAPSUL', 'SURATJALANKAPSUL']);
+        const colBapKapsul = findCol(['BAP_KAPSUL', 'BAPKAPSUL', 'NO_BAP_KAPSUL', 'BERITA_ACARA_KAPSUL'], ['BAPKAPSUL', 'BERITAACARAKAPSUL']);
+        const colCheckKapsul = findCol(['CHECK_KAPSUL', 'CHECKKAPSUL', 'CEK_KAPSUL', 'CEKKAPSUL', 'STATUS_KAPSUL'], ['CHECKKAPSUL', 'CEKKAPSUL']);
+        const colKeterangan = findCol(['KETERANGAN', 'CATATAN', 'REMARK', 'REMARKS', 'NOTES', 'NOTE', 'DESKRIPSI'], ['KETERANGAN', 'CATATAN', 'REMARK', 'NOTE']);
 
         const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
         const parsed: MonitoringPemusnahanItem[] = [];
@@ -519,8 +726,12 @@ export function MonitoringPemusnahanModule() {
           if (!hasContent) return;
 
           const getVal = (colIdx: number, defaultPos: number) => {
-            if (colIdx >= 0 && r[colIdx] !== undefined) return r[colIdx];
-            if (defaultPos >= 0 && defaultPos < r.length && r[defaultPos] !== undefined) return r[defaultPos];
+            if (colIdx >= 0 && colIdx < r.length && r[colIdx] !== undefined && r[colIdx] !== null) {
+              return r[colIdx];
+            }
+            if (defaultPos >= 0 && defaultPos < r.length && r[defaultPos] !== undefined && r[defaultPos] !== null) {
+              return r[defaultPos];
+            }
             return '';
           };
 
@@ -530,24 +741,28 @@ export function MonitoringPemusnahanModule() {
           const rawValue = getVal(colValue, 3);
           const rawCogs = getVal(colCogs, 4);
 
-          const tahunNum = parseInt(String(rawTahun)) || new Date().getFullYear();
-          const bulanStr = String(rawBulan || `Pengajuan Baris #${idx + 1}`).trim();
-          const qtyNum = parseFloat(String(rawQty).replace(/[^0-9.-]/g, '')) || 0;
-          const valNum = parseFloat(String(rawValue).replace(/[^0-9.-]/g, '')) || 0;
-          const cogsNum = parseFloat(String(rawCogs).replace(/[^0-9.-]/g, '')) || 0;
+          const parsedTahun = parseNumeric(rawTahun) || new Date().getFullYear();
+          const parsedBulan = String(rawBulan || '').trim() || `Pengajuan Baris #${idx + 1}`;
+          const parsedQty = parseNumeric(rawQty);
+          const parsedVal = parseNumeric(rawValue);
+          const parsedCogs = parseNumeric(rawCogs);
 
           const cleanStatusVal = (val: any) => {
-            const s = String(val || 'OPEN').trim().toUpperCase();
-            return s === 'CLOSE' || s === 'CLOSED' || s === 'SELESAI' || s === 'DONE' ? 'CLOSE' : (s || 'OPEN');
+            if (val === undefined || val === null) return 'OPEN';
+            const s = String(val).trim().toUpperCase();
+            if (['CLOSE', 'CLOSED', 'SELESAI', 'DONE', 'YA', 'YES', 'TRUE', '1', 'OK', 'V', '✓', 'SUDAH', 'ACC'].includes(s)) {
+              return 'CLOSE';
+            }
+            return s || 'OPEN';
           };
 
           const itemDraft: Partial<MonitoringPemusnahanItem> = {
-            id: `TRX-${new Date().toISOString().slice(0,10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}-${idx + 1}`,
-            tahun: tahunNum,
-            bulan_pengajuan: bulanStr,
-            qty_pcs: qtyNum,
-            value: valNum,
-            cogs: cogsNum,
+            id: `TRX-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36).toUpperCase()}-${idx + 1}`,
+            tahun: parsedTahun,
+            bulan_pengajuan: parsedBulan,
+            qty_pcs: parsedQty,
+            value: parsedVal,
+            cogs: parsedCogs,
             sloc: String(getVal(colSloc, 5) || '8A04').trim(),
             location: String(getVal(colLocation, 6) || 'Cikembar').trim(),
             kategori: String(getVal(colKategori, 7) || 'REGULER').trim(),
@@ -566,12 +781,10 @@ export function MonitoringPemusnahanModule() {
             sj_kapsul: String(getVal(colSjKapsul, 20) || 'OPEN').trim(),
             bap_kapsul: String(getVal(colBapKapsul, 21) || 'OPEN').trim(),
             check_kapsul: cleanStatusVal(getVal(colCheckKapsul, 22)),
-            keterangan: String(getVal(colKeterangan, 23) || '').trim(),
-            last_update: nowStr
+            keterangan: String(getVal(colKeterangan, 23) || '').trim()
           };
 
-          itemDraft.status = computeStatus(itemDraft);
-          parsed.push(itemDraft as MonitoringPemusnahanItem);
+          parsed.push(toDatabaseItem(itemDraft, idx));
         });
 
         if (parsed.length === 0) {
@@ -602,52 +815,229 @@ export function MonitoringPemusnahanModule() {
     }
 
     setIsUploadingBatch(true);
-    setUploadProgress(10);
+    setUploadProgress(5);
+    setUploadStageText('Menyiapkan dan membersihkan struktur data...');
+
+    // 1. Prepare sanitized database-ready records
+    const cleanRecords: MonitoringPemusnahanItem[] = uploadPreview.map((item, idx) => toDatabaseItem(item, idx));
+
+    // 2. Immediately update local state & local storage so user sees data in table instantly
+    setUploadProgress(15);
+    setUploadStageText('Menyimpan ke memori tabel lokal...');
+    const nextList = mode === 'replace' ? [...cleanRecords] : [...cleanRecords, ...dataList];
+    setDataList(nextList);
+    localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
+
+    // 3. Batch upsert to Supabase
+    let dbSuccess = true;
+    let dbErrorMsg = '';
+    const totalRecords = cleanRecords.length;
+
     try {
       if (mode === 'replace') {
+        setUploadProgress(25);
+        setUploadStageText('Membersihkan rekaman lama di database Supabase...');
         const { error: delErr } = await supabase
           .from('monitoring_pemusnahan')
           .delete()
-          .neq('id', '___empty_dummy___');
+          .neq('id', '___empty_dummy_never_match___');
         if (delErr) {
           console.warn('Replace delete warning:', delErr);
         }
       }
 
-      // Insert in chunks of 50
-      const chunkSize = 50;
-      for (let i = 0; i < uploadPreview.length; i += chunkSize) {
-        const chunk = uploadPreview.slice(i, i + chunkSize);
-        const { error: insErr } = await supabase
+      // Upsert in chunks of 25 to prevent payload limit issues
+      const chunkSize = 25;
+      const totalChunks = Math.ceil(totalRecords / chunkSize);
+      let processedCount = 0;
+
+      for (let i = 0; i < cleanRecords.length; i += chunkSize) {
+        const chunk = cleanRecords.slice(i, i + chunkSize);
+        const currentChunkNum = Math.floor(i / chunkSize) + 1;
+        
+        setUploadStageText(`Menyinkronkan batch ${currentChunkNum} dari ${totalChunks} (${Math.min(i + chunkSize, totalRecords)}/${totalRecords} baris) ke database Supabase...`);
+        
+        let { error: insErr } = await supabase
           .from('monitoring_pemusnahan')
-          .insert(chunk);
+          .upsert(chunk, { onConflict: 'id' });
+
         if (insErr) {
-          console.error('Batch insert chunk error:', insErr);
+          console.warn('Upsert onConflict error, attempting standard upsert/insert...', insErr);
+          const fallbackRes = await supabase
+            .from('monitoring_pemusnahan')
+            .upsert(chunk);
+          insErr = fallbackRes.error;
         }
-        setUploadProgress(Math.round(((i + chunk.length) / uploadPreview.length) * 90));
+
+        if (insErr) {
+          console.error('Batch upsert chunk error:', insErr);
+          dbSuccess = false;
+          dbErrorMsg = insErr.message || 'Gagal menyimpan ke server database';
+          break;
+        }
+
+        processedCount += chunk.length;
+        const calcProgress = Math.min(95, 30 + Math.round((processedCount / totalRecords) * 65));
+        setUploadProgress(calcProgress);
       }
 
-      setUploadProgress(100);
-      await fetchMonitoringData();
+      if (dbSuccess) {
+        setUploadProgress(100);
+        setUploadStageText('Finalisasi dan sinkronisasi data tabel...');
+        await fetchMonitoringData();
+      }
+      // Small pause for visual feedback
+      await new Promise(res => setTimeout(res, 300));
+    } catch (e: any) {
+      console.error('Supabase commit exception:', e);
+      dbSuccess = false;
+      dbErrorMsg = e.message || 'Koneksi database terputus';
+    } finally {
+      setIsUploadingBatch(false);
+    }
+
+    const timestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    if (dbSuccess) {
+      setUploadResultStatus({
+        type: 'success',
+        title: 'Berhasil Masuk ke Database Supabase',
+        message: `${totalRecords} baris data monitoring pemusnahan berhasil tersimpan permanen di cloud database Supabase (${mode === 'replace' ? 'Mode Replace Seluruh Data' : 'Mode Append Tambah Data'}).`,
+        recordsCount: totalRecords,
+        dbSynced: true,
+        timestamp
+      });
 
       showToast(
         'Upload Berhasil',
-        `${uploadPreview.length} data monitoring pemusnahan berhasil ${mode === 'replace' ? 'menggantikan seluruh database' : 'ditambahkan ke database'}!`,
+        `${totalRecords} data monitoring pemusnahan berhasil ${mode === 'replace' ? 'menggantikan seluruh database' : 'ditambahkan ke database dan tabel'}!`,
         'success'
       );
-      setUploadModalOpen(false);
-      setUploadPreview(null);
+    } else {
+      setUploadResultStatus({
+        type: 'warning',
+        title: 'Data Masuk Tabel Lokal (Gagal Cloud Sync)',
+        message: `${totalRecords} data berhasil ditampilkan di tabel lokal & browser, namun gagal disinkronkan ke Supabase. Detail kendala: ${dbErrorMsg}`,
+        recordsCount: totalRecords,
+        dbSynced: false,
+        timestamp
+      });
+
+      showToast(
+        'Data Masuk ke Tabel',
+        `${totalRecords} data berhasil masuk ke tabel. (Status Server: ${dbErrorMsg})`,
+        'warning'
+      );
+    }
+
+    setUploadModalOpen(false);
+    setUploadPreview(null);
+    setUploadProgress(0);
+    setUploadStageText('');
+  };
+
+  // Sync All Table Data to Supabase (One-Click Push)
+  const handleSyncAllToSupabase = async () => {
+    if (dataList.length === 0) {
+      showToast('Tabel Kosong', 'Tidak ada data di tabel untuk disinkronkan ke Supabase.', 'info');
+      return;
+    }
+
+    setIsUploadingBatch(true);
+    setUploadProgress(5);
+    setUploadStageText('Menyiapkan dan memvalidasi seluruh baris tabel...');
+
+    const cleanRecords: MonitoringPemusnahanItem[] = dataList.map((item, idx) => toDatabaseItem(item, idx));
+    const totalRecords = cleanRecords.length;
+    let dbSuccess = true;
+    let dbErrorMsg = '';
+
+    try {
+      setUploadProgress(15);
+      setUploadStageText('Menghubungkan ke server database Supabase...');
+
+      const chunkSize = 25;
+      const totalChunks = Math.ceil(totalRecords / chunkSize);
+      let processedCount = 0;
+
+      for (let i = 0; i < totalRecords; i += chunkSize) {
+        const chunk = cleanRecords.slice(i, i + chunkSize);
+        const currentChunkNum = Math.floor(i / chunkSize) + 1;
+
+        setUploadStageText(`Menyinkronkan batch ${currentChunkNum} dari ${totalChunks} (${Math.min(i + chunkSize, totalRecords)}/${totalRecords} baris) ke database Supabase...`);
+
+        let { error: insErr } = await supabase
+          .from('monitoring_pemusnahan')
+          .upsert(chunk, { onConflict: 'id' });
+
+        if (insErr) {
+          console.warn('Upsert onConflict error, retrying without onConflict...', insErr);
+          const fallbackRes = await supabase
+            .from('monitoring_pemusnahan')
+            .upsert(chunk);
+          insErr = fallbackRes.error;
+        }
+
+        if (insErr) {
+          console.error('Batch sync error:', insErr);
+          dbSuccess = false;
+          dbErrorMsg = insErr.message || 'Gagal menyimpan ke server database';
+          break;
+        }
+
+        processedCount += chunk.length;
+        const calcProgress = Math.min(95, 20 + Math.round((processedCount / totalRecords) * 75));
+        setUploadProgress(calcProgress);
+      }
+
+      if (dbSuccess) {
+        setUploadProgress(100);
+        setUploadStageText('Verifikasi pembacaan dari cloud database...');
+        await fetchMonitoringData();
+      }
+      await new Promise(res => setTimeout(res, 300));
     } catch (e: any) {
-      console.error(e);
-      const nextList = mode === 'replace' ? [...uploadPreview] : [...dataList, ...uploadPreview];
-      setDataList(nextList);
-      localStorage.setItem('logistics_monitoring_pemusnahan', JSON.stringify(nextList));
-      showToast('Tersimpan Lokal', `${uploadPreview.length} data disimpan di browser.`, 'info');
-      setUploadModalOpen(false);
-      setUploadPreview(null);
+      console.error('Sync exception:', e);
+      dbSuccess = false;
+      dbErrorMsg = e.message || 'Koneksi database terputus';
     } finally {
       setIsUploadingBatch(false);
       setUploadProgress(0);
+      setUploadStageText('');
+    }
+
+    const timestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    if (dbSuccess) {
+      setUploadResultStatus({
+        type: 'success',
+        title: 'Database Supabase Terupdate',
+        message: `Seluruh ${totalRecords} data di tabel monitoring pemusnahan berhasil tersimpan secara permanen di database Supabase!`,
+        recordsCount: totalRecords,
+        dbSynced: true,
+        timestamp
+      });
+
+      showToast(
+        'Sinkronisasi Sukses',
+        `${totalRecords} data monitoring pemusnahan berhasil tersimpan di database Supabase!`,
+        'success'
+      );
+    } else {
+      setUploadResultStatus({
+        type: 'warning',
+        title: 'Sinkronisasi Database Terkendala',
+        message: `Gagal mengirim ke Supabase: ${dbErrorMsg}. Klik tombol Bantuan SQL untuk memastikan tabel sudah dibuat di database.`,
+        recordsCount: totalRecords,
+        dbSynced: false,
+        timestamp
+      });
+
+      showToast(
+        'Gagal Sinkron DB',
+        `Pesan server: ${dbErrorMsg}`,
+        'danger'
+      );
     }
   };
 
@@ -985,6 +1375,21 @@ export function MonitoringPemusnahanModule() {
               <span>Upload Data Excel</span>
             </button>
 
+            {/* Sync All Local Table Data to Supabase */}
+            <button
+              type="button"
+              onClick={handleSyncAllToSupabase}
+              disabled={isUploadingBatch || dataList.length === 0}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+              title="Kirim dan sinkronkan seluruh data di tabel ke database Supabase"
+            >
+              <Server size={14} className={isUploadingBatch ? 'animate-spin' : ''} />
+              <span>Sync ke Supabase</span>
+              <span className="ml-0.5 px-1.5 py-0.2 bg-blue-800 text-[10px] rounded-full font-mono">
+                {dataList.length}
+              </span>
+            </button>
+
             {/* Download Template */}
             <button
               type="button"
@@ -993,7 +1398,7 @@ export function MonitoringPemusnahanModule() {
               title="Unduh Format Template Excel untuk Upload"
             >
               <Download size={13} />
-              <span>Template Excel</span>
+              <span>Template</span>
             </button>
 
             {/* Export Excel */}
@@ -1026,6 +1431,15 @@ export function MonitoringPemusnahanModule() {
               <span>+ Inline</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setSqlGuideModalOpen(true)}
+              className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
+              title="Skrip SQL Tabel Database Supabase"
+            >
+              <Code2 size={14} className="text-indigo-600" />
+            </button>
+
             {isAdmin && (
               <button
                 type="button"
@@ -1035,7 +1449,7 @@ export function MonitoringPemusnahanModule() {
                 title="Khusus Admin: Kosongkan seluruh data di database"
               >
                 <Trash2 size={13} />
-                <span>Reset Tabel</span>
+                <span>Reset</span>
               </button>
             )}
 
@@ -1044,13 +1458,103 @@ export function MonitoringPemusnahanModule() {
               onClick={fetchMonitoringData}
               disabled={loading}
               className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
-              title="Refresh data"
+              title="Refresh data dari database"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin text-blue-900' : ''} />
             </button>
           </div>
         </div>
       </div>
+
+      {/* Upload Database Feedback / Status Indicator */}
+      {uploadResultStatus && (
+        <div className={`p-4 rounded-2xl border transition-all animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          uploadResultStatus.type === 'success'
+            ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+            : uploadResultStatus.type === 'warning'
+            ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+            : 'bg-red-50/90 border-red-300 text-red-950'
+        }`}>
+          <div className="flex items-start sm:items-center gap-3">
+            <div className={`p-2.5 rounded-xl shrink-0 ${
+              uploadResultStatus.type === 'success'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : uploadResultStatus.type === 'warning'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-red-600 text-white shadow-xs'
+            }`}>
+              {uploadResultStatus.type === 'success' ? (
+                <CheckCheck size={20} />
+              ) : uploadResultStatus.type === 'warning' ? (
+                <AlertTriangle size={20} />
+              ) : (
+                <AlertCircle size={20} />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-black text-sm uppercase tracking-wide">
+                  {uploadResultStatus.title}
+                </h4>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  uploadResultStatus.dbSynced
+                    ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                    : 'bg-amber-200 text-amber-900 border border-amber-300'
+                }`}>
+                  {uploadResultStatus.dbSynced ? '● Database Synced' : '▲ Local Storage Only'}
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {uploadResultStatus.timestamp}
+                </span>
+              </div>
+              <p className="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed">
+                {uploadResultStatus.message}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={fetchMonitoringData}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Periksa sinkronisasi database terkini"
+            >
+              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+              <span>Verifikasi DB</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadResultStatus(null)}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-black/5 transition-all cursor-pointer"
+              title="Tutup notifikasi status"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Live Upload Progress Indicator in Main View (When modal is syncing) */}
+      {isUploadingBatch && (
+        <div className="p-4 bg-blue-50/90 border-2 border-blue-300 rounded-2xl shadow-sm space-y-2 animate-in fade-in">
+          <div className="flex justify-between items-center text-xs font-black text-blue-950">
+            <span className="flex items-center gap-2">
+              <Server size={16} className="animate-pulse text-blue-700" />
+              <span>{uploadStageText || 'Sedang mengirimkan data ke database Supabase...'}</span>
+            </span>
+            <span className="font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md text-xs font-black">
+              {uploadProgress}%
+            </span>
+          </div>
+          <div className="w-full h-3 bg-blue-100 rounded-full overflow-hidden p-0.5 border border-blue-200">
+            <div
+              className="bg-linear-to-r from-blue-600 to-indigo-600 h-full transition-all duration-300 rounded-full shadow-inner"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Admin Bulk Action Banner */}
       {isAdmin && selectedIds.length > 0 && (
@@ -1869,21 +2373,30 @@ export function MonitoringPemusnahanModule() {
                 </div>
               </div>
 
-              {/* Progress Bar if uploading */}
+              {/* Progress Bar & Status Indicator when uploading */}
               {isUploadingBatch && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2 animate-in fade-in">
-                  <div className="flex justify-between items-center text-xs font-bold text-blue-900">
+                <div className="p-4 bg-blue-50/90 border-2 border-blue-200 rounded-2xl space-y-2.5 animate-in fade-in">
+                  <div className="flex justify-between items-center text-xs font-black text-blue-950">
                     <span className="flex items-center gap-2">
-                      <RefreshCw size={14} className="animate-spin text-blue-700" />
-                      Sedang memproses dan menyimpan data ke database...
+                      <RefreshCw size={15} className="animate-spin text-blue-700 shrink-0" />
+                      <span>{uploadStageText || 'Sedang memproses dan menyimpan data ke database Supabase...'}</span>
                     </span>
-                    <span>{uploadProgress}%</span>
+                    <span className="font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md text-xs font-black">
+                      {uploadProgress}%
+                    </span>
                   </div>
-                  <div className="w-full h-2.5 bg-blue-100 rounded-full overflow-hidden">
+                  <div className="w-full h-3 bg-blue-100 rounded-full overflow-hidden p-0.5 border border-blue-200">
                     <div
-                      className="bg-blue-600 h-full transition-all duration-300 rounded-full"
+                      className="bg-linear-to-r from-blue-600 to-indigo-600 h-full transition-all duration-300 rounded-full"
                       style={{ width: `${uploadProgress}%` }}
                     />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-blue-800">
+                    <span className="flex items-center gap-1.5">
+                      <Server size={13} />
+                      Target: Cloud Supabase & Local Table State
+                    </span>
+                    <span>Harap tunggu, proses sedang berjalan...</span>
                   </div>
                 </div>
               )}
@@ -1997,6 +2510,139 @@ export function MonitoringPemusnahanModule() {
                   <span>Tambahkan ke Database ({uploadPreview.length} Data)</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SQL Setup & Schema Helper Modal */}
+      {sqlGuideModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-800/80 border border-blue-700/50">
+                  <Database size={20} className="text-blue-300" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base tracking-tight">Skrip SQL Tabel Monitoring Pemusnahan</h3>
+                  <p className="text-xs text-blue-200 font-medium">Jalankan di Supabase SQL Editor jika tabel belum dibuat atau ada kendala schema</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSqlGuideModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-950 font-medium leading-relaxed">
+                💡 <span className="font-bold">Langkah Cepat:</span> Buka dashboard <b>Supabase</b> Anda &gt; menu <b>SQL Editor</b> &gt; tempel (paste) skrip di bawah ini &gt; klik <b>Run</b>.
+              </div>
+
+              <div className="relative group">
+                <pre className="p-4 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-2xl overflow-x-auto border border-slate-800 leading-relaxed max-h-72 select-all">
+{`-- 1. Buat Tabel monitoring_pemusnahan
+CREATE TABLE IF NOT EXISTS public.monitoring_pemusnahan (
+    id VARCHAR(100) PRIMARY KEY,
+    tahun INT NOT NULL,
+    bulan_pengajuan VARCHAR(150) NOT NULL,
+    qty_pcs NUMERIC(15,2) DEFAULT 0,
+    value NUMERIC(18,2) DEFAULT 0,
+    cogs NUMERIC(18,2) DEFAULT 0,
+    sloc VARCHAR(50) DEFAULT '8A04',
+    location VARCHAR(100) DEFAULT 'Cikembar',
+    kategori VARCHAR(100) DEFAULT 'REGULER',
+    no_persetujuan VARCHAR(150) DEFAULT '',
+    no_pengajuan VARCHAR(150) DEFAULT '',
+    no_penolakan_qa VARCHAR(150) DEFAULT '',
+    approved_head_log VARCHAR(255) DEFAULT '',
+    approved_ho_direksi VARCHAR(255) DEFAULT '',
+    serah_terima_gudang_reject VARCHAR(255) DEFAULT '',
+    acc_teams_bap VARCHAR(255) DEFAULT '',
+    kirim_dokumen_bap_ke_ho TEXT DEFAULT 'OPEN',
+    musnah_sistem_z87 VARCHAR(255) DEFAULT '',
+    completed_approval TEXT DEFAULT 'OPEN',
+    completed_ba TEXT DEFAULT 'OPEN',
+    completed_migo TEXT DEFAULT 'OPEN',
+    sj_kapsul VARCHAR(150) DEFAULT '',
+    bap_kapsul VARCHAR(150) DEFAULT '',
+    check_kapsul TEXT DEFAULT 'OPEN',
+    keterangan TEXT DEFAULT '',
+    status VARCHAR(50) DEFAULT 'PROSES',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_update TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Nonaktifkan RLS & Berikan Hak Akses Penuh
+ALTER TABLE public.monitoring_pemusnahan DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;`}
+                </pre>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sqlText = `-- 1. Buat Tabel monitoring_pemusnahan
+CREATE TABLE IF NOT EXISTS public.monitoring_pemusnahan (
+    id VARCHAR(100) PRIMARY KEY,
+    tahun INT NOT NULL,
+    bulan_pengajuan VARCHAR(150) NOT NULL,
+    qty_pcs NUMERIC(15,2) DEFAULT 0,
+    value NUMERIC(18,2) DEFAULT 0,
+    cogs NUMERIC(18,2) DEFAULT 0,
+    sloc VARCHAR(50) DEFAULT '8A04',
+    location VARCHAR(100) DEFAULT 'Cikembar',
+    kategori VARCHAR(100) DEFAULT 'REGULER',
+    no_persetujuan VARCHAR(150) DEFAULT '',
+    no_pengajuan VARCHAR(150) DEFAULT '',
+    no_penolakan_qa VARCHAR(150) DEFAULT '',
+    approved_head_log VARCHAR(255) DEFAULT '',
+    approved_ho_direksi VARCHAR(255) DEFAULT '',
+    serah_terima_gudang_reject VARCHAR(255) DEFAULT '',
+    acc_teams_bap VARCHAR(255) DEFAULT '',
+    kirim_dokumen_bap_ke_ho TEXT DEFAULT 'OPEN',
+    musnah_sistem_z87 VARCHAR(255) DEFAULT '',
+    completed_approval TEXT DEFAULT 'OPEN',
+    completed_ba TEXT DEFAULT 'OPEN',
+    completed_migo TEXT DEFAULT 'OPEN',
+    sj_kapsul VARCHAR(150) DEFAULT '',
+    bap_kapsul VARCHAR(150) DEFAULT '',
+    check_kapsul TEXT DEFAULT 'OPEN',
+    keterangan TEXT DEFAULT '',
+    status VARCHAR(50) DEFAULT 'PROSES',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_update TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Nonaktifkan RLS & Berikan Hak Akses Penuh
+ALTER TABLE public.monitoring_pemusnahan DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;`;
+                    navigator.clipboard.writeText(sqlText);
+                    setCopiedSql(true);
+                    setTimeout(() => setCopiedSql(false), 2000);
+                  }}
+                  className="absolute top-3 right-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
+                >
+                  {copiedSql ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copiedSql ? 'Tersalin!' : 'Salin SQL'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Setelah run SQL di Supabase, klik tombol <b>Sync ke Supabase</b> di toolbar.
+              </span>
+              <button
+                type="button"
+                onClick={() => setSqlGuideModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs cursor-pointer shadow-xs"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
