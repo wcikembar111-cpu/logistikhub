@@ -20,11 +20,16 @@ import {
   X,
   FileText,
   PieChart as PieIcon,
-  HelpCircle
+  HelpCircle,
+  Mic,
+  MicOff,
+  QrCode,
+  ScanLine
 } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../hooks/useSupabase';
 import { ReturInventoryItem } from '../../types';
+import { InventoryQrScannerModal } from './InventoryQrScannerModal';
 
 const COLOR_PALETTE = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
@@ -54,9 +59,115 @@ export function ReturInventoryModule() {
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Voice Search & QR Scanner States
+  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const [showQrScannerModal, setShowQrScannerModal] = useState(false);
+  const speechRecognitionRef = useRef<any>(null);
+
   // Pagination for table
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  const playVoiceChime = (tone: 'start' | 'success') => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      const freq = tone === 'start' ? 587.33 : 880;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch {
+      // AudioContext unavailable
+    }
+  };
+
+  // Toggle Voice Recognition
+  const handleToggleVoiceSearch = () => {
+    const SpeechRec = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
+                      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+
+    if (!SpeechRec) {
+      showToast('Tidak Didukung', 'Browser Anda belum mendukung input suara Web Speech API. Silakan gunakan Chrome/Edge.', 'warning');
+      return;
+    }
+
+    if (isListeningVoice) {
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      setIsListeningVoice(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = 'id-ID';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListeningVoice(true);
+        playVoiceChime('start');
+        showToast('Mendengarkan...', 'Silakan ucapkan nama barang, kode item, lokasi, atau batch', 'info');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        if (transcript) {
+          setSearchQuery(transcript);
+          setCurrentPage(1);
+          if (activeTab !== 'data') {
+            setActiveTab('data');
+          }
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech error:', event.error);
+        setIsListeningVoice(false);
+        if (event.error === 'not-allowed') {
+          showToast('Izin Ditolak', 'Akses mikrofon tidak diizinkan oleh browser.', 'danger');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListeningVoice(false);
+        playVoiceChime('success');
+      };
+
+      speechRecognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error('Speech recognition error:', err);
+      setIsListeningVoice(false);
+      showToast('Error Suara', 'Gagal mengaktifkan pengenalan suara mikrofon.', 'danger');
+    }
+  };
+
+  // Handle QR Scan Result
+  const handleQrScanHit = (code: string) => {
+    const clean = code.trim();
+    if (!clean) return;
+    setSearchQuery(clean);
+    setCurrentPage(1);
+    setActiveTab('data');
+    setShowQrScannerModal(false);
+    showToast('QR Terpindai', `Menampilkan pencarian untuk: "${clean}"`, 'success');
+  };
 
   const formatNumber = (num?: number | string | null) => {
     if (num === undefined || num === null || num === '' || isNaN(Number(num))) return '0';
@@ -406,8 +517,35 @@ export function ReturInventoryModule() {
           </div>
         </div>
 
-        {/* Tab Buttons & Refresh */}
+        {/* Tab Buttons, QR Scan, Voice & Refresh */}
         <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+          {/* Quick Voice & QR buttons in header */}
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={handleToggleVoiceSearch}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                isListeningVoice
+                  ? 'bg-red-600 text-white animate-pulse shadow-md shadow-red-500/20'
+                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs'
+              }`}
+              title="Cari Data dengan Perintah Suara (Voice Search)"
+            >
+              {isListeningVoice ? <MicOff size={14} className="animate-bounce" /> : <Mic size={14} className="text-blue-900" />}
+              <span className="hidden sm:inline">{isListeningVoice ? 'Mendengarkan...' : 'Suara'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowQrScannerModal(true)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Scan QR Code / Barcode Produk & Label"
+            >
+              <QrCode size={14} className="text-emerald-700" />
+              <span className="hidden sm:inline">Scan QR</span>
+            </button>
+          </div>
+
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
               type="button"
@@ -953,34 +1091,108 @@ export function ReturInventoryModule() {
               </div>
             )}
 
-            {/* Search Input Bar */}
-            <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-              <div className="relative flex-1 max-w-md">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Cari Item Code, Item Name, Location, By ED, Batch..."
-                  className="w-full pl-8 pr-7 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-                {searchQuery && (
+            {/* Search Input Bar with Voice & QR Actions */}
+            <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50/70 space-y-2">
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 max-w-xl">
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder="Cari Item Code, Item Name, Location, By ED, Batch..."
+                      className="w-full pl-8 pr-8 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl shadow-2xs focus:ring-2 focus:ring-blue-600 outline-none transition-all"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setCurrentPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700 cursor-pointer"
+                        title="Hapus pencarian"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Voice Search Button */}
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700"
+                    onClick={handleToggleVoiceSearch}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                      isListeningVoice
+                        ? 'bg-red-600 text-white animate-pulse shadow-md shadow-red-500/30'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs'
+                    }`}
+                    title="Cari Data dengan Perintah Suara (Voice Search)"
                   >
-                    <X size={12} />
+                    {isListeningVoice ? <MicOff size={15} className="animate-bounce" /> : <Mic size={15} className="text-blue-900" />}
+                    <span className="hidden md:inline">{isListeningVoice ? 'Mendengarkan...' : 'Suara'}</span>
                   </button>
-                )}
+
+                  {/* QR & Barcode Scanner Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowQrScannerModal(true)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-blue-900 hover:bg-blue-950 text-white shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                    title="Buka Scanner QR Code & Barcode (Kamera / Unggah Foto)"
+                  >
+                    <QrCode size={15} className="text-cyan-300" />
+                    <span className="hidden md:inline">Scan QR</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-semibold text-slate-500">
+                  <span>
+                    Menampilkan <strong>{filteredData.length}</strong> dari <strong>{returData.length}</strong> data
+                  </span>
+                </div>
               </div>
 
-              <div className="text-xs font-semibold text-slate-500">
-                Menampilkan <strong>{filteredData.length}</strong> data
-              </div>
+              {/* Voice Listening Active Banner */}
+              {isListeningVoice && (
+                <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-900 text-xs flex items-center justify-between animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+                    <span className="font-bold">Mikrofon Aktif:</span>
+                    <span>Silakan bicara (sebut nama barang, kode item, lokasi rak, atau batch)...</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleVoiceSearch}
+                    className="px-2 py-0.5 rounded-md bg-red-200 hover:bg-red-300 text-red-900 text-[11px] font-bold cursor-pointer"
+                  >
+                    Selesai
+                  </button>
+                </div>
+              )}
+
+              {/* Active Search Filter Chip */}
+              {searchQuery && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] text-slate-400 font-semibold">Filter Aktif:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg text-xs font-bold">
+                    <span>"{searchQuery}"</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setCurrentPage(1);
+                      }}
+                      className="hover:text-red-600 cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Table Container */}
@@ -1117,6 +1329,13 @@ export function ReturInventoryModule() {
           </div>
         </div>
       )}
+
+      {/* Inventory QR & Barcode Scanner Modal */}
+      <InventoryQrScannerModal
+        isOpen={showQrScannerModal}
+        onClose={() => setShowQrScannerModal(false)}
+        onScanSuccess={handleQrScanHit}
+      />
     </div>
   );
 }

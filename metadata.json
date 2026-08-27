@@ -1,6 +1,6 @@
 {
   "name": "Kino Logistics & Public Todo Studio",
   "description": "Aplikasi Logistics Studio, Retur Inventory, Monitoring Pemusnahan (WH-CKB), Surat Jalan, QR Generator, Public Todo, dan Siaran Pesan Broadcast Realtime antar-perangkat publik.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

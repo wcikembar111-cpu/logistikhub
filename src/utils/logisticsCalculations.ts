@@ -229,7 +229,7 @@ export interface CompareResultRow {
  */
 export function compareLargoAndSap(
   largoRows: Array<{ sloc: string; item: string; desc?: string; batch: string; qty: any }>,
-  sapRows: Array<{ sloc: string; item: string; desc?: string; batch: string; unrestricted?: any; blocked?: any; qty?: any }>
+  sapRows: Array<{ sloc: string; item: string; desc?: string; batch: string; unrestricted?: any; transit?: any; blocked?: any; qty?: any }>
 ): CompareResultRow[] {
   // Normalize material/item code: strip leading zeroes ONLY if numeric
   const normItem = (s: any) => {
@@ -247,11 +247,17 @@ export function compareLargoAndSap(
   const normBatch = (s: any) => String(s ?? '').trim().toUpperCase();
 
   // Robust Quantity Parser
-  const pQty = (v: any) => {
+  const pQty = (v: any): number => {
     if (typeof v === 'number') return isNaN(v) ? 0 : v;
     if (v === null || v === undefined) return 0;
     let str = String(v).trim();
     if (!str) return 0;
+
+    // Remove unit suffixes (PCS, CS, CTN, BOX, DUS, BAL, PACK, EA, KG, GR, L, ML, IDR, RP)
+    str = str.replace(/\b(pcs|pc|cs|ctn|box|dus|bal|pack|ea|kg|gr|g|l|ml|idr|rp|unit|un|btl|sak|roll)\b/gi, '').trim();
+
+    // Clean whitespace inside string
+    str = str.replace(/\s+/g, '');
 
     // Handle thousand/decimal formats
     if (str.includes(',') && str.includes('.')) {
@@ -263,13 +269,22 @@ export function compareLargoAndSap(
         str = str.replace(/,/g, '');
       }
     } else if (str.includes(',')) {
-      // Check if comma is decimal (e.g. 100,5) or thousand (e.g. 1,000)
+      // Check if comma is decimal (e.g. 100,5 or 100,50) or thousand (e.g. 1,000 or 10,000)
       if (/,\d{1,2}$/.test(str)) {
         str = str.replace(',', '.');
       } else {
         str = str.replace(/,/g, '');
       }
+    } else if (str.includes('.')) {
+      // Multiple dots e.g. 1.250.000 -> 1250000
+      if ((str.match(/\./g) || []).length > 1) {
+        str = str.replace(/\./g, '');
+      }
     }
+
+    // Strip any remaining non-numeric characters except dot, minus sign
+    str = str.replace(/[^0-9.-]/g, '');
+
     const n = parseFloat(str);
     return isNaN(n) ? 0 : Math.round(n * 1000) / 1000;
   };
@@ -315,7 +330,13 @@ export function compareLargoAndSap(
         qty: 0 
       });
     }
-    const addQty = r.qty !== undefined ? pQty(r.qty) : (pQty(r.unrestricted) + pQty(r.blocked));
+    const hasMb52Cols = (r.unrestricted !== undefined && r.unrestricted !== null && String(r.unrestricted).trim() !== '') ||
+                        (r.transit !== undefined && r.transit !== null && String(r.transit).trim() !== '') ||
+                        (r.blocked !== undefined && r.blocked !== null && String(r.blocked).trim() !== '');
+    
+    const addQty = hasMb52Cols
+      ? (pQty(r.unrestricted) + pQty(r.transit) + pQty(r.blocked))
+      : (r.qty !== undefined && r.qty !== null && String(r.qty).trim() !== '' ? pQty(r.qty) : (pQty(r.unrestricted) + pQty(r.transit) + pQty(r.blocked)));
     sapMap.get(key)!.qty += addQty;
   });
 
@@ -350,7 +371,9 @@ export function compareLargoAndSap(
       qSap: sap.qty,
       diff,
       status: match ? 'MATCH' : 'QTY_DIFF',
-      rec: match ? 'Sesuai' : `Selisih Qty (SAP: ${sap.qty}, LARGO: ${largo.qty})`
+      rec: match 
+        ? 'Sesuai' 
+        : `Selisih Qty (SAP: ${sap.qty.toLocaleString('id-ID')}, LARGO: ${largo.qty.toLocaleString('id-ID')})`
     });
   });
 

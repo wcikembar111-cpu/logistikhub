@@ -32,7 +32,7 @@ export function BatchCheckerModule() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // Helper untuk membaca nilai kolom secara fleksibel tanpa terpengaruh huruf besar/kecil/spasi
+  // Helper untuk membaca nilai kolom secara fleksibel tanpa terpengaruh huruf besar/kecil/spasi/karakter khusus
   const extractField = (row: Record<string, any>, candidateKeys: string[]): any => {
     const rowKeys = Object.keys(row);
     for (const cand of candidateKeys) {
@@ -40,11 +40,96 @@ export function BatchCheckerModule() {
       const foundKey = rowKeys.find(
         k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanCand
       );
-      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
         return row[foundKey];
       }
     }
     return undefined;
+  };
+
+  // Helper khusus dan super cerdas untuk mendeteksi kolom Kuantitas / Qty / Stok
+  const extractQtyField = (row: Record<string, any>, candidateKeys: string[]): any => {
+    // 1. Cek exact / normalized match dari daftar kandidat
+    const directVal = extractField(row, candidateKeys);
+    if (directVal !== undefined && directVal !== null && String(directVal).trim() !== '') {
+      return directVal;
+    }
+
+    const rowKeys = Object.keys(row);
+
+    // Kata kunci penanda kolom kuantitas
+    const qtyKeywords = [
+      'qty', 'quantity', 'lastqty', 'last qty', 'onhand', 'on hand',
+      'stok', 'stock', 'kuantitas', 'jumlah', 'jml', 'fisik',
+      'saldo', 'balance', 'ending', 'unrestricted', 'bebas', 'total', 'tersedia'
+    ];
+
+    // Kolom-kolom non-qty yang harus diabaikan agar tidak salah ambil
+    const nonQtyKeywords = [
+      'sloc', 'loc', 'gudang', 'lokasi', 'item', 'material', 'part', 'sku', 'code', 'kode',
+      'desc', 'nama', 'barang', 'batch', 'charg', 'lot', 'date', 'tgl', 'time', 'waktu',
+      'user', 'pic', 'status', 'remark', 'keterangan', 'no', 'nomor', 'unit', 'uom', 'satuan', 'plant'
+    ];
+
+    // 2. Cari kolom yang namanya mengandung kata kunci qty
+    for (const key of rowKeys) {
+      const cleanK = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isNonQty = nonQtyKeywords.some(nq => cleanK === nq || cleanK.startsWith(nq));
+      if (isNonQty) continue;
+
+      const isQty = qtyKeywords.some(qk => cleanK.includes(qk.replace(/[^a-z0-9]/g, '')));
+      if (isQty && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+        return row[key];
+      }
+    }
+
+    // 3. Fallback: cari sembarang kolom bernilai numerik yang bukan kolom identitas
+    for (const key of rowKeys) {
+      const cleanK = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isKnownIdentity = nonQtyKeywords.some(nq => cleanK === nq || cleanK.includes(nq));
+      if (!isKnownIdentity && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+        const val = row[key];
+        if (typeof val === 'number') return val;
+        const cleanedVal = String(val).trim().replace(/\b(pcs|pc|cs|ctn|box|dus|bal|pack|ea|kg|gr)\b/gi, '').trim();
+        if (/^-?\d+([.,]\d+)?$/.test(cleanedVal)) {
+          return val;
+        }
+      }
+    }
+
+    return 0;
+  };
+
+  // Helper untuk membaca sheet Excel dengan pendeteksian baris header otomatis
+  const parseSheetToJson = (ws: XLSX.WorkSheet): Record<string, any>[] => {
+    const rawRows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: '' });
+    if (rawRows.length === 0) return [];
+
+    let headerRowIdx = 0;
+    const knownHeaderKeywords = [
+      'item', 'material', 'batch', 'sloc', 'storage', 'qty', 'quantity', 
+      'stok', 'stock', 'charg', 'lot', 'deskripsi', 'description', 'last'
+    ];
+
+    for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+      const row = rawRows[i];
+      if (Array.isArray(row)) {
+        const matchCount = row.filter(cell => {
+          const str = String(cell || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          return knownHeaderKeywords.some(kw => str.includes(kw));
+        }).length;
+        if (matchCount >= 2) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+    }
+
+    if (headerRowIdx > 0) {
+      return XLSX.utils.sheet_to_json<Record<string, any>>(ws, { range: headerRowIdx, defval: '' });
+    }
+
+    return XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
   };
 
   const handleLargoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,16 +141,63 @@ export function BatchCheckerModule() {
       try {
         const buffer = evt.target?.result as ArrayBuffer;
         const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+        
+        let targetSheetName = wb.SheetNames[0];
+        for (const name of wb.SheetNames) {
+          const sheet = wb.Sheets[name];
+          const testData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (testData.length > 2) {
+            targetSheetName = name;
+            break;
+          }
+        }
+
+        const ws = wb.Sheets[targetSheetName];
+        const data = parseSheetToJson(ws);
+
+        const largoQtyCandidates = [
+          'Last Qty', 'LastQty', 'Last_Qty', 'Last Quantity',
+          'Qty', 'Quantity', 'QUANTITY', 'QTY', 'Kuantitas',
+          'Qty (Pcs)', 'Qty Pcs', 'Qty_Pcs', 'Qty(Pcs)', 'Qty(PCS)', 'Qty PCS', 'Qty (PCS)',
+          'Qty (CS)', 'Qty CS', 'Qty (Ctn)', 'Qty Ctn', 'Qty (Dus)', 'Qty Dus', 'Qty (Box)', 'Qty Box', 'Qty (Bal)', 'Qty Bal', 'Qty (Pack)', 'Qty Pack',
+          'Qty in Un. of Entry', 'Qty Base Unit', 'Base Unit Qty', 'Qty In Unit',
+          'Qty On Hand', 'Qty Onhand', 'QtyOnHand', 'Qty_On_Hand', 'On Hand Qty', 'OnHand Qty', 'On Hand', 'OnHand', 'ON HAND', 'ONHAND',
+          'Qty Available', 'Available Qty', 'Available',
+          'Total Qty', 'TotalQty', 'Total Stock', 'Total Stok', 'Total', 'TOTAL',
+          'Ending Qty', 'Ending Stock', 'Ending Balance', 'Stock Akhir', 'Stok Akhir', 'Sisa Stok', 'Sisa Qty',
+          'Stok', 'Stock', 'Balance', 'Jumlah', 'Jml', 'Jumlah Qty', 'Jml Qty', 'Jumlah (Pcs)', 'Jml (Pcs)',
+          'Stok Fisik', 'Qty Fisik', 'Physical Stock', 'Physical Qty', 'Book Stock',
+          'Saldo Qty', 'Saldo Akhir', 'Saldo',
+          'Unrestricted', 'Unrestricted Use', 'Bebas', 'Qty Bebas', 'Stok Bebas',
+          'Largo Qty', 'Qty Largo', 'LARGO QTY', 'QTY LARGO'
+        ];
 
         const mapped = data.map(r => {
-          const sloc = extractField(r, ['SLOC', 'Storage Location', 'Sloc', 'Storage Loc', 'Lokasi', 'Gudang']) ?? '';
-          const item = extractField(r, ['Item', 'Material', 'Item Code', 'Kode Material', 'Kode Barang', 'Material Number', 'No. Material', 'Part Number', 'SKU']) ?? '';
-          const desc = extractField(r, ['Description', 'Material Description', 'Item Name', 'Deskripsi', 'Nama Barang', 'Nama Material', 'Text']) ?? '';
-          const batch = extractField(r, ['Batch', 'Batch Number', 'No Batch', 'No. Batch', 'Nomor Batch', 'Charg', 'Charge', 'Lot']) ?? '';
-          const qty = extractField(r, ['Qty', 'Quantity', 'Stok', 'Jumlah', 'Stock', 'Balance', 'Total Qty', 'Ending Qty']) ?? 0;
+          const sloc = extractField(r, [
+            'SLOC', 'Storage Location', 'Sloc', 'Storage Loc', 'Stor. Location', 
+            'Lokasi Simpan', 'Lokasi', 'Gudang', 'Plant/Sloc', 'Location', 'Loc', 'Bin'
+          ]) ?? '';
+          
+          const item = extractField(r, [
+            'Item', 'Material', 'Item Code', 'ItemCode', 'Item_Code', 
+            'Kode Material', 'Kode Barang', 'Kode Item', 'Material Number', 'Material No.', 
+            'Material No', 'No. Material', 'No Material', 'Part Number', 'Part No', 'SKU', 
+            'Product Code', 'Article', 'Mat. Code', 'Mat Code'
+          ]) ?? '';
+          
+          const desc = extractField(r, [
+            'Description', 'Material Description', 'Material Desc', 'Mat Description', 
+            'Mat Desc', 'Item Name', 'ItemName', 'Item_Name', 'Deskripsi', 'Deskripsi Material', 
+            'Nama Barang', 'Nama Material', 'Nama Produk', 'Product Name', 'Text', 'Description of Material'
+          ]) ?? '';
+          
+          const batch = extractField(r, [
+            'Batch', 'Batch Number', 'Batch No.', 'Batch No', 'Batch_Number', 
+            'No Batch', 'No. Batch', 'Nomor Batch', 'No. Lot', 'No Lot', 'Lot', 
+            'Lot Number', 'Lot No', 'Charg', 'Charge', 'Batch / Charg', 'Batch/Charg', 'No. Charg'
+          ]) ?? '';
+          
+          const qty = extractQtyField(r, largoQtyCandidates);
 
           return {
             sloc: String(sloc).trim(),
@@ -78,13 +210,20 @@ export function BatchCheckerModule() {
 
         setLargoRows(mapped);
         setCompareResults([]);
-        showToast('File LARGO Dimuat', `Berhasil membaca ${mapped.length} baris data LARGO`, 'success');
+        
+        const totalQty = mapped.reduce((sum, r) => {
+          const n = typeof r.qty === 'number' ? r.qty : parseFloat(String(r.qty).replace(/,/g, '')) || 0;
+          return sum + n;
+        }, 0);
+
+        showToast('File LARGO Dimuat', `Berhasil membaca ${mapped.length} baris data LARGO (Total Qty: ${totalQty.toLocaleString('id-ID')})`, 'success');
       } catch (err) {
         console.error(err);
         showToast('Gagal', 'Gagal membaca file Excel LARGO. Pastikan format valid.', 'error');
       }
     };
     reader.readAsArrayBuffer(file);
+    e.target.value = '';
   };
 
   const handleSapFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,18 +235,60 @@ export function BatchCheckerModule() {
       try {
         const buffer = evt.target?.result as ArrayBuffer;
         const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+        
+        let targetSheetName = wb.SheetNames[0];
+        for (const name of wb.SheetNames) {
+          const sheet = wb.Sheets[name];
+          const testData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (testData.length > 2) {
+            targetSheetName = name;
+            break;
+          }
+        }
+
+        const ws = wb.Sheets[targetSheetName];
+        const data = parseSheetToJson(ws);
 
         const mapped = data.map(r => {
-          const sloc = extractField(r, ['Storage Location', 'Stor. Location', 'SLoc', 'SLOC', 'Lok. Simpan', 'Lokasi Simpan', 'Lokasi']) ?? '';
-          const item = extractField(r, ['Material', 'Material Number', 'Item', 'Kode Material', 'Material No.', 'No. Material', 'Item Code']) ?? '';
-          const desc = extractField(r, ['Material Description', 'Description', 'Item Name', 'Deskripsi', 'Nama Barang']) ?? '';
-          const batch = extractField(r, ['Batch', 'Batch Number', 'Charg', 'Charge', 'No. Batch', 'Nomor Batch', 'Lot']) ?? '';
-          const unrestricted = extractField(r, ['Unrestricted', 'Unrestricted Use', 'Bebas Digunakan', 'Penggunaan bebas', 'Bebas', 'Qty Bebas']) ?? 0;
-          const blocked = extractField(r, ['Blocked', 'Blocked Stock', 'Diblokir', 'Terblokir', 'Blokir']) ?? 0;
-          const qty = extractField(r, ['Qty', 'Quantity', 'Jumlah', 'Total Stock', 'Stok']);
+          const sloc = extractField(r, [
+            'Storage Location', 'Stor. Location', 'Stor Loc', 'SLoc', 'SLOC', 
+            'Lok. Simpan', 'Lokasi Simpan', 'Lokasi', 'Location'
+          ]) ?? '';
+          
+          const item = extractField(r, [
+            'Material', 'Material Number', 'Material No.', 'Material No', 'No. Material', 
+            'No Material', 'Item', 'Kode Material', 'Kode Barang', 'Item Code', 'ItemCode'
+          ]) ?? '';
+          
+          const desc = extractField(r, [
+            'Material Description', 'Material Desc', 'Description', 'Item Name', 
+            'Deskripsi', 'Deskripsi Material', 'Nama Barang', 'Nama Material'
+          ]) ?? '';
+          
+          const batch = extractField(r, [
+            'Batch', 'Batch Number', 'Batch No.', 'Charg', 'Charge', 
+            'No. Batch', 'Nomor Batch', 'Lot', 'Lot Number', 'Batch / Charg'
+          ]) ?? '';
+          
+          const unrestricted = extractField(r, [
+            'Unrestricted', 'Unrestricted Use', 'Bebas Digunakan', 'Penggunaan bebas', 
+            'Penggunaan Bebas', 'Bebas', 'Qty Bebas', 'Stok Bebas', 'Stok Unrestricted', 'Unrestricted Stock'
+          ]) ?? 0;
+
+          const transit = extractField(r, [
+            'Transit and Transfer', 'Transit & Transfer', 'Transit and transfer', 
+            'Transit Transfer', 'Transit', 'In Transit', 'Transfer and Transit', 
+            'Transfer & Transit', 'Transit / Transfer', 'Transit/Transfer', 'In transfer (plant)', 'In transfer'
+          ]) ?? 0;
+          
+          const blocked = extractField(r, [
+            'Blocked', 'Blocked Stock', 'Diblokir', 'Terblokir', 'Blokir', 'Stok Blocked', 'Stok Diblokir'
+          ]) ?? 0;
+          
+          const qty = extractQtyField(r, [
+            'Qty', 'Quantity', 'Jumlah', 'Total Stock', 'Total Stok', 'Stok', 
+            'Stock', 'Last Qty', 'Total Qty', 'Balance', 'Total', 'Qty (Pcs)', 'Qty Pcs'
+          ]);
 
           return {
             sloc: String(sloc).trim(),
@@ -115,6 +296,7 @@ export function BatchCheckerModule() {
             desc: String(desc).trim(),
             batch: String(batch).trim(),
             unrestricted,
+            transit,
             blocked,
             qty
           };
@@ -122,13 +304,27 @@ export function BatchCheckerModule() {
 
         setSapRows(mapped);
         setCompareResults([]);
-        showToast('File SAP Dimuat', `Berhasil membaca ${mapped.length} baris data SAP MB52`, 'success');
+        
+        const totalQty = mapped.reduce((sum, r) => {
+          const hasMb52 = (r.unrestricted !== undefined && r.unrestricted !== null && String(r.unrestricted).trim() !== '') ||
+                          (r.transit !== undefined && r.transit !== null && String(r.transit).trim() !== '') ||
+                          (r.blocked !== undefined && r.blocked !== null && String(r.blocked).trim() !== '');
+          const q = hasMb52
+            ? ((typeof r.unrestricted === 'number' ? r.unrestricted : parseFloat(String(r.unrestricted)) || 0) +
+               (typeof r.transit === 'number' ? r.transit : parseFloat(String(r.transit)) || 0) +
+               (typeof r.blocked === 'number' ? r.blocked : parseFloat(String(r.blocked)) || 0))
+            : (typeof r.qty === 'number' ? r.qty : parseFloat(String(r.qty).replace(/,/g, '')) || 0);
+          return sum + q;
+        }, 0);
+
+        showToast('File SAP Dimuat', `Berhasil membaca ${mapped.length} baris data SAP MB52 (Total Qty: ${totalQty.toLocaleString('id-ID')})`, 'success');
       } catch (err) {
         console.error(err);
         showToast('Gagal', 'Gagal membaca file Excel SAP. Pastikan format valid.', 'error');
       }
     };
     reader.readAsArrayBuffer(file);
+    e.target.value = '';
   };
 
   const handleRunComparison = () => {
@@ -282,9 +478,16 @@ export function BatchCheckerModule() {
               <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center font-black text-xs">
                 1
               </div>
-              <span className="text-xs font-bold text-slate-800">
-                Data Excel LARGO ({largoRows.length} baris)
-              </span>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  Data Excel LARGO ({largoRows.length} baris)
+                </span>
+                {largoRows.length > 0 && (
+                  <span className="text-[10px] font-bold text-blue-700">
+                    Total Qty: {largoRows.reduce((sum, r) => sum + (typeof r.qty === 'number' ? r.qty : parseFloat(String(r.qty).replace(/,/g, '')) || 0), 0).toLocaleString('id-ID')}
+                  </span>
+                )}
+              </div>
             </div>
             <label className="px-3 py-1.5 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all active:scale-95">
               <Upload size={13} />
@@ -293,7 +496,7 @@ export function BatchCheckerModule() {
             </label>
           </div>
           <p className="text-[11px] text-slate-500 m-0">
-            Kolom didukung: <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">SLOC</code>, <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">Item / Material</code>, <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">Batch</code>, <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">Qty / Stok</code>
+            Kolom didukung: <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">SLOC</code>, <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">Item / Material</code>, <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">Batch</code>, <code className="text-blue-900 bg-blue-50 px-1 py-0.5 rounded">Last Qty / Qty / Stok</code>
           </p>
         </div>
 
@@ -304,9 +507,26 @@ export function BatchCheckerModule() {
               <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-xs">
                 2
               </div>
-              <span className="text-xs font-bold text-slate-800">
-                Data Excel SAP MB52 ({sapRows.length} baris)
-              </span>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  Data Excel SAP MB52 ({sapRows.length} baris)
+                </span>
+                {sapRows.length > 0 && (
+                  <span className="text-[10px] font-bold text-emerald-700">
+                    Total Qty: {sapRows.reduce((sum, r) => {
+                      const hasMb52 = (r.unrestricted !== undefined && r.unrestricted !== null && String(r.unrestricted).trim() !== '') ||
+                                      (r.transit !== undefined && r.transit !== null && String(r.transit).trim() !== '') ||
+                                      (r.blocked !== undefined && r.blocked !== null && String(r.blocked).trim() !== '');
+                      const q = hasMb52
+                        ? ((typeof r.unrestricted === 'number' ? r.unrestricted : parseFloat(String(r.unrestricted)) || 0) + 
+                           (typeof r.transit === 'number' ? r.transit : parseFloat(String(r.transit)) || 0) + 
+                           (typeof r.blocked === 'number' ? r.blocked : parseFloat(String(r.blocked)) || 0))
+                        : (typeof r.qty === 'number' ? r.qty : parseFloat(String(r.qty).replace(/,/g, '')) || 0);
+                      return sum + q;
+                    }, 0).toLocaleString('id-ID')}
+                  </span>
+                )}
+              </div>
             </div>
             <label className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all active:scale-95">
               <Upload size={13} />
@@ -315,7 +535,7 @@ export function BatchCheckerModule() {
             </label>
           </div>
           <p className="text-[11px] text-slate-500 m-0">
-            Kolom didukung: <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded">Storage Loc / SLOC</code>, <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded">Material</code>, <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded">Batch / Charg</code>, <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded">Unrestricted / Qty</code>
+            Rumus SAP: <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded font-semibold">Unrestricted</code> + <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded font-semibold">Transit and Transfer</code> + <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded font-semibold">Blocked</code> = Qty SAP
           </p>
         </div>
       </div>
