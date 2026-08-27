@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Database } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -85,10 +85,18 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
     {
       id: 'monitoring-pemusnahan',
       title: 'Monitoring Pemusnahan',
-      category: 'WH-CKB 27 Kolom Data',
+      category: 'WH-CKB Pipeline',
       keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir',
       icon: <Flame size={20} className="text-white" />,
       iconBg: 'bg-amber-600'
+    },
+    {
+      id: 'data-pemusnahan',
+      title: 'Data Pemusnahan',
+      category: 'Spreadsheet GAS 26 Kolom',
+      keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan',
+      icon: <Database size={20} className="text-white" />,
+      iconBg: 'bg-orange-600'
     }
   ];
 

@@ -19,6 +19,70 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Google Apps Script Proxy for Data Pemusnahan
+  app.all("/api/fetch-gas-pemusnahan", async (req, res) => {
+    try {
+      const defaultUrl = "https://script.google.com/macros/s/AKfycby5KFkXtBiXWEJ1G7CSLhRippGbA-k8WbV4QQFyNfur1ktnS6oNbcnsboFrBCLVXlxN/exec";
+      const targetUrl = (req.body?.gasUrl || req.query?.gasUrl || defaultUrl) as string;
+      const sheetName = (req.body?.sheetName || req.query?.sheetName || "Pemusnahan") as string;
+      const action = (req.body?.action || req.query?.action || "getData") as string;
+
+      // Build target URL with parameters
+      const urlObj = new URL(targetUrl);
+      urlObj.searchParams.set("sheet", sheetName);
+      urlObj.searchParams.set("action", action);
+
+      // Attempt 1: Fetch with GET & follow redirects
+      let fetchRes = await fetch(urlObj.toString(), {
+        method: "GET",
+        headers: {
+          "Accept": "application/json, text/plain, */*"
+        },
+        redirect: "follow"
+      });
+
+      let text = await fetchRes.text();
+
+      // If GET returns webhook ready msg or html, attempt POST payload
+      if (!text || text.includes("siap menerima POST request") || text.includes("<!DOCTYPE html>")) {
+        try {
+          const postRes = await fetch(targetUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify({
+              action: action,
+              sheet: sheetName,
+              sheetName: sheetName
+            }),
+            redirect: "follow"
+          });
+          const postText = await postRes.text();
+          if (postText && !postText.includes("<!DOCTYPE html>")) {
+            text = postText;
+          }
+        } catch {
+          // Keep original text
+        }
+      }
+
+      // Try to parse as JSON
+      try {
+        const json = JSON.parse(text);
+        return res.json({ success: true, data: json, raw: text });
+      } catch {
+        return res.json({ success: true, text: text });
+      }
+    } catch (err: any) {
+      console.error("[GAS Proxy Error]:", err);
+      return res.status(500).json({
+        success: false,
+        message: err?.message || "Gagal menghubungkan ke Google Apps Script."
+      });
+    }
+  });
+
   // Check PIN Configuration Status (does not expose the PIN!)
   app.get("/api/auth/pin-status", (_req, res) => {
     const isCustomPin = Boolean(process.env.APP_PIN && process.env.APP_PIN.trim() !== "089739");

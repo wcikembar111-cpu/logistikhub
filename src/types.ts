@@ -150,9 +150,42 @@ export type LogisticsTab =
   | 'promosi' 
   | 'surat-jalan' 
   | 'retur-inventory' 
-  | 'monitoring-pemusnahan';
+  | 'monitoring-pemusnahan'
+  | 'data-pemusnahan';
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
+
+export interface DataPemusnahanItem {
+  id: string;
+  id_pemusnahan: string;
+  item_code: string;
+  nama_barang: string;
+  kategori: string;
+  lokasi: string;
+  tipe_lokasi: string;
+  qty_awal: number;
+  qty_akhir: number;
+  uom: string;
+  qty_convert: number;
+  uom_convert: string;
+  lpn_sn: string;
+  batch: string;
+  vendor_batch: string;
+  sloc: string;
+  expired_date: string;
+  kode_tujuan: string;
+  status_qc: string;
+  user_tally: string;
+  shelf_life: string;
+  sumber: string;
+  tujuan: string;
+  user_input: string;
+  tanggal_update: string;
+  status: string;
+  catatan: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface MonitoringPemusnahanItem {
   id: string;

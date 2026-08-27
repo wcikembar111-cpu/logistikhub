@@ -80,6 +80,12 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'WH-CKB 27 Kolom Data',
     icon: <Flame size={18} className="text-white" />,
     iconBg: 'bg-amber-600'
+  },
+  'data-pemusnahan': {
+    title: 'Data Pemusnahan',
+    category: 'Spreadsheet GAS 26 Kolom',
+    icon: <Flame size={18} className="text-white" />,
+    iconBg: 'bg-orange-600'
   }
 };
 

@@ -294,10 +294,66 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.monitoring_pemusnahan;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'data_pemusnahan'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.data_pemusnahan;
+  END IF;
 EXCEPTION WHEN OTHERS THEN
   -- Abaikan jika publication supabase_realtime belum aktif atau sudah ada
   NULL;
 END $$;
+
+-- =========================================================
+-- TABEL DATA PEMUSNAHAN (26 KOLOM DETAIL BARANG / SPREADSHEET GAS)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.data_pemusnahan (
+    id VARCHAR(100) PRIMARY KEY,
+    id_pemusnahan VARCHAR(100) NOT NULL,
+    item_code VARCHAR(100) NOT NULL,
+    nama_barang VARCHAR(255) NOT NULL,
+    kategori VARCHAR(100) DEFAULT '-',
+    lokasi VARCHAR(100) DEFAULT '-',
+    tipe_lokasi VARCHAR(100) DEFAULT '-',
+    qty_awal NUMERIC(15,2) DEFAULT 0,
+    qty_akhir NUMERIC(15,2) DEFAULT 0,
+    uom VARCHAR(50) DEFAULT 'PCS',
+    qty_convert NUMERIC(15,2) DEFAULT 0,
+    uom_convert VARCHAR(50) DEFAULT '-',
+    lpn_sn VARCHAR(100) DEFAULT '-',
+    batch VARCHAR(100) DEFAULT '-',
+    vendor_batch VARCHAR(100) DEFAULT '-',
+    sloc VARCHAR(50) DEFAULT '8A03',
+    expired_date VARCHAR(100) DEFAULT '-',
+    kode_tujuan VARCHAR(100) DEFAULT '-',
+    status_qc VARCHAR(100) DEFAULT '-',
+    user_tally VARCHAR(100) DEFAULT '-',
+    shelf_life VARCHAR(100) DEFAULT '-',
+    sumber VARCHAR(100) DEFAULT '-',
+    tujuan VARCHAR(150) DEFAULT '-',
+    user_input VARCHAR(150) DEFAULT '-',
+    tanggal_update VARCHAR(100) DEFAULT '-',
+    status VARCHAR(100) DEFAULT '-',
+    catatan TEXT DEFAULT '-',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index performa pencarian & filter
+CREATE INDEX IF NOT EXISTS idx_data_pms_id_pms ON public.data_pemusnahan(id_pemusnahan);
+CREATE INDEX IF NOT EXISTS idx_data_pms_item_code ON public.data_pemusnahan(item_code);
+CREATE INDEX IF NOT EXISTS idx_data_pms_batch ON public.data_pemusnahan(batch);
+CREATE INDEX IF NOT EXISTS idx_data_pms_sloc ON public.data_pemusnahan(sloc);
+CREATE INDEX IF NOT EXISTS idx_data_pms_tujuan ON public.data_pemusnahan(tujuan);
+
+-- Hak akses & RLS
+ALTER TABLE public.data_pemusnahan DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.data_pemusnahan TO anon, authenticated;
+
 
 
 

@@ -14,6 +14,7 @@ const PromosiModule = lazy(() => import('./logistics/PromosiModule').then(m => (
 const SuratJalanModule = lazy(() => import('./logistics/SuratJalanModule').then(m => ({ default: m.SuratJalanModule })));
 const ReturInventoryModule = lazy(() => import('./logistics/ReturInventoryModule').then(m => ({ default: m.ReturInventoryModule })));
 const MonitoringPemusnahanModule = lazy(() => import('./logistics/MonitoringPemusnahanModule').then(m => ({ default: m.MonitoringPemusnahanModule })));
+const DataPemusnahanModule = lazy(() => import('./logistics/DataPemusnahanModule').then(m => ({ default: m.DataPemusnahanModule })));
 
 interface EmbeddedToolsWorkspaceProps {
   activeTool: MainToolTab;
@@ -43,6 +44,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'surat-jalan' && <SuratJalanModule />}
             {activeTool === 'retur-inventory' && <ReturInventoryModule />}
             {activeTool === 'monitoring-pemusnahan' && <MonitoringPemusnahanModule />}
+            {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}
           </Suspense>
         </div>
       </div>
