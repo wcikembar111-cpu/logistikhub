@@ -97,6 +97,13 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+/* Touch-action optimization for mobile responsiveness */
+button, a, input, select, textarea {
+  touch-action: manipulation;
 }
 
 /* Hide scrollbar for main content */
