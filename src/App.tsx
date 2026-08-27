@@ -64,7 +64,12 @@ export default function App() {
     deleteMessage: deleteBroadcastMessage, 
     clearAllMessages: clearAllBroadcastMessages, 
     dismissIncomingBroadcast, 
-    toggleSound: toggleBroadcastSound 
+    toggleSound: toggleBroadcastSound,
+    externalConfig: broadcastExternalConfig,
+    updateExternalConfig: updateBroadcastExternalConfig,
+    testExternalConnection: testBroadcastExternalConnection,
+    syncStatus: broadcastSyncStatus,
+    isExternalConfigured: isBroadcastExternalConfigured
   } = useBroadcast();
 
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -241,6 +246,11 @@ export default function App() {
             notificationPermission={notificationPermission}
             onRequestNotificationPermission={requestNotificationPermission}
             isNotificationSupported={isNotificationSupported}
+            externalConfig={broadcastExternalConfig}
+            onUpdateExternalConfig={updateBroadcastExternalConfig}
+            onTestExternalConnection={testBroadcastExternalConnection}
+            syncStatus={broadcastSyncStatus}
+            isExternalConfigured={isBroadcastExternalConfigured}
           />
         )}
 

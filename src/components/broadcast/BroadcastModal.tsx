@@ -7,16 +7,22 @@ import {
   Volume2, 
   VolumeX, 
   Trash2, 
-  Bot,
-  Heart,
-  Database,
-  ShieldCheck,
-  AlertCircle,
-  Bell,
-  BellRing,
-  CheckCircle2
+  Heart, 
+  Database, 
+  ShieldCheck, 
+  AlertCircle, 
+  BellRing, 
+  CheckCircle2,
+  Globe,
+  Radio,
+  Link2,
+  RefreshCw,
+  Copy,
+  Check,
+  Zap,
+  Layers
 } from 'lucide-react';
-import { BroadcastMessage } from '../../types';
+import { BroadcastMessage, ExternalSupabaseConfig, DatabaseSyncStatus } from '../../types';
 import { playBroadcastSound } from '../../utils/broadcastSound';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -40,6 +46,11 @@ interface BroadcastModalProps {
   notificationPermission?: NotificationPermission;
   onRequestNotificationPermission?: () => Promise<any>;
   isNotificationSupported?: boolean;
+  externalConfig?: ExternalSupabaseConfig;
+  onUpdateExternalConfig?: (config: ExternalSupabaseConfig) => void;
+  onTestExternalConnection?: (url: string, anonKey: string) => Promise<{ success: boolean; message: string; tableReady?: boolean }>;
+  syncStatus?: DatabaseSyncStatus;
+  isExternalConfigured?: boolean;
 }
 
 export function BroadcastModal({
@@ -56,10 +67,15 @@ export function BroadcastModal({
   isAdmin,
   notificationPermission,
   onRequestNotificationPermission,
-  isNotificationSupported = true
+  isNotificationSupported = true,
+  externalConfig,
+  onUpdateExternalConfig,
+  onTestExternalConnection,
+  syncStatus,
+  isExternalConfigured
 }: BroadcastModalProps) {
   const { showToast, showConfirm } = useNotification();
-  const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
+  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'database_sync'>('compose');
 
   const [senderName, setSenderName] = useState<string>(() => {
     return localStorage.getItem('broadcast_sender_name') || 'Pos Logistik 1';
@@ -68,6 +84,23 @@ export function BroadcastModal({
   const [messageText, setMessageText] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // External Supabase Form State
+  const [extUrl, setExtUrl] = useState<string>(externalConfig?.url || '');
+  const [extKey, setExtKey] = useState<string>(externalConfig?.anonKey || '');
+  const [syncTarget, setSyncTarget] = useState<ExternalSupabaseConfig['syncTarget']>(externalConfig?.syncTarget || 'both');
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; tableReady?: boolean } | null>(null);
+  const [copiedSql, setCopiedSql] = useState<boolean>(false);
+  const [showSqlGuide, setShowSqlGuide] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (externalConfig) {
+      setExtUrl(externalConfig.url || '');
+      setExtKey(externalConfig.anonKey || '');
+      setSyncTarget(externalConfig.syncTarget || 'both');
+    }
+  }, [externalConfig]);
 
   useEffect(() => {
     if (initialSenderName) {
@@ -93,7 +126,7 @@ export function BroadcastModal({
     try {
       localStorage.setItem('broadcast_sender_name', senderName.trim());
 
-      await onSend({
+      const res = await onSend({
         sender_name: senderName.trim(),
         message: messageText.trim(),
         category: 'info',
@@ -104,7 +137,14 @@ export function BroadcastModal({
         playBroadcastSound('info');
       }
 
-      showToast('Terkirim!', 'Robot kurir berhasil menyiarkan pesan Anda.', 'success');
+      if (res?.delivery?.external && res?.delivery?.primary) {
+        showToast('Tersiar ke 2 Database!', 'Pesan berhasil dikirim ke Aplikasi Ini & Aplikasi Lain secara serentak.', 'success');
+      } else if (res?.delivery?.external) {
+        showToast('Tersiar ke App Lain!', 'Pesan berhasil dikirim ke Supabase Aplikasi Lain.', 'success');
+      } else {
+        showToast('Terkirim!', 'Robot kurir berhasil menyiarkan pesan Anda.', 'success');
+      }
+
       setMessageText('');
       setActiveTab('history');
     } catch (err: any) {
@@ -122,7 +162,7 @@ export function BroadcastModal({
 
     showConfirm({
       title: 'Kosongkan Seluruh Pesan Siaran?',
-      message: 'Semua riwayat pesan siaran akan dihapus secara permanen dari database agar kapasitas tetap bersih dan tidak penuh. Lanjutkan?',
+      message: 'Semua riwayat pesan siaran akan dihapus secara permanen dari database (termasuk database eksternal jika terhubung). Lanjutkan?',
       confirmText: 'Ya, Hapus Semua di Database',
       type: 'danger',
       onConfirm: async () => {
@@ -158,13 +198,117 @@ export function BroadcastModal({
     });
   };
 
+  const handleTestConnection = async () => {
+    if (!extUrl.trim() || !extKey.trim()) {
+      showToast('Data Belum Lengkap', 'Masukkan URL Supabase dan Anon Key aplikasi lain untuk dites.', 'warning');
+      return;
+    }
+
+    if (!onTestExternalConnection) return;
+
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const result = await onTestExternalConnection(extUrl.trim(), extKey.trim());
+      setTestResult(result);
+      if (result.success && result.tableReady) {
+        showToast('Koneksi Sukses!', result.message, 'success');
+      } else if (result.success && !result.tableReady) {
+        showToast('Perlu Buat Tabel', result.message, 'warning');
+        setShowSqlGuide(true);
+      } else {
+        showToast('Koneksi Gagal', result.message, 'error');
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err.message || 'Gagal mengetes koneksi database.'
+      });
+      showToast('Error', 'Gagal mengetes koneksi.', 'error');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleSaveExternalConfig = (e: FormEvent) => {
+    e.preventDefault();
+    if (!onUpdateExternalConfig) return;
+
+    const trimmedUrl = extUrl.trim();
+    const trimmedKey = extKey.trim();
+    const isEnabled = Boolean(trimmedUrl && trimmedKey);
+
+    onUpdateExternalConfig({
+      url: trimmedUrl,
+      anonKey: trimmedKey,
+      syncTarget,
+      enabled: isEnabled
+    });
+
+    if (isEnabled) {
+      showToast('Tersimpan & Terhubung!', 'Konfigurasi Supabase aplikasi lain berhasil disimpan dan tersambung.', 'success');
+    } else {
+      showToast('Disimpan', 'Koneksi database eksternal dimatikan.', 'info');
+    }
+  };
+
+  const handleResetConnection = () => {
+    if (!onUpdateExternalConfig) return;
+    setExtUrl('');
+    setExtKey('');
+    setSyncTarget('both');
+    setTestResult(null);
+    onUpdateExternalConfig({
+      url: '',
+      anonKey: '',
+      syncTarget: 'both',
+      enabled: false
+    });
+    showToast('Koneksi Direset', 'Koneksi ke database aplikasi lain telah dinonaktifkan.', 'info');
+  };
+
+  const sqlSchemaSnippet = `-- SQL Tabel Pesan Siaran untuk Supabase Aplikasi Lain:
+CREATE TABLE IF NOT EXISTS public.broadcast_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_name VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(50) DEFAULT 'info',
+    device_info VARCHAR(100) DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.broadcast_messages DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.broadcast_messages TO anon, authenticated;
+
+-- Aktifkan Supabase Realtime Replication
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'broadcast_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcast_messages;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;`;
+
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(sqlSchemaSnippet);
+    setCopiedSql(true);
+    showToast('Disalin!', 'Skema SQL berhasil disalin ke clipboard.', 'success');
+    setTimeout(() => setCopiedSql(false), 2500);
+  };
+
   return (
     <div 
       className="fixed inset-0 z-[800] flex items-center justify-center p-3 sm:p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150"
+        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Simple Modern Header */}
@@ -175,10 +319,15 @@ export function BroadcastModal({
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-white tracking-tight leading-none truncate m-0 flex items-center gap-1.5">
-                <span>Kirim Pesan Siaran</span>
+                <span>Pusat Pesan Siaran (Broadcast)</span>
+                {isExternalConfigured && (
+                  <span className="bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                    Dual DB
+                  </span>
+                )}
               </h3>
               <p className="text-[11px] text-pink-200 font-medium m-0 mt-0.5 truncate">
-                Disampaikan oleh Robot Pink Love ke semua layar
+                Disampaikan oleh Robot Pink Love ke semua layar & database
               </p>
             </div>
           </div>
@@ -208,11 +357,11 @@ export function BroadcastModal({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4 pt-1.5 gap-2 shrink-0">
+        <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4 pt-1.5 gap-2 shrink-0 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('compose')}
-            className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'compose'
                 ? 'border-blue-900 text-blue-900'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -225,7 +374,7 @@ export function BroadcastModal({
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'history'
                 ? 'border-blue-900 text-blue-900'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -234,12 +383,52 @@ export function BroadcastModal({
             <History size={14} />
             <span>Riwayat ({messages.length})</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('database_sync')}
+            className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'database_sync'
+                ? 'border-indigo-900 text-indigo-900'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Globe size={14} />
+            <span>Database Lain</span>
+            {isExternalConfigured ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            ) : (
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+            )}
+          </button>
         </div>
 
         {/* Modal Body */}
         <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-white">
-          {activeTab === 'compose' ? (
+          {/* TAB 1: COMPOSE MESSAGE */}
+          {activeTab === 'compose' && (
             <form onSubmit={handleSendBroadcast} className="space-y-3.5">
+              {/* Sync Route Indicator if Dual DB Connected */}
+              {isExternalConfigured && (
+                <div className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/80 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Radio size={14} className="text-indigo-600 animate-pulse" />
+                    <span className="font-semibold text-indigo-950 text-[11px]">
+                      Pesan akan disiarkan ke: <strong className="text-indigo-700 uppercase">
+                        {syncTarget === 'both' ? 'Kedua Database (Aplikasi Ini & Aplikasi Lain)' : syncTarget === 'external' ? 'Database Aplikasi Lain Saja' : 'Database Aplikasi Ini'}
+                      </strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('database_sync')}
+                    className="text-[10px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                  >
+                    Ubah
+                  </button>
+                </div>
+              )}
+
               {/* OS Notification Status Banner */}
               {isNotificationSupported && (
                 <div className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 text-xs transition-all ${
@@ -337,8 +526,10 @@ export function BroadcastModal({
                 </button>
               </div>
             </form>
-          ) : (
-            /* History List */
+          )}
+
+          {/* TAB 2: MESSAGE HISTORY */}
+          {activeTab === 'history' && (
             <div className="space-y-3">
               {/* Admin Database Control Bar */}
               {isAdmin && onClearAll && messages.length > 0 && (
@@ -424,6 +615,11 @@ export function BroadcastModal({
                                 • {item.device_info}
                               </span>
                             )}
+                            {item.origin === 'external' && (
+                              <span className="bg-indigo-100 text-indigo-700 text-[9px] font-bold px-1.5 py-0.2 rounded border border-indigo-200">
+                                App Lain
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0 text-slate-400 text-[10px]">
@@ -451,8 +647,248 @@ export function BroadcastModal({
               )}
             </div>
           )}
+
+          {/* TAB 3: EXTERNAL SUPABASE DATABASE CONNECTION */}
+          {activeTab === 'database_sync' && (
+            <div className="space-y-4">
+              {/* Architecture Explanation Card */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-sm space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-white/10 text-amber-300">
+                    <Zap size={15} />
+                  </div>
+                  <h4 className="text-xs font-bold tracking-tight text-white m-0">
+                    Koneksi Siaran Lintas Aplikasi (Cross-App Supabase)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-blue-100/90 leading-relaxed m-0">
+                  Hubungkan broadcast pesan siaran ini ke aplikasi Anda yang satu lagi yang menggunakan database Supabase berbeda. Pesan akan terkirim dan diterima secara realtime secara serentak (Dual-Sync).
+                </p>
+
+                {/* Connection Status Diagram */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="p-2 rounded-xl bg-white/10 border border-white/15 flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                      <span className="text-[10px] font-bold text-white uppercase">DB Utama (App Ini)</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-200 font-medium">Terhubung & Aktif</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-white/10 border border-white/15 flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      {isExternalConfigured && syncStatus?.isExternalConnected ? (
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                      ) : isExternalConfigured ? (
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                      )}
+                      <span className="text-[10px] font-bold text-white uppercase">DB Aplikasi Lain</span>
+                    </div>
+                    <span className="text-[10px] text-blue-100 font-medium truncate">
+                      {isExternalConfigured && syncStatus?.isExternalConnected
+                        ? 'Dual-Sync Aktif ⚡'
+                        : isExternalConfigured
+                        ? 'Tersimpan (Mencoba Konek)'
+                        : 'Belum Dikonfigurasi'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Input Database Eksternal */}
+              <form onSubmit={handleSaveExternalConfig} className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                    URL Supabase Aplikasi Lain
+                  </label>
+                  <input
+                    type="text"
+                    value={extUrl}
+                    onChange={e => setExtUrl(e.target.value)}
+                    placeholder="https://xyzabcdefghijklmn.supabase.co"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-indigo-900/20 focus:border-indigo-900 outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1 m-0">
+                    Dapat dilihat di dashboard Supabase: Project Settings → API → Project URL.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                    Anon / Public Key Supabase Aplikasi Lain
+                  </label>
+                  <input
+                    type="password"
+                    value={extKey}
+                    onChange={e => setExtKey(e.target.value)}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-indigo-900/20 focus:border-indigo-900 outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1 m-0">
+                    Dapat dilihat di dashboard Supabase: Project Settings → API → Project API Keys (anon/public).
+                  </p>
+                </div>
+
+                {/* Mode Sinkronisasi */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                    Target Sinkronisasi Siaran
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSyncTarget('both')}
+                      className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                        syncTarget === 'both'
+                          ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold flex items-center gap-1">
+                        <Layers size={12} className={syncTarget === 'both' ? 'text-indigo-600' : 'text-slate-400'} />
+                        Dual Sync
+                      </span>
+                      <span className="text-[9px] text-slate-500 leading-tight">
+                        Kirim ke 2 DB serentak
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSyncTarget('external')}
+                      className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                        syncTarget === 'external'
+                          ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold flex items-center gap-1">
+                        <Globe size={12} className={syncTarget === 'external' ? 'text-indigo-600' : 'text-slate-400'} />
+                        Hanya App Lain
+                      </span>
+                      <span className="text-[9px] text-slate-500 leading-tight">
+                        Siaran khusus app lain
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSyncTarget('primary')}
+                      className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                        syncTarget === 'primary'
+                          ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold flex items-center gap-1">
+                        <Database size={12} className={syncTarget === 'primary' ? 'text-indigo-600' : 'text-slate-400'} />
+                        Hanya App Ini
+                      </span>
+                      <span className="text-[9px] text-slate-500 leading-tight">
+                        Database lokal saja
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Test Result Message Box if tested */}
+                {testResult && (
+                  <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                    testResult.success 
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                      : 'bg-red-50 border-red-200 text-red-900'
+                  }`}>
+                    {testResult.success ? (
+                      <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[11px] m-0">{testResult.success ? 'Hasil Tes Sukses' : 'Hasil Tes Gagal'}</p>
+                      <p className="text-[10px] m-0 mt-0.5 leading-relaxed">{testResult.message}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons: Test, Save, Reset */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={isTesting || !extUrl.trim() || !extKey.trim()}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  >
+                    <RefreshCw size={13} className={isTesting ? 'animate-spin' : ''} />
+                    <span>{isTesting ? 'Mengetes...' : 'Tes Koneksi'}</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {isExternalConfigured && (
+                      <button
+                        type="button"
+                        onClick={handleResetConnection}
+                        className="px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Putuskan
+                      </button>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={!extUrl.trim() || !extKey.trim()}
+                      className="px-4 py-2 rounded-xl bg-indigo-900 hover:bg-indigo-950 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Link2 size={13} />
+                      <span>Simpan & Sambungkan</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* SQL Schema Accordion for External Supabase */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <Database size={13} className="text-slate-500" />
+                    Skema SQL Supabase untuk Aplikasi Lain
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSqlGuide(!showSqlGuide)}
+                    className="text-[10px] font-bold text-blue-900 hover:underline cursor-pointer"
+                  >
+                    {showSqlGuide ? 'Sembunyikan' : 'Lihat Skema SQL'}
+                  </button>
+                </div>
+
+                {showSqlGuide && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[10px] text-slate-500 leading-relaxed m-0">
+                      Jalankan skema ini di <strong>SQL Editor</strong> database Supabase aplikasi Anda yang satu lagi agar tabel dan fitur realtime replication siap digunakan:
+                    </p>
+                    <div className="relative">
+                      <pre className="p-2.5 rounded-lg bg-slate-950 text-emerald-400 text-[10px] font-mono overflow-x-auto max-h-36 leading-relaxed select-all">
+                        {sqlSchemaSnippet}
+                      </pre>
+                      <button
+                        type="button"
+                        onClick={handleCopySql}
+                        className="absolute top-2 right-2 px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold flex items-center gap-1 backdrop-blur-xs transition-all cursor-pointer"
+                      >
+                        {copiedSql ? <Check size={11} className="text-emerald-300" /> : <Copy size={11} />}
+                        <span>{copiedSql ? 'Tersalin' : 'Salin SQL'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+

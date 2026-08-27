@@ -11,6 +11,22 @@ export type TodoPriority = 'rendah' | 'sedang' | 'tinggi' | 'mendesak';
 
 export type BroadcastCategory = 'info' | 'urgent' | 'warning' | 'announcement';
 
+export type BroadcastSyncTarget = 'both' | 'primary' | 'external';
+
+export interface ExternalSupabaseConfig {
+  url: string;
+  anonKey: string;
+  syncTarget: BroadcastSyncTarget;
+  enabled: boolean;
+}
+
+export interface DatabaseSyncStatus {
+  isPrimaryConnected: boolean;
+  isExternalConnected: boolean;
+  lastSyncedAt?: string;
+  externalError?: string | null;
+}
+
 export interface BroadcastMessage {
   id: string;
   sender_name: string;
@@ -18,6 +34,7 @@ export interface BroadcastMessage {
   category: BroadcastCategory;
   device_info?: string;
   created_at: string;
+  origin?: 'primary' | 'external' | 'dual';
 }
 
 export interface TodoData {

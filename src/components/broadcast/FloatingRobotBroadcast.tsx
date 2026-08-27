@@ -123,8 +123,14 @@ export function FloatingRobotBroadcast({
               <div className="p-1 rounded-lg bg-pink-500/25 text-pink-300 flex items-center justify-center">
                 <Heart size={14} className="fill-pink-300 animate-pulse" />
               </div>
-              <span className="text-xs font-bold text-white truncate">
-                Pesan dari: <strong className="text-pink-300 uppercase">{broadcast.sender_name}</strong>
+              <span className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                <span>Pesan dari:</span>
+                <strong className="text-pink-300 uppercase">{broadcast.sender_name}</strong>
+                {broadcast.origin === 'external' && (
+                  <span className="bg-indigo-500/80 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border border-indigo-300/40">
+                    App Lain
+                  </span>
+                )}
               </span>
             </div>
 
