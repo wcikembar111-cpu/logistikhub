@@ -410,7 +410,7 @@ export function AdminUserModal({ onClose }: AdminUserModalProps) {
                     const isTargetSuperAdmin = user.role === 'superadmin' || user.username.toLowerCase() === 'superadmin';
                     const canModifyThisUser = isSuperAdmin || !isTargetSuperAdmin;
                     const isRevealed = !!revealedPins[identifier];
-                    const pinValue = user.pin || (isDefaultAdmin ? '399339' : '123456');
+                    const pinValue = user.pin || '';
 
                     return (
                       <div

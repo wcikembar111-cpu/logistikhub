@@ -1,5 +1,5 @@
 // Secure User & PIN Authentication Utility & Inactivity Auto-Lock Manager
-// Protects the app with Username and 6-Digit PIN (Khusus Admin) with SQL Database Integration (tabel admin_users)
+// Protects the app with Username and 6-Digit PIN with SQL Database Integration (tabel admin_users / users)
 
 import { supabase } from '../supabase';
 
@@ -16,7 +16,7 @@ const PIN_TIMEOUT_MINUTES_KEY = 'ckb_app_pin_timeout_mins';
 export const DEFAULT_TIMEOUT_MINUTES = 15;
 export const TIMEOUT_OPTIONS = [5, 10, 15, 30, 60];
 
-// Default Preset Users for PIN Login
+// User Preset Interface
 export interface PinUserPreset {
   username: string;
   nama: string;
@@ -24,13 +24,7 @@ export interface PinUserPreset {
   isDefault?: boolean;
 }
 
-export const DEFAULT_ADMIN_PRESETS: PinUserPreset[] = [
-  { username: 'admin', nama: 'DedeSuparman', role: 'superadmin', isDefault: true },
-  { username: 'popy', nama: 'Popy Rinawai', role: 'admin' },
-  { username: 'agung', nama: 'Agung Siswanto', role: 'operator' },
-  { username: 'semi', nama: 'Semi Hidayat', role: 'operator' },
-  { username: 'superadmin', nama: 'Super Administrator', role: 'superadmin' }
-];
+export const DEFAULT_ADMIN_PRESETS: PinUserPreset[] = [];
 
 export function getAuthenticatedUser(): { username: string; nama_lengkap: string; role: string; email?: string } | null {
   try {
@@ -40,13 +34,6 @@ export function getAuthenticatedUser(): { username: string; nama_lengkap: string
     return null;
   }
 }
-
-// Fallback SHA-256 salted hash for offline PWA mode when server is unreachable.
-const OFFLINE_SALT = 'CKB_SECURE_SALT_v1_2026';
-// SHA-256 of ('399339' + OFFLINE_SALT)
-const OFFLINE_ADMIN_399339_HASH = '90f0ca97be8f6cbb70d9ddf4daeeea9b02bbfe4c1d683777d130a84e5658e3b3';
-// Legacy hash fallback for 123456
-const OFFLINE_LEGACY_HASH = '1f5c6e86daecae8e090df4a78cb586e24feecfca48c1e7d7fe3d7dfd110ce424';
 
 export interface VerifyPinResult {
   success: boolean;
@@ -61,8 +48,8 @@ export interface VerifyPinResult {
 }
 
 export function getSavedUsername(): string {
-  if (typeof window === 'undefined') return 'admin';
-  return localStorage.getItem(PIN_LAST_USER_KEY) || 'admin';
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(PIN_LAST_USER_KEY) || '';
 }
 
 export function setSavedUsername(username: string): void {
@@ -130,7 +117,7 @@ export function isPinUnlocked(): boolean {
 }
 
 export async function verifyUserPin(username: string, pin: string, rememberDevice: boolean = true): Promise<VerifyPinResult> {
-  const cleanUsername = (username || 'admin').trim().toLowerCase();
+  const cleanUsername = (username || '').trim().toLowerCase();
   const cleanPin = pin.trim();
 
   if (!cleanUsername) {
@@ -155,7 +142,7 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
     };
   }
 
-  // 1. Primary Method: Verify via Server-Side API / SQL Database (PIN verified on backend, never exposed in client inspect)
+  // 1. Primary Method: Verify via Server-Side API (backend queries database)
   try {
     const response = await fetch('/api/auth/verify-pin', {
       method: 'POST',
@@ -175,7 +162,7 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
           username: cleanUsername,
           email: `${cleanUsername}@kino.co.id`,
           role: 'admin',
-          nama_lengkap: cleanUsername === 'admin' ? 'DedeSuparman' : 'Administrator'
+          nama_lengkap: cleanUsername
         };
 
         // Store session token and user profile
@@ -202,14 +189,14 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
       handleFailedAttempt();
       return { 
         success: false, 
-        message: errorData.message || `Username "${cleanUsername}" atau PIN tidak sesuai. Khusus Admin.` 
+        message: errorData.message || `Username "${cleanUsername}" atau PIN tidak sesuai. Semua kredensial diverifikasi langsung dari database.` 
       };
     }
   } catch (serverErr) {
     console.warn('Server PIN endpoint unreachable, attempting Direct SQL Database verification...', serverErr);
   }
 
-  // 2. Direct SQL Database Query via Supabase Client (Tabel: admin_users)
+  // 2. Direct SQL Database Query via Supabase Client (Tabel: admin_users / users)
   try {
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       const { data: dbUsers, error: dbErr } = await supabase
@@ -231,21 +218,14 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
             uEmail === cleanUsername ||
             uFullName === cleanNoSpace ||
             (cleanNoSpace.length >= 4 && uFullName.includes(cleanNoSpace)) ||
-            (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName)) ||
-            ((cleanUsername === 'dede' || cleanUsername === 'dedesuparman') && (uName === 'admin' || uFullName.includes('dede')))
+            (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName))
           );
         });
 
         if (matchedDbUser) {
           const dbPin = String(matchedDbUser.pin || '').trim();
           const dbPassword = String(matchedDbUser.password || '').trim();
-          const isPinValid = 
-            cleanPin === dbPin || 
-            cleanPin === dbPassword || 
-            cleanPin === '399339' || 
-            cleanPin === '123456' || 
-            cleanPin === 'Kino.2026' || 
-            cleanPin === '089739';
+          const isPinValid = (dbPin && cleanPin === dbPin) || (dbPassword && cleanPin === dbPassword);
 
           if (isPinValid) {
             localStorage.removeItem(PIN_FAIL_COUNT_KEY);
@@ -253,7 +233,7 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
 
             const authenticatedUser = {
               username: matchedDbUser.username || cleanUsername,
-              nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || 'Administrator',
+              nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || 'Pengguna',
               role: (matchedDbUser.role || 'admin').toLowerCase(),
               email: matchedDbUser.email || `${matchedDbUser.username || cleanUsername}@kino.co.id`
             };
@@ -288,85 +268,10 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
     console.warn('Direct SQL lookup note:', sqlDirectErr);
   }
 
-  // 3. Fallback Built-in Users & Offline PWA Mode:
-  try {
-    const isMatch399339 = cleanPin === '399339' || cleanPin === 'Kino.2026' || cleanPin === '089739';
-    const isMatch123456 = cleanPin === '123456' || cleanPin === 'Kino.2026';
-    
-    // Check if custom VITE_APP_PIN was provided at build time
-    const clientCustomPin = (import.meta.env.VITE_APP_PIN as string | undefined)?.trim();
-    const isClientCustomMatch = Boolean(clientCustomPin && cleanPin === clientCustomPin);
-
-    const cleanNoSpace = cleanUsername.replace(/[\s._-]+/g, '');
-    const isRecognizedUser = ['admin', 'popy', 'agung', 'semi', 'dede', 'dedesuparman', 'superadmin'].includes(cleanUsername) || cleanNoSpace.includes('dede');
-
-    if ((isMatch399339 || isMatch123456 || isClientCustomMatch) && isRecognizedUser) {
-      localStorage.removeItem(PIN_FAIL_COUNT_KEY);
-      localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
-
-      let userRole = 'admin';
-      let fullName = 'Administrator';
-      let email = `${cleanUsername}@kino.co.id`;
-      let finalUsername = cleanUsername;
-
-      if (cleanUsername === 'admin' || cleanUsername === 'dedesuparman' || cleanUsername === 'dede' || cleanNoSpace.includes('dede')) {
-        userRole = 'superadmin';
-        fullName = 'DedeSuparman';
-        email = 'admin@admin.com';
-        finalUsername = 'admin';
-      } else if (cleanUsername === 'popy') {
-        userRole = 'admin';
-        fullName = 'Popy Rinawai';
-        email = 'popy@kino.co.id';
-      } else if (cleanUsername === 'agung') {
-        userRole = 'operator';
-        fullName = 'Agung Siswanto';
-        email = 'agung@kino.co.id';
-      } else if (cleanUsername === 'semi') {
-        userRole = 'operator';
-        fullName = 'Semi Hidayat';
-        email = 'semi@kino.co.id';
-      } else if (cleanUsername === 'superadmin') {
-        userRole = 'superadmin';
-        fullName = 'Super Administrator (Full Akses)';
-        email = 'superadmin@kino.co.id';
-      }
-
-      const authenticatedUser = {
-        username: finalUsername,
-        nama_lengkap: fullName,
-        role: userRole,
-        email: email
-      };
-
-      const fakeToken = btoa(JSON.stringify({ 
-        mode: 'client-verified', 
-        username: cleanUsername,
-        iat: Date.now(), 
-        sig: cleanPin 
-      }));
-
-      if (rememberDevice) {
-        localStorage.setItem(PIN_STORAGE_KEY, fakeToken);
-      } else {
-        sessionStorage.setItem(PIN_STORAGE_KEY, fakeToken);
-      }
-
-      localStorage.setItem(PIN_USER_KEY, JSON.stringify(authenticatedUser));
-      localStorage.setItem('user', JSON.stringify(authenticatedUser));
-      window.dispatchEvent(new Event('userChange'));
-      
-      updateLastActivity();
-      return { success: true, user: authenticatedUser };
-    }
-  } catch (cryptoErr) {
-    console.error('Crypto fallback error:', cryptoErr);
-  }
-
   handleFailedAttempt();
   return { 
     success: false, 
-    message: `Username "${cleanUsername}" atau PIN 6 digit tidak sesuai.` 
+    message: `Username "${cleanUsername}" atau PIN / Password tidak sesuai dengan data di database.` 
   };
 }
 
@@ -396,12 +301,5 @@ export function lockApp(): void {
   localStorage.removeItem('user');
   localStorage.removeItem(PIN_USER_KEY);
   window.dispatchEvent(new Event('userChange'));
-}
-
-async function computeSha256(str: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(str);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 

@@ -9,7 +9,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
-  const [identifier, setIdentifier] = useState('admin@admin.com');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,41 +62,6 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             <ShieldCheck size={15} className="text-blue-600 shrink-0" />
             <span>Login Administrator sistem beranda (terhubung ke tabel <strong>admin_users</strong>)</span>
           </div>
-
-          {/* Quick Preset Buttons */}
-          <div className="mb-3">
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-              Pilih Akun Admin:
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('admin@admin.com');
-                }}
-                className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  identifier === 'admin@admin.com'
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                admin@admin.com
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('admin');
-                }}
-                className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  identifier === 'admin'
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                admin (Username)
-              </button>
-            </div>
-          </div>
           
           {/* Email / Username Input */}
           <div className="mb-3">
@@ -113,7 +78,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
                 className="w-full bg-white text-slate-900 border border-slate-300 rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs" 
-                placeholder="Email (admin@admin.com) atau Username" 
+                placeholder="Email atau Username" 
               />
             </div>
           </div>

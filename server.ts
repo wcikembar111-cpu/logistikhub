@@ -97,7 +97,7 @@ async function startServer() {
 
   // Check PIN & Admin Configuration Status (does not expose the PIN!)
   app.get("/api/auth/pin-status", async (_req, res) => {
-    const isCustomPin = Boolean(process.env.APP_PIN && process.env.APP_PIN.trim() !== "089739");
+    const isCustomPin = Boolean(process.env.APP_PIN && process.env.APP_PIN.trim());
     let sqlConnected = false;
     let sqlUsersCount = 0;
 
@@ -125,7 +125,7 @@ async function startServer() {
         table: "admin_users",
         usersCount: sqlUsersCount
       },
-      defaultUsers: ["admin", "popy", "agung", "semi"]
+      defaultUsers: []
     });
   });
 
@@ -133,9 +133,16 @@ async function startServer() {
   // The actual PIN is NEVER sent to or visible in client-side inspect element!
   app.post("/api/auth/verify-pin", async (req, res) => {
     const { username, pin } = req.body;
-    const rawUsername = (typeof username === "string" ? username : "admin").trim();
+    const rawUsername = (typeof username === "string" ? username : "").trim();
     const cleanUsername = rawUsername.toLowerCase();
     const cleanNoSpace = cleanUsername.replace(/[\s._-]+/g, '');
+
+    if (!rawUsername) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Username harus diisi." 
+      });
+    }
 
     if (!pin || typeof pin !== "string") {
       return res.status(400).json({ 
@@ -168,27 +175,19 @@ async function startServer() {
               uEmail === cleanUsername ||
               uFullName === cleanNoSpace ||
               (cleanNoSpace.length >= 4 && uFullName.includes(cleanNoSpace)) ||
-              (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName)) ||
-              ((cleanUsername === 'dede' || cleanUsername === 'dedesuparman') && (uName === 'admin' || uFullName.includes('dede')))
+              (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName))
             );
           });
 
           if (matchedDbUser) {
             const dbPin = String(matchedDbUser.pin || '').trim();
             const dbPassword = String(matchedDbUser.password || '').trim();
-            const isPinValid = 
-              cleanPin === dbPin || 
-              cleanPin === dbPassword || 
-              cleanPin === '399339' || 
-              cleanPin === '123456' || 
-              cleanPin === 'Kino.2026' || 
-              cleanPin === '089739' ||
-              (process.env.APP_PIN && cleanPin === process.env.APP_PIN.trim());
+            const isPinValid = (dbPin && cleanPin === dbPin) || (dbPassword && cleanPin === dbPassword);
 
             if (isPinValid) {
               authenticatedUser = {
                 username: matchedDbUser.username || cleanUsername,
-                nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || "Administrator",
+                nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || "Pengguna",
                 role: (matchedDbUser.role || "admin").toLowerCase(),
                 email: matchedDbUser.email || `${matchedDbUser.username || cleanUsername}@kino.co.id`
               };
@@ -207,83 +206,6 @@ async function startServer() {
         }
       } catch (sqlErr) {
         console.warn("[SQL Auth Warning]:", sqlErr);
-      }
-    }
-
-    // 2. Fallback / Built-in Admin Users (Guarantees zero-downtime offline or instant startup)
-    if (!authenticatedUser) {
-      const allowedAdmins: Record<string, { pins: string[]; name: string; email: string; role: string }> = {
-        admin: {
-          pins: ["399339", "Kino.2026", "089739", (process.env.APP_PIN || "").trim()].filter(Boolean),
-          name: "DedeSuparman",
-          email: "admin@admin.com",
-          role: "superadmin"
-        },
-        dedesuparman: {
-          pins: ["399339", "Kino.2026", "089739", (process.env.APP_PIN || "").trim()].filter(Boolean),
-          name: "DedeSuparman",
-          email: "admin@admin.com",
-          role: "superadmin"
-        },
-        dede: {
-          pins: ["399339", "Kino.2026", "089739", (process.env.APP_PIN || "").trim()].filter(Boolean),
-          name: "DedeSuparman",
-          email: "admin@admin.com",
-          role: "superadmin"
-        },
-        popy: {
-          pins: ["123456", "Kino.2026"],
-          name: "Popy Rinawai",
-          email: "popy@kino.co.id",
-          role: "admin"
-        },
-        agung: {
-          pins: ["123456", "Kino.2026"],
-          name: "Agung Siswanto",
-          email: "agung@kino.co.id",
-          role: "operator"
-        },
-        semi: {
-          pins: ["123456", "Kino.2026"],
-          name: "Semi Hidayat",
-          email: "semi@kino.co.id",
-          role: "operator"
-        },
-        superadmin: {
-          pins: ["399339", "Kino.2026", "089739"],
-          name: "Super Administrator (Full Akses)",
-          email: "superadmin@kino.co.id",
-          role: "superadmin"
-        }
-      };
-
-      // Also check custom env if defined
-      if (process.env.APP_USER) {
-        allowedAdmins[process.env.APP_USER.trim().toLowerCase()] = {
-          pins: [(process.env.APP_PIN || "399339").trim(), "Kino.2026"],
-          name: "Custom Admin User",
-          email: "admin@kino.co.id",
-          role: "admin"
-        };
-      }
-
-      const matchedPreset = allowedAdmins[cleanUsername] || allowedAdmins[cleanNoSpace];
-      if (matchedPreset) {
-        const isMatch = 
-          matchedPreset.pins.includes(cleanPin) ||
-          cleanPin === "399339" ||
-          cleanPin === "123456" ||
-          cleanPin === "Kino.2026" ||
-          cleanPin === "089739";
-
-        if (isMatch) {
-          authenticatedUser = {
-            username: cleanUsername === 'dedesuparman' || cleanUsername === 'dede' ? 'admin' : cleanUsername,
-            nama_lengkap: matchedPreset.name,
-            role: matchedPreset.role || "admin",
-            email: matchedPreset.email
-          };
-        }
       }
     }
 
@@ -319,7 +241,7 @@ async function startServer() {
     } else {
       return res.status(401).json({
         success: false,
-        message: `Username "${rawUsername}" atau PIN 6 digit tidak sesuai. Hanya Admin yang memiliki akses.`
+        message: `Username "${rawUsername}" atau PIN / Password tidak sesuai dengan data di database.`
       });
     }
   });
@@ -348,13 +270,7 @@ async function startServer() {
         .update(`${decoded.iat}:${decoded.username || 'admin'}:${decoded.role || 'admin'}:ckb_authorized`)
         .digest("hex");
 
-      // Also verify legacy token format if needed
-      const legacyExpectedSig = crypto
-        .createHmac("sha256", sessionSecret)
-        .update(`${decoded.iat}:${process.env.APP_PIN || "089739"}:ckb_authorized`)
-        .digest("hex");
-
-      if (expectedSig === decoded.sig || legacyExpectedSig === decoded.sig) {
+      if (expectedSig === decoded.sig) {
         return res.json({ 
           valid: true, 
           user: {
@@ -376,58 +292,11 @@ async function startServer() {
 
   // GET: Fetch all admin users
   app.get("/api/admin/users", async (_req, res) => {
-    const defaultAdmins = [
-      {
-        id: "6240e310-b057-4de7-8e3d-cb6c416e4245",
-        username: "admin",
-        pin: "399339",
-        password: "Kino.2026",
-        nama_lengkap: "DedeSuparman",
-        email: "admin@admin.com",
-        role: "superadmin",
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: "3ab0dabd-34f3-4459-9bc8-9589f89173d0",
-        username: "popy",
-        pin: "123456",
-        password: "Kino.2026",
-        nama_lengkap: "Popy Rinawai",
-        email: "popy@kino.co.id",
-        role: "admin",
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: "ed22d013-f033-40da-9f55-02850c6e06f0",
-        username: "agung",
-        pin: "123456",
-        password: "Kino.2026",
-        nama_lengkap: "Agung Siswanto",
-        email: "agung@kino.co.id",
-        role: "operator",
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: "363a0701-f23f-488b-9950-eff87f77260c",
-        username: "semi",
-        pin: "123456",
-        password: "Kino.2026",
-        nama_lengkap: "Semi Hidayat",
-        email: "semi@kino.co.id",
-        role: "operator",
-        is_active: true,
-        created_at: new Date().toISOString()
-      }
-    ];
-
     if (!supabaseServerClient) {
       return res.json({
         success: true,
-        source: "memory-fallback",
-        users: defaultAdmins
+        source: "database-unconfigured",
+        users: []
       });
     }
 
@@ -440,47 +309,19 @@ async function startServer() {
       if (error) {
         console.warn("[Users List SQL Warning]:", error.message);
         return res.json({
-          success: true,
-          source: "fallback-on-error",
-          users: defaultAdmins,
+          success: false,
+          source: "error",
+          users: [],
           sqlError: error.message
         });
       }
 
-      if (!data || data.length === 0) {
-        // Auto-seed default users if table exists but empty
-        try {
-          await supabaseServerClient.from("admin_users").upsert([
-            { username: "admin", pin: "399339", password: "Kino.2026", nama_lengkap: "DedeSuparman", email: "admin@admin.com", role: "superadmin", is_active: true },
-            { username: "popy", pin: "123456", password: "Kino.2026", nama_lengkap: "Popy Rinawai", email: "popy@kino.co.id", role: "admin", is_active: true },
-            { username: "agung", pin: "123456", password: "Kino.2026", nama_lengkap: "Agung Siswanto", email: "agung@kino.co.id", role: "operator", is_active: true },
-            { username: "semi", pin: "123456", password: "Kino.2026", nama_lengkap: "Semi Hidayat", email: "semi@kino.co.id", role: "operator", is_active: true }
-          ], { onConflict: "username" });
-
-          const { data: refetched } = await supabaseServerClient
-            .from("admin_users")
-            .select("*")
-            .order("created_at", { ascending: true });
-          return res.json({
-            success: true,
-            source: "sql-seeded",
-            users: refetched || defaultAdmins
-          });
-        } catch {
-          return res.json({
-            success: true,
-            source: "fallback-empty",
-            users: defaultAdmins
-          });
-        }
-      }
-
-      const formatted = data.map((u: any) => ({
+      const formatted = (data || []).map((u: any) => ({
         id: u.id,
         username: u.username || u.email?.split('@')[0] || 'user',
-        pin: u.pin || '123456',
-        password: u.password || 'Kino.2026',
-        nama_lengkap: u.nama_lengkap || u.nama || u.username || 'Administrator',
+        pin: u.pin || '',
+        password: u.password || '',
+        nama_lengkap: u.nama_lengkap || u.nama || u.username || 'Pengguna',
         email: u.email || `${u.username || 'user'}@kino.co.id`,
         role: (u.role || 'admin').toLowerCase(),
         is_active: u.is_active !== false,
@@ -496,9 +337,9 @@ async function startServer() {
       });
     } catch (err: any) {
       return res.json({
-        success: true,
-        source: "fallback-exception",
-        users: defaultAdmins,
+        success: false,
+        source: "exception",
+        users: [],
         error: err.message
       });
     }

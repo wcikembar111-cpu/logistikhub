@@ -5,7 +5,7 @@ interface Env {
 }
 
 export async function onRequestGet(context: { env: Env }) {
-  const isCustomPin = Boolean(context.env.APP_PIN && context.env.APP_PIN.trim() !== '089739');
+  const isCustomPin = Boolean(context.env.APP_PIN && context.env.APP_PIN.trim());
   return new Response(
     JSON.stringify({
       configured: true,

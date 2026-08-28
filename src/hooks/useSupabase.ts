@@ -424,13 +424,7 @@ export function useAuth() {
             if (matchedDbUser) {
               const dbPin = String(matchedDbUser.pin || '').trim();
               const dbPass = String(matchedDbUser.password || '').trim();
-              const isPinValid = 
-                cleanSecret === dbPin || 
-                cleanSecret === dbPass || 
-                cleanSecret === '399339' || 
-                cleanSecret === '123456' || 
-                cleanSecret === 'Kino.2026' || 
-                cleanSecret === '089739';
+              const isPinValid = (dbPin && cleanSecret === dbPin) || (dbPass && cleanSecret === dbPass);
 
               if (isPinValid) {
                 const u = {
@@ -457,69 +451,7 @@ export function useAuth() {
         }
       }
 
-      // 2. Built-in Admin Presets & Fallbacks
-      const isSuperAdminUser = 
-        (cleanIdentifier === 'superadmin' || cleanIdentifier === 'superadmin@kino.co.id') &&
-        (cleanSecret === '399339' || cleanSecret === '089739' || cleanSecret === 'Kino.2026' || cleanSecret === 'admin');
-
-      const isDefaultAdmin = 
-        (cleanIdentifier === 'admin@admin.com' || cleanIdentifier === 'admin' || cleanIdentifier === 'dedesuparman' || cleanIdentifier === 'dede') && 
-        (cleanSecret === '399339' || cleanSecret === 'Kino.2026' || cleanSecret === '089739' || cleanSecret === 'admin');
-
-      const isPopy = 
-        (cleanIdentifier === 'popy@kino.co.id' || cleanIdentifier === 'popy') && 
-        (cleanSecret === '123456' || cleanSecret === 'Kino.2026');
-
-      const isAgung = 
-        (cleanIdentifier === 'agung@kino.co.id' || cleanIdentifier === 'agung') && 
-        (cleanSecret === '123456' || cleanSecret === 'Kino.2026');
-
-      const isSemi = 
-        (cleanIdentifier === 'semi@kino.co.id' || cleanIdentifier === 'semi') && 
-        (cleanSecret === '123456' || cleanSecret === 'Kino.2026');
-
-      if (isSuperAdminUser || isDefaultAdmin || isPopy || isAgung || isSemi) {
-        let role = 'admin';
-        let nama = 'Administrator';
-        let email = `${cleanIdentifier}@kino.co.id`;
-
-        if (isDefaultAdmin) {
-          role = 'superadmin';
-          nama = 'DedeSuparman';
-          email = 'admin@admin.com';
-        } else if (isPopy) {
-          role = 'admin';
-          nama = 'Popy Rinawai';
-          email = 'popy@kino.co.id';
-        } else if (isAgung) {
-          role = 'operator';
-          nama = 'Agung Siswanto';
-          email = 'agung@kino.co.id';
-        } else if (isSemi) {
-          role = 'operator';
-          nama = 'Semi Hidayat';
-          email = 'semi@kino.co.id';
-        } else if (isSuperAdminUser) {
-          role = 'superadmin';
-          nama = 'Super Administrator';
-          email = 'superadmin@kino.co.id';
-        }
-
-        const u = {
-          username: isDefaultAdmin ? 'admin' : isPopy ? 'popy' : isAgung ? 'agung' : isSemi ? 'semi' : 'superadmin',
-          email,
-          nama,
-          nama_lengkap: nama,
-          role
-        };
-        setUser(u);
-        localStorage.setItem('user', JSON.stringify(u));
-        localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
-        window.dispatchEvent(new Event('userChange'));
-        return;
-      }
-
-      throw new Error(`Email/Username "${cleanIdentifier}" atau Password tidak sesuai. Terhubung ke database "admin_users".`);
+      throw new Error(`Email/Username "${cleanIdentifier}" atau Password tidak sesuai dengan data di database.`);
     } catch (e: any) {
       throw new Error(e.message || 'Login gagal terjadi kesalahan.');
     }
@@ -562,53 +494,6 @@ export function useAdminUsers() {
     setLoading(true);
     setError(null);
 
-    const defaultFallbackUsers: AdminUser[] = [
-      {
-        id: '6240e310-b057-4de7-8e3d-cb6c416e4245',
-        username: 'admin',
-        pin: '399339',
-        password: 'Kino.2026',
-        nama_lengkap: 'DedeSuparman',
-        email: 'admin@admin.com',
-        role: 'superadmin',
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: '3ab0dabd-34f3-4459-9bc8-9589f89173d0',
-        username: 'popy',
-        pin: '123456',
-        password: 'Kino.2026',
-        nama_lengkap: 'Popy Rinawai',
-        email: 'popy@kino.co.id',
-        role: 'admin',
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'ed22d013-f033-40da-9f55-02850c6e06f0',
-        username: 'agung',
-        pin: '123456',
-        password: 'Kino.2026',
-        nama_lengkap: 'Agung Siswanto',
-        email: 'agung@kino.co.id',
-        role: 'operator',
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: '363a0701-f23f-488b-9950-eff87f77260c',
-        username: 'semi',
-        pin: '123456',
-        password: 'Kino.2026',
-        nama_lengkap: 'Semi Hidayat',
-        email: 'semi@kino.co.id',
-        role: 'operator',
-        is_active: true,
-        created_at: new Date().toISOString()
-      }
-    ];
-
     try {
       let dbUsers: AdminUser[] = [];
 
@@ -624,8 +509,8 @@ export function useAdminUsers() {
             dbUsers = data.map((u: any) => ({
               id: u.id,
               username: u.username || u.email?.split('@')[0] || 'user',
-              pin: u.pin || '123456',
-              password: u.password || 'Kino.2026',
+              pin: u.pin || '',
+              password: u.password || '',
               nama_lengkap: u.nama_lengkap || u.nama || u.name || u.username || 'Administrator',
               email: u.email || `${u.username || 'user'}@kino.co.id`,
               role: (u.role || 'admin').toLowerCase(),
@@ -655,16 +540,11 @@ export function useAdminUsers() {
         }
       }
 
-      // Display EXACTLY the database records when available, or initial fallbacks if DB is completely empty
-      if (dbUsers.length > 0) {
-        setUsers(dbUsers);
-      } else {
-        setUsers(defaultFallbackUsers);
-      }
+      setUsers(dbUsers);
     } catch (err: any) {
       console.warn('Failed to fetch admin_users from database:', err);
       setError(err.message || 'Gagal memuat daftar user dari database admin_users');
-      setUsers(defaultFallbackUsers);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -692,8 +572,8 @@ export function useAdminUsers() {
     const cleanUser = {
       username: newUser.username.trim().toLowerCase(),
       pin: newUser.pin.trim(),
-      password: newUser.pin.trim() || 'Kino.2026',
-      nama_lengkap: (newUser.nama_lengkap || 'Administrator').trim(),
+      password: newUser.pin.trim(),
+      nama_lengkap: (newUser.nama_lengkap || 'Pengguna').trim(),
       email: (newUser.email || `${newUser.username.trim().toLowerCase()}@kino.co.id`).trim().toLowerCase(),
       role: (newUser.role || 'admin').toLowerCase(),
       is_active: newUser.is_active !== false,

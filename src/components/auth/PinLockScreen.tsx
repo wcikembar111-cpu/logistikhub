@@ -17,8 +17,7 @@ import {
 import { 
   verifyUserPin, 
   getSavedUsername, 
-  setSavedUsername,
-  DEFAULT_ADMIN_PRESETS
+  setSavedUsername
 } from '../../utils/pinAuth';
 import { supabase } from '../../supabase';
 import { PopyMaternityCountdown } from '../countdown/PopyMaternityCountdown';
@@ -46,7 +45,7 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
   const [shake, setShake] = useState<boolean>(false);
   const [lockoutTimer, setLockoutTimer] = useState<number>(0);
   const [isCustomUser, setIsCustomUser] = useState<boolean>(false);
-  const [availableUsers, setAvailableUsers] = useState<LoadedUser[]>(DEFAULT_ADMIN_PRESETS);
+  const [availableUsers, setAvailableUsers] = useState<LoadedUser[]>([]);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
 
@@ -119,11 +118,11 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
         if (fetched.length > 0) {
           setAvailableUsers(fetched);
         } else {
-          setAvailableUsers(DEFAULT_ADMIN_PRESETS);
+          setAvailableUsers([]);
         }
       } catch (e) {
-        console.warn('Could not fetch dynamic users list, using presets.', e);
-        setAvailableUsers(DEFAULT_ADMIN_PRESETS);
+        console.warn('Could not fetch dynamic users list:', e);
+        setAvailableUsers([]);
       }
     };
 
