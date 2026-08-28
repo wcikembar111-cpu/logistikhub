@@ -172,10 +172,24 @@ export function processMB52Rows(jsonRows: Array<Record<string, any>>) {
 
 const generatedSNs = new Set<string>();
 
+export interface SnInboundItem {
+  no?: number;
+  sn: string;
+  binLoc: string;
+  noSku: string;
+  namaItem: string;
+  quantity: number | string;
+  expiredDate: string;
+  batch: string;
+  vendorBatch: string;
+  destinationName: string;
+  rawCols: string[];
+}
+
 /**
- * Generate Serial Number dari teks input Excel (Tab Separated Lines)
+ * Generate Serial Number dari teks input Excel (Tab Separated Lines) atau Structured Rows
  */
-export function generateSerialNumberList(inputText: string) {
+export function generateSerialNumberList(inputText: string): SnInboundItem[] {
   if (!inputText.trim()) return [];
   
   const rows = inputText.split('\n');
@@ -184,14 +198,47 @@ export function generateSerialNumberList(inputText: string) {
                   String(d.getMonth() + 1).padStart(2, '0') + 
                   String(d.getDate()).padStart(2, '0');
   
-  const results: Array<{ sn: string; rawCols: string[] }> = [];
+  const results: SnInboundItem[] = [];
   let count = 0;
-  rows.forEach(row => {
-    if (!row.trim()) return;
-    const cols = row.split('\t');
+
+  // Cek apakah baris pertama adalah Header teks
+  let startIndex = 0;
+  if (rows.length > 0) {
+    const firstRowLower = rows[0].toLowerCase();
+    if (
+      firstRowLower.includes('bin loc') || 
+      firstRowLower.includes('no sku') || 
+      firstRowLower.includes('nama item') ||
+      firstRowLower.includes('item code') ||
+      firstRowLower.includes('material')
+    ) {
+      startIndex = 1;
+    }
+  }
+
+  for (let i = startIndex; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row.trim()) continue;
+    
+    // Support Tab, Comma, or Semicolon separation
+    let cols = row.split('\t');
+    if (cols.length === 1 && row.includes(';')) {
+      cols = row.split(';');
+    } else if (cols.length === 1 && row.includes(',')) {
+      cols = row.split(',');
+    }
+
     if (cols.length > 0) {
       count++;
       const binLoc = (cols[0] || '').trim();
+      const noSku = (cols[1] || '').trim();
+      const namaItem = (cols[2] || '').trim();
+      const quantity = (cols[3] || '').trim();
+      const expiredDate = (cols[4] || '').trim();
+      const batch = (cols[5] || '').trim();
+      const vendorBatch = (cols[6] || '').trim();
+      const destinationName = (cols[7] || '').trim();
+
       // Ambil 8 karakter terakhir bin location (dipad 8 digit nol jika kurang)
       const rightBin = binLoc.length > 8 ? binLoc.slice(-8) : binLoc.padStart(8, '0');
       
@@ -204,9 +251,76 @@ export function generateSerialNumberList(inputText: string) {
         attempt++;
       } while (generatedSNs.has(sn));
       generatedSNs.add(sn);
-      results.push({ sn, rawCols: cols.map(c => (c || '').trim()) });
+
+      results.push({
+        no: results.length + 1,
+        sn,
+        binLoc,
+        noSku,
+        namaItem,
+        quantity,
+        expiredDate,
+        batch,
+        vendorBatch,
+        destinationName,
+        rawCols: cols.map(c => (c || '').trim())
+      });
     }
+  }
+  return results;
+}
+
+/**
+ * Generate Serial Number dari array data objek (misalnya dari file Excel)
+ */
+export function generateSerialNumberFromRows(items: Array<Partial<SnInboundItem>>): SnInboundItem[] {
+  const d = new Date();
+  const dateStr = String(d.getFullYear()).slice(-2) + 
+                  String(d.getMonth() + 1).padStart(2, '0') + 
+                  String(d.getDate()).padStart(2, '0');
+
+  const results: SnInboundItem[] = [];
+  let count = 0;
+
+  items.forEach(item => {
+    count++;
+    const binLoc = String(item.binLoc ?? '').trim();
+    const rightBin = binLoc.length > 8 ? binLoc.slice(-8) : binLoc.padStart(8, '0');
+
+    let sn: string;
+    let attempt = 0;
+    do {
+      let randNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+      if (attempt > 50) randNum = String(count).padStart(4, '0');
+      sn = `FGKINO-${dateStr}${rightBin}${randNum}`;
+      attempt++;
+    } while (generatedSNs.has(sn));
+    generatedSNs.add(sn);
+
+    results.push({
+      no: results.length + 1,
+      sn,
+      binLoc: binLoc || '-',
+      noSku: String(item.noSku ?? '').trim(),
+      namaItem: String(item.namaItem ?? '').trim(),
+      quantity: item.quantity ?? '',
+      expiredDate: String(item.expiredDate ?? '').trim(),
+      batch: String(item.batch ?? '').trim(),
+      vendorBatch: String(item.vendorBatch ?? '').trim(),
+      destinationName: String(item.destinationName ?? '').trim(),
+      rawCols: [
+        binLoc,
+        String(item.noSku ?? ''),
+        String(item.namaItem ?? ''),
+        String(item.quantity ?? ''),
+        String(item.expiredDate ?? ''),
+        String(item.batch ?? ''),
+        String(item.vendorBatch ?? ''),
+        String(item.destinationName ?? '')
+      ]
+    });
   });
+
   return results;
 }
 

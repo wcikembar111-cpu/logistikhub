@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, DragEvent } from 'react';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X, Users, ShieldCheck } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { useMenuOrder } from '../hooks/useSupabase';
@@ -8,9 +8,11 @@ interface LinkGridProps {
   links: LinkData[];
   loading: boolean;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   onAdd: () => void;
   onEdit: (link: LinkData) => void;
   onDelete: (id: string) => void;
+  onManageUsers?: () => void;
 }
 
 const NATIVE_ICON_STYLES = [
@@ -24,7 +26,7 @@ const NATIVE_ICON_STYLES = [
   'bg-gradient-to-br from-cyan-400 via-teal-500 to-blue-700 text-white shadow-cyan-500/35 ring-1 ring-cyan-400/30',
 ];
 
-export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: LinkGridProps) {
+export function LinkGrid({ links, loading, isAdmin, isSuperAdmin = false, onAdd, onEdit, onDelete, onManageUsers }: LinkGridProps) {
   const { showConfirm, showToast } = useNotification();
   const { menuOrder, saveMenuOrder } = useMenuOrder();
   const [search, setSearch] = useState('');
@@ -187,38 +189,55 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
             <span>{filteredLinks.length} / {links.length} Aplikasi</span>
           </div>
 
-          {/* Admin Actions */}
-          {isAdmin && (
+          {/* Admin & Super Admin Actions */}
+          {(isAdmin || isSuperAdmin) && (
             <div className="flex items-center gap-1.5 shrink-0">
-              <button 
-                onClick={() => {
-                  const nextReordering = !isReordering;
-                  setIsReordering(nextReordering);
-                  if (nextReordering) {
-                    showToast('Atur Tata Letak', 'Seret & lepas icon atau gunakan tombol panah kiri/kanan untuk menggeser posisi aplikasi', 'info');
-                  } else {
-                    showToast('Tersimpan', 'Tata letak menu aplikasi telah disimpan secara permanen', 'success');
-                  }
-                }} 
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
-                  isReordering 
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse' 
-                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'
-                }`}
-                title="Atur Urutan Tata Letak Menu"
-              >
-                {isReordering ? <Check size={14} /> : <Move size={14} />}
-                <span>{isReordering ? 'Selesai' : 'Atur Urutan'}</span>
-              </button>
+              {onManageUsers && (
+                <button
+                  type="button"
+                  onClick={onManageUsers}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-blue-300 hover:text-white font-bold text-xs flex items-center gap-1.5 border border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                  title="Kelola Akun User & PIN Login"
+                >
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span>User & PIN</span>
+                </button>
+              )}
 
-              <button 
-                onClick={onAdd} 
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
-                title="Tambah Aplikasi Baru"
-              >
-                <Plus size={14} />
-                <span>Tambah</span>
-              </button>
+              {/* Kelola Daftar Aplikasi & Sistem (Hanya Super Admin) */}
+              {isSuperAdmin && (
+                <>
+                  <button 
+                    onClick={() => {
+                      const nextReordering = !isReordering;
+                      setIsReordering(nextReordering);
+                      if (nextReordering) {
+                        showToast('Atur Tata Letak', 'Seret & lepas icon atau gunakan tombol panah kiri/kanan untuk menggeser posisi aplikasi', 'info');
+                      } else {
+                        showToast('Tersimpan', 'Tata letak menu aplikasi telah disimpan secara permanen', 'success');
+                      }
+                    }} 
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
+                      isReordering 
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse' 
+                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'
+                    }`}
+                    title="Atur Urutan Tata Letak Menu (Khusus Super Admin)"
+                  >
+                    {isReordering ? <Check size={14} /> : <Move size={14} />}
+                    <span>{isReordering ? 'Selesai' : 'Atur Urutan'}</span>
+                  </button>
+
+                  <button 
+                    onClick={onAdd} 
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                    title="Tambah Aplikasi Baru (Khusus Super Admin)"
+                  >
+                    <Plus size={14} />
+                    <span>Tambah</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -333,21 +352,21 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                   </div>
                 )}
 
-                {/* Admin Actions or External Link Badge on Hover */}
+                {/* Super Admin Actions or External Link Badge on Hover */}
                 {!isReordering && (
                   <div className="absolute top-2 right-2 z-20 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    {!isAdmin && (
+                    {!isSuperAdmin && (
                       <div className="w-6 h-6 rounded-lg bg-blue-900/10 text-blue-900 flex items-center justify-center">
                         <ExternalLink size={12} />
                       </div>
                     )}
                     
-                    {isAdmin && (
+                    {isSuperAdmin && (
                       <div className="flex gap-1">
                         <button 
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
                           className="p-1 rounded-lg bg-blue-900/10 hover:bg-blue-900 hover:text-white text-blue-900 transition-all cursor-pointer"
-                          title="Edit Aplikasi"
+                          title="Edit Aplikasi (Khusus Super Admin)"
                         >
                           <Edit2 size={12} />
                         </button>
@@ -368,7 +387,7 @@ export function LinkGrid({ links, loading, isAdmin, onAdd, onEdit, onDelete }: L
                             });
                           }} 
                           className="p-1 rounded-lg bg-red-500/10 hover:bg-red-600 hover:text-white text-red-600 transition-all cursor-pointer"
-                          title="Hapus Aplikasi"
+                          title="Hapus Aplikasi (Khusus Super Admin)"
                         >
                           <Trash2 size={12} />
                         </button>

@@ -140,7 +140,7 @@ export function BroadcastModal({
       if (res?.delivery?.external && res?.delivery?.primary) {
         showToast('Tersiar ke 2 Database!', 'Pesan berhasil dikirim ke Aplikasi Ini & Aplikasi Lain secara serentak.', 'success');
       } else if (res?.delivery?.external) {
-        showToast('Tersiar ke App Lain!', 'Pesan berhasil dikirim ke Supabase Aplikasi Lain.', 'success');
+        showToast('Tersiar ke App Lain!', 'Pesan berhasil dikirim ke Database Aplikasi Lain.', 'success');
       } else {
         showToast('Terkirim!', 'Robot kurir berhasil menyiarkan pesan Anda.', 'success');
       }
@@ -200,7 +200,7 @@ export function BroadcastModal({
 
   const handleTestConnection = async () => {
     if (!extUrl.trim() || !extKey.trim()) {
-      showToast('Data Belum Lengkap', 'Masukkan URL Supabase dan Anon Key aplikasi lain untuk dites.', 'warning');
+      showToast('Data Belum Lengkap', 'Masukkan URL Server dan Kunci Akses database aplikasi lain untuk dites.', 'warning');
       return;
     }
 
@@ -246,7 +246,7 @@ export function BroadcastModal({
     });
 
     if (isEnabled) {
-      showToast('Tersimpan & Terhubung!', 'Konfigurasi Supabase aplikasi lain berhasil disimpan dan tersambung.', 'success');
+      showToast('Tersimpan & Terhubung!', 'Konfigurasi sinkronisasi database aplikasi lain berhasil disimpan dan tersambung.', 'success');
     } else {
       showToast('Disimpan', 'Koneksi database eksternal dimatikan.', 'info');
     }
@@ -298,7 +298,7 @@ END $$;`;
   const handleCopySql = () => {
     navigator.clipboard.writeText(sqlSchemaSnippet);
     setCopiedSql(true);
-    showToast('Disalin!', 'Skema SQL berhasil disalin ke clipboard.', 'success');
+    showToast('Disalin!', 'Struktur data berhasil disalin ke clipboard.', 'success');
     setTimeout(() => setCopiedSql(false), 2500);
   };
 
@@ -658,11 +658,11 @@ END $$;`;
                     <Zap size={15} />
                   </div>
                   <h4 className="text-xs font-bold tracking-tight text-white m-0">
-                    Koneksi Siaran Lintas Aplikasi (Cross-App Supabase)
+                    Koneksi Siaran Lintas Aplikasi
                   </h4>
                 </div>
                 <p className="text-[11px] text-blue-100/90 leading-relaxed m-0">
-                  Hubungkan broadcast pesan siaran ini ke aplikasi Anda yang satu lagi yang menggunakan database Supabase berbeda. Pesan akan terkirim dan diterima secara realtime secara serentak (Dual-Sync).
+                  Hubungkan broadcast pesan siaran ini ke aplikasi Anda yang satu lagi. Pesan akan terkirim dan diterima secara realtime secara serentak (Dual-Sync).
                 </p>
 
                 {/* Connection Status Diagram */}
@@ -701,23 +701,23 @@ END $$;`;
               <form onSubmit={handleSaveExternalConfig} className="space-y-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                    URL Supabase Aplikasi Lain
+                    URL Server Aplikasi Lain
                   </label>
                   <input
                     type="text"
                     value={extUrl}
                     onChange={e => setExtUrl(e.target.value)}
-                    placeholder="https://xyzabcdefghijklmn.supabase.co"
+                    placeholder="https://xyzabcdefghijklmn.co"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-indigo-900/20 focus:border-indigo-900 outline-none transition-all placeholder:text-slate-400"
                   />
                   <p className="text-[10px] text-slate-400 mt-1 m-0">
-                    Dapat dilihat di dashboard Supabase: Project Settings → API → Project URL.
+                    Masukkan URL endpoint database / backend aplikasi tujuan.
                   </p>
                 </div>
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                    Anon / Public Key Supabase Aplikasi Lain
+                    Kunci Akses (API Key / Token) Aplikasi Lain
                   </label>
                   <input
                     type="password"
@@ -727,7 +727,7 @@ END $$;`;
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-indigo-900/20 focus:border-indigo-900 outline-none transition-all placeholder:text-slate-400"
                   />
                   <p className="text-[10px] text-slate-400 mt-1 m-0">
-                    Dapat dilihat di dashboard Supabase: Project Settings → API → Project API Keys (anon/public).
+                    Kunci otentikasi publik / token untuk komunikasi antar database.
                   </p>
                 </div>
 
@@ -847,26 +847,26 @@ END $$;`;
                 </div>
               </form>
 
-              {/* SQL Schema Accordion for External Supabase */}
+              {/* Schema Accordion for External Database */}
               <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
                     <Database size={13} className="text-slate-500" />
-                    Skema SQL Supabase untuk Aplikasi Lain
+                    Struktur Data Tabel untuk Aplikasi Lain
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowSqlGuide(!showSqlGuide)}
                     className="text-[10px] font-bold text-blue-900 hover:underline cursor-pointer"
                   >
-                    {showSqlGuide ? 'Sembunyikan' : 'Lihat Skema SQL'}
+                    {showSqlGuide ? 'Sembunyikan' : 'Lihat Struktur Data'}
                   </button>
                 </div>
 
                 {showSqlGuide && (
                   <div className="space-y-2 pt-1">
                     <p className="text-[10px] text-slate-500 leading-relaxed m-0">
-                      Jalankan skema ini di <strong>SQL Editor</strong> database Supabase aplikasi Anda yang satu lagi agar tabel dan fitur realtime replication siap digunakan:
+                      Gunakan struktur data ini di database aplikasi Anda yang satu lagi agar tabel dan fitur sinkronisasi realtime siap digunakan:
                     </p>
                     <div className="relative">
                       <pre className="p-2.5 rounded-lg bg-slate-950 text-emerald-400 text-[10px] font-mono overflow-x-auto max-h-36 leading-relaxed select-all">
@@ -878,7 +878,7 @@ END $$;`;
                         className="absolute top-2 right-2 px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold flex items-center gap-1 backdrop-blur-xs transition-all cursor-pointer"
                       >
                         {copiedSql ? <Check size={11} className="text-emerald-300" /> : <Copy size={11} />}
-                        <span>{copiedSql ? 'Tersalin' : 'Salin SQL'}</span>
+                        <span>{copiedSql ? 'Tersalin' : 'Salin Struktur'}</span>
                       </button>
                     </div>
                   </div>

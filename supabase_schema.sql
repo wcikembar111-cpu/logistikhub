@@ -2,7 +2,26 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
+  username TEXT UNIQUE,
+  pin TEXT,
+  role TEXT DEFAULT 'admin',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- =================================================================
+-- SKEMA TABEL USER & PIN LOGIN ADMIN (KHUSUS ADMIN)
+-- =================================================================
+CREATE TABLE IF NOT EXISTS public.admin_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(100) UNIQUE NOT NULL,
+    pin VARCHAR(50) NOT NULL,
+    nama_lengkap VARCHAR(255) DEFAULT 'Administrator',
+    email VARCHAR(255),
+    role VARCHAR(50) DEFAULT 'admin', -- 'admin', 'superadmin'
+    is_active BOOLEAN DEFAULT true,
+    last_login TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS links (
@@ -121,9 +140,17 @@ CREATE TABLE IF NOT EXISTS public.broadcast_messages (
 );
 
 -- Insert admin user jika belum ada
-INSERT INTO users (email, password) 
-VALUES ('admin@admin.com', 'Kino.2026') 
+INSERT INTO users (email, password, username, pin, role) 
+VALUES ('admin@admin.com', 'Kino.2026', 'admin', '089739', 'admin') 
 ON CONFLICT (email) DO NOTHING;
+
+-- Seed Admin Users dengan Username dan PIN (Khusus Admin)
+INSERT INTO public.admin_users (username, pin, nama_lengkap, email, role)
+VALUES 
+  ('admin', '089739', 'Administrator Logistics', 'admin@admin.com', 'admin'),
+  ('dede', '089739', 'Dede Suparman', 'dede.suparman@kino.co.id', 'admin')
+ON CONFLICT (username) DO UPDATE 
+SET pin = EXCLUDED.pin, nama_lengkap = EXCLUDED.nama_lengkap;
 
 -- Insert default announcements jika belum ada
 INSERT INTO settings (id, messages) 
@@ -249,6 +276,7 @@ ALTER TABLE links DISABLE ROW LEVEL SECURITY;
 ALTER TABLE todos DISABLE ROW LEVEL SECURITY;
 ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.jenis DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tujuan DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pengirim DISABLE ROW LEVEL SECURITY;
@@ -261,6 +289,7 @@ ALTER TABLE public.retur_inventory DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.monitoring_pemusnahan DISABLE ROW LEVEL SECURITY;
 
 -- Berikan izin akses penuh ke anon & authenticated
+GRANT ALL ON TABLE public.admin_users TO anon, authenticated;
 GRANT ALL ON TABLE public.broadcast_messages TO anon, authenticated;
 GRANT ALL ON TABLE public.retur_inventory TO anon, authenticated;
 GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;

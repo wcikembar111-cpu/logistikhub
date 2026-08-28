@@ -18,6 +18,7 @@ import { LinkData, MainToolTab } from './types';
 const BroadcastModal = lazy(() => import('./components/broadcast/BroadcastModal').then(m => ({ default: m.BroadcastModal })));
 const LoginModal = lazy(() => import('./components/LoginModal').then(m => ({ default: m.LoginModal })));
 const LinkModal = lazy(() => import('./components/LinkModal').then(m => ({ default: m.LinkModal })));
+const AdminUserModal = lazy(() => import('./components/AdminUserModal').then(m => ({ default: m.AdminUserModal })));
 
 export default function App() {
   // 6-Digit PIN Screen Lock State
@@ -49,7 +50,7 @@ export default function App() {
     incomingNewTodo,
     dismissIncomingTodo
   } = useTodos();
-  const { isAdmin, logout } = useAuth();
+  const { user, role, isAdmin, isSuperAdmin, isOperator, logout } = useAuth();
   
   // Realtime Broadcast Hook
   const { 
@@ -77,6 +78,7 @@ export default function App() {
 
   const [showLogin, setShowLogin] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showAdminUserModal, setShowAdminUserModal] = useState(false);
   const [activeWorkspaceTool, setActiveWorkspaceTool] = useState<MainToolTab>('qr-generator');
   const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
@@ -90,16 +92,19 @@ export default function App() {
   }, [links]);
 
   const handleOpenAddLink = () => {
+    if (!isSuperAdmin) return;
     setEditingLink(null);
     setShowLinkModal(true);
   };
 
   const handleOpenEditLink = (link: LinkData) => {
+    if (!isSuperAdmin) return;
     setEditingLink(link);
     setShowLinkModal(true);
   };
 
   const handleSaveLink = async (data: Omit<LinkData, 'id'>) => {
+    if (!isSuperAdmin) return;
     if (editingLink) {
       await updateLink(editingLink.id, data);
     } else {
@@ -150,10 +155,13 @@ export default function App() {
           {currentView === 'home' ? (
             <>
               <Hero 
+                user={user}
                 isAdmin={isAdmin} 
-                onLogin={() => setShowLogin(true)} 
+                isSuperAdmin={isSuperAdmin}
+                isOperator={isOperator}
                 onLogout={logout} 
                 onLockApp={handleLockApplication}
+                onManageUsers={isAdmin ? () => setShowAdminUserModal(true) : undefined}
                 sessionTimeoutMinutes={timeoutMinutes}
                 onChangeSessionTimeout={updateTimeoutMinutes}
                 todos={todos}
@@ -163,10 +171,15 @@ export default function App() {
               <LinkGrid 
                 links={links} 
                 loading={linksLoading}
-                isAdmin={isAdmin} 
+                isAdmin={isAdmin}
+                isSuperAdmin={isSuperAdmin}
                 onAdd={handleOpenAddLink}
                 onEdit={handleOpenEditLink}
-                onDelete={deleteLink}
+                onDelete={(id) => {
+                  if (!isSuperAdmin) return;
+                  deleteLink(id);
+                }}
+                onManageUsers={() => setShowAdminUserModal(true)}
               />
 
               <ToolsGrid 
@@ -267,6 +280,12 @@ export default function App() {
             existingCategories={existingCategories}
             onClose={() => setShowLinkModal(false)}
             onSave={handleSaveLink}
+          />
+        )}
+
+        {showAdminUserModal && (
+          <AdminUserModal 
+            onClose={() => setShowAdminUserModal(false)} 
           />
         )}
       </Suspense>

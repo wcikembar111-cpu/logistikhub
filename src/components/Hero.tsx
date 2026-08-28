@@ -1,15 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink, KeyRound, Timer, LogOut, Moon, Sun, Sunrise, Sunset, Clock, Sparkles, Compass } from 'lucide-react';
+import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink, KeyRound, Timer, LogOut, Moon, Sun, Sunrise, Sunset, Clock, Sparkles, Compass, Users, ShieldCheck } from 'lucide-react';
 import { TodoData } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
 import { TIMEOUT_OPTIONS } from '../utils/pinAuth';
 import { PopyMaternityCountdown } from './countdown/PopyMaternityCountdown';
 
 interface HeroProps {
+  user?: {
+    username?: string;
+    nama?: string;
+    nama_lengkap?: string;
+    role?: string;
+    email?: string;
+  } | null;
   isAdmin: boolean;
-  onLogin: () => void;
-  onLogout: () => void;
+  isSuperAdmin?: boolean;
+  isOperator?: boolean;
+  onLogin?: () => void;
+  onLogout?: () => void;
   onLockApp?: () => void;
+  onManageUsers?: () => void;
   sessionTimeoutMinutes?: number;
   onChangeSessionTimeout?: (minutes: number) => void;
   todos?: TodoData[];
@@ -26,10 +36,14 @@ interface PrayerJadwal {
 }
 
 export function Hero({ 
+  user,
   isAdmin, 
+  isSuperAdmin,
+  isOperator,
   onLogin, 
   onLogout, 
   onLockApp, 
+  onManageUsers,
   sessionTimeoutMinutes = 15,
   onChangeSessionTimeout,
   todos = [], 
@@ -49,6 +63,79 @@ export function Hero({
 
   // Modal Perbesar Foto Profil & Detail Kontak
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+  // Dynamic user profile resolution
+  const currentUsername = (user?.username || '').toLowerCase();
+  const isDedeUser = currentUsername === 'dede' || user?.nama?.toLowerCase().includes('dede') || user?.nama_lengkap?.toLowerCase().includes('dede');
+  const isSuperAdminUser = isSuperAdmin || (user?.role || '').toLowerCase() === 'superadmin' || currentUsername === 'superadmin';
+  const isAdminUser = !isSuperAdminUser && (isAdmin || (user?.role || '').toLowerCase() === 'admin' || currentUsername === 'admin');
+  const isOperatorUser = isOperator || (user?.role || '').toLowerCase() === 'operator';
+
+  // Resolved full name
+  const resolvedFullName = user?.nama_lengkap || user?.nama || (
+    isSuperAdminUser ? 'Super Administrator' :
+    isDedeUser ? 'Dede Suparman' :
+    isAdminUser ? 'Administrator Logistics' :
+    isOperatorUser ? 'Operator Logistik' :
+    user?.username ? `@${user.username}` : 'Administrator'
+  );
+
+  // Resolved email
+  const resolvedEmail = user?.email || (
+    isSuperAdminUser ? 'superadmin@kino.co.id' :
+    isDedeUser ? 'dede.suparman@kino.co.id' :
+    isAdminUser ? 'admin@kino.co.id' :
+    user?.username ? `${user.username}@kino.co.id` : 'user@kino.co.id'
+  );
+
+  // Dynamic role title and badge
+  const roleBadgeInfo = isSuperAdminUser
+    ? {
+        label: 'Super Admin (Full Akses)',
+        shortLabel: 'Super Admin',
+        colorClass: 'bg-purple-100 text-purple-900 border-purple-300',
+        icon: '👑',
+        gradient: 'from-purple-600 to-indigo-700'
+      }
+    : isDedeUser
+    ? {
+        label: 'Logistik Supervisor & Developer',
+        shortLabel: 'Supervisor',
+        colorClass: 'bg-blue-100 text-blue-900 border-blue-300',
+        icon: '🛡️',
+        gradient: 'from-blue-600 to-indigo-800'
+      }
+    : isAdminUser
+    ? {
+        label: 'Administrator Logistics',
+        shortLabel: 'Admin',
+        colorClass: 'bg-blue-100 text-blue-900 border-blue-300',
+        icon: '🛡️',
+        gradient: 'from-blue-600 to-cyan-700'
+      }
+    : isOperatorUser
+    ? {
+        label: 'Operator Logistik',
+        shortLabel: 'Operator',
+        colorClass: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+        icon: '👤',
+        gradient: 'from-emerald-600 to-teal-700'
+      }
+    : {
+        label: (user?.role || 'User').toUpperCase(),
+        shortLabel: (user?.role || 'User').toUpperCase(),
+        colorClass: 'bg-slate-100 text-slate-900 border-slate-300',
+        icon: '👤',
+        gradient: 'from-slate-600 to-slate-800'
+      };
+
+  const userInitials = (resolvedFullName || '')
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || user?.username?.slice(0, 2).toUpperCase() || 'AD';
 
   // Modal Jadwal Sholat Lengkap
   const [showPrayerModal, setShowPrayerModal] = useState(false);
@@ -167,7 +254,9 @@ export function Hero({
       if (hour < 11) greet = 'Selamat Pagi';
       else if (hour < 15) greet = 'Selamat Siang';
       else if (hour < 18) greet = 'Selamat Sore';
-      setGreeting(`${greet}, Rekan!`);
+      
+      const userFirstName = resolvedFullName ? resolvedFullName.split(' ')[0].toUpperCase() : 'REKAN';
+      setGreeting(`${greet.toUpperCase()}, ${userFirstName}!`);
 
       // Cek apakah waktu sholat tiba (per detik ke-00)
       if (now.getSeconds() === 0 && prayerTimes) {
@@ -588,49 +677,71 @@ export function Hero({
               <X size={18} />
             </button>
 
-            {/* Foto Perbesar */}
+            {/* Foto / Avatar Perbesar */}
             <div className="relative inline-block mx-auto mb-4 group">
-              <div className="p-1 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-amber-500 shadow-xl">
-                <img 
-                  src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
-                  alt="Dede Suparman" 
-                  className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl object-cover border-4 border-white shadow-inner transition-transform duration-300 hover:scale-105"
-                />
-              </div>
-              <span className="absolute bottom-2 right-2 bg-blue-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md flex items-center gap-1 border border-blue-700">
-                <ZoomIn size={12} /> HD Photo
+              {isDedeUser ? (
+                <div className="p-1 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-amber-500 shadow-xl">
+                  <img 
+                    src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
+                    alt={resolvedFullName} 
+                    className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl object-cover border-4 border-white shadow-inner transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+              ) : (
+                <div className={`w-48 h-48 sm:w-56 sm:h-56 rounded-3xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-4 border-white shadow-xl transition-transform duration-300 hover:scale-105 p-4 text-center`}>
+                  <span className="text-5xl sm:text-6xl mb-2 drop-shadow-md">{roleBadgeInfo.icon}</span>
+                  <span className="text-2xl sm:text-3xl font-black tracking-wider uppercase drop-shadow-sm">
+                    {userInitials}
+                  </span>
+                  <span className="text-xs font-bold mt-1 text-white/90 bg-black/20 px-2.5 py-0.5 rounded-full">
+                    @{user?.username || currentUsername || 'user'}
+                  </span>
+                </div>
+              )}
+              <span className="absolute bottom-2 right-2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md flex items-center gap-1 border border-slate-700">
+                <ShieldCheck size={12} className="text-emerald-400" /> Terverifikasi
               </span>
             </div>
 
             {/* Detail Nama & Peran */}
             <h2 className="text-xl sm:text-2xl font-black text-slate-800 m-0 uppercase tracking-tight">
-              Dede Suparman
+              {resolvedFullName}
             </h2>
-            <p className="text-xs sm:text-sm font-extrabold text-blue-900 bg-blue-50 border border-blue-200 px-3.5 py-1 rounded-full inline-block mt-2 mb-4 shadow-2xs">
-              Logistik Supervisor & Developer
-            </p>
+            <div className="flex items-center justify-center gap-2 mt-2 mb-4 flex-wrap">
+              <span className={`text-xs sm:text-sm font-extrabold border px-3.5 py-1 rounded-full inline-flex items-center gap-1.5 shadow-2xs ${roleBadgeInfo.colorClass}`}>
+                <span>{roleBadgeInfo.icon}</span>
+                <span>{roleBadgeInfo.label}</span>
+              </span>
+              {user?.username && (
+                <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
+                  @{user.username}
+                </span>
+              )}
+            </div>
 
             {/* Detail Kontak Lengkap */}
             <div className="space-y-2.5 text-left bg-slate-50/90 p-4 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-700">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-emerald-400 transition-colors">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <MessageCircle size={16} />
+              {isDedeUser && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-emerald-400 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <MessageCircle size={16} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">WhatsApp / Telp</div>
+                      <div className="font-extrabold text-slate-800 text-xs sm:text-sm">081911934000</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">WhatsApp / Telp</div>
-                    <div className="font-extrabold text-slate-800 text-xs sm:text-sm">081911934000</div>
-                  </div>
+                  <a 
+                    href="https://wa.me/6281911934000" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-2xs"
+                  >
+                    Chat <ExternalLink size={11} />
+                  </a>
                 </div>
-                <a 
-                  href="https://wa.me/6281911934000" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all flex items-center gap-1 shadow-2xs"
-                >
-                  Chat <ExternalLink size={11} />
-                </a>
-              </div>
+              )}
 
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-blue-400 transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -638,59 +749,63 @@ export function Hero({
                     <Mail size={16} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Email Kantor (Kino)</div>
-                    <div className="font-extrabold text-slate-800 text-xs truncate">dede.suparman@kino.co.id</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Email Akun / Kantor</div>
+                    <div className="font-extrabold text-slate-800 text-xs truncate">{resolvedEmail}</div>
                   </div>
                 </div>
                 <a 
-                  href="mailto:dede.suparman@kino.co.id" 
+                  href={`mailto:${resolvedEmail}`} 
                   className="px-3 py-1.5 rounded-lg bg-blue-900 hover:bg-blue-950 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
                 >
                   Kirim <ExternalLink size={11} />
                 </a>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-400 transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
-                    <Mail size={16} />
+              {isDedeUser && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-400 transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                      <Mail size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">Email Pribadi</div>
+                      <div className="font-extrabold text-slate-800 text-xs truncate">dedesuparman333@gmail.com</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Email Pribadi</div>
-                    <div className="font-extrabold text-slate-800 text-xs truncate">dedesuparman333@gmail.com</div>
-                  </div>
+                  <a 
+                    href="mailto:dedesuparman333@gmail.com" 
+                    className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
+                  >
+                    Kirim <ExternalLink size={11} />
+                  </a>
                 </div>
-                <a 
-                  href="mailto:dedesuparman333@gmail.com" 
-                  className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
-                >
-                  Kirim <ExternalLink size={11} />
-                </a>
-              </div>
+              )}
 
               <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                 <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                   <MapPin size={16} />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Lokasi / Wilayah</div>
-                  <div className="font-extrabold text-slate-800 text-xs">Kabupaten Sukabumi, Jawa Barat</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Lokasi / Divisi</div>
+                  <div className="font-extrabold text-slate-800 text-xs">Kino Logistics Center, Sukabumi</div>
                 </div>
               </div>
             </div>
 
             <div className="mt-5 flex gap-2">
-              <a 
-                href="https://wa.me/6281911934000" 
-                target="_blank" 
-                rel="noreferrer"
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
-              >
-                <MessageCircle size={15} /> Hubungi WhatsApp
-              </a>
+              {isDedeUser && (
+                <a 
+                  href="https://wa.me/6281911934000" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <MessageCircle size={15} /> Hubungi WhatsApp
+                </a>
+              )}
               <button 
                 onClick={() => setShowPhotoModal(false)}
-                className="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs transition-all cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs transition-all cursor-pointer"
               >
                 Tutup
               </button>
@@ -709,20 +824,29 @@ export function Hero({
               <div 
                 onClick={() => setShowPhotoModal(true)}
                 className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300"
-                title="Klik untuk perbesar foto profil & lihat detail kontak"
+                title="Klik untuk perbesar profil & lihat detail akun"
               >
-                <img 
-                  src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
-                  alt="Dede Suparman" 
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105"
-                />
+                {isDedeUser ? (
+                  <img 
+                    src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
+                    alt={resolvedFullName} 
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105`}>
+                    <span className="text-xl sm:text-2xl drop-shadow-xs">{roleBadgeInfo.icon}</span>
+                    <span className="text-[10px] sm:text-[11px] font-black tracking-wider uppercase mt-0.5 opacity-90">
+                      {userInitials}
+                    </span>
+                  </div>
+                )}
                 <div className="absolute inset-0 rounded-2xl bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
                   <span className="bg-slate-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                    <ZoomIn size={9} /> Zoom
+                    <ZoomIn size={9} /> Detail
                   </span>
                 </div>
                 <span className="absolute -bottom-1 -right-1 bg-white border border-slate-200 rounded-full w-6 h-6 flex items-center justify-center text-[10px] shadow-xs">
-                  👋
+                  {roleBadgeInfo.icon}
                 </span>
               </div>
             </div>
@@ -733,48 +857,49 @@ export function Hero({
               </h1>
               
               <div className="flex items-center gap-2 flex-wrap mt-0.5 mb-1">
-                <span className="font-black text-slate-800 text-xs sm:text-sm uppercase">Dede Suparman</span>
-                <span className="bg-blue-50 text-blue-900 border border-blue-200 text-[9px] sm:text-[10px] font-bold py-0.5 px-2 uppercase rounded-full shadow-2xs">
-                  Logistik Supervisor & Developer
+                <span className="font-black text-slate-800 text-xs sm:text-sm uppercase tracking-tight">
+                  {resolvedFullName}
+                </span>
+                {user?.username && (
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded-md">
+                    @{user.username}
+                  </span>
+                )}
+                <span className={`${roleBadgeInfo.colorClass} border text-[9px] sm:text-[10px] font-extrabold py-0.5 px-2 uppercase rounded-full shadow-2xs flex items-center gap-1`}>
+                  <span>{roleBadgeInfo.icon}</span>
+                  <span>{roleBadgeInfo.label}</span>
                 </span>
               </div>
 
-              {/* Sembunyikan Kontak Secara Default untuk Memperkecil Area */}
+              {/* Toggle Sembunyikan/Tampilkan Kontak */}
               {showContacts ? (
                 <div className="flex items-center gap-1.5 flex-wrap mt-1.5 animate-fade-in">
-                  <a 
-                    href="https://wa.me/6281911934000" 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200 transition-all"
-                    title="Hubungi WhatsApp"
-                  >
-                    <MessageCircle size={11} className="text-emerald-600 shrink-0" />
-                    <span>081911934000</span>
-                  </a>
+                  {isDedeUser && (
+                    <a 
+                      href="https://wa.me/6281911934000" 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200 transition-all"
+                      title="Hubungi WhatsApp"
+                    >
+                      <MessageCircle size={11} className="text-emerald-600 shrink-0" />
+                      <span>081911934000</span>
+                    </a>
+                  )}
 
                   <a 
-                    href="mailto:dede.suparman@kino.co.id" 
+                    href={`mailto:${resolvedEmail}`} 
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-950 text-[10px] font-bold border border-blue-200 transition-all"
-                    title="Email Kantor Kino"
+                    title="Email Akun"
                   >
                     <Mail size={11} className="text-blue-900 shrink-0" />
-                    <span>dede.suparman@kino.co.id</span>
-                  </a>
-
-                  <a 
-                    href="mailto:dedesuparman333@gmail.com" 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold border border-slate-200 transition-all"
-                    title="Email Pribadi"
-                  >
-                    <Mail size={11} className="text-slate-600 shrink-0" />
-                    <span>dedesuparman333@gmail.com</span>
+                    <span>{resolvedEmail}</span>
                   </a>
 
                   <button 
                     onClick={() => setShowContacts(false)}
                     className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-200 text-slate-600 hover:text-slate-900 text-[9px] font-bold transition-all cursor-pointer"
-                    title="Sembunyikan Kontak"
+                    title="Sembunyikan Info Kontak"
                   >
                     <ChevronUp size={10} /> Tutup
                   </button>
@@ -783,10 +908,10 @@ export function Hero({
                 <button 
                   onClick={() => setShowContacts(true)}
                   className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-blue-900 bg-white hover:bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 transition-all cursor-pointer shadow-2xs"
-                  title="Tampilkan Kontak Person"
+                  title="Tampilkan Info Pengguna & Kontak"
                 >
                   <Mail size={11} className="text-slate-500" />
-                  <span>Lihat Kontak</span>
+                  <span>Info Kontak / Akun</span>
                   <ChevronDown size={11} />
                 </button>
               )}
@@ -863,27 +988,19 @@ export function Hero({
               </div>
             )}
 
-            {/* Countdown Cuti Melahirkan Popy & Test Preview Admin */}
+            {/* Countdown Cuti Melahirkan Popy */}
             <PopyMaternityCountdown isAdmin={isAdmin} />
 
-            {/* Tombol Login/Logout */}
-            {!isAdmin ? (
-              <button 
-                onClick={onLogin} 
-                className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-slate-700 hover:text-blue-900 bg-white hover:bg-slate-50 border border-slate-200 flex items-center gap-1 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
-                title="Login Admin (Kunci)"
+            {/* Tombol Manajemen Akun User & PIN */}
+            {onManageUsers && (
+              <button
+                type="button"
+                onClick={onManageUsers}
+                className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap active:scale-95"
+                title="Kelola Akun User & PIN 6 Digit (Database admin_users)"
               >
-                <Lock size={11} className="text-blue-900 shrink-0" />
-                <span>ADMIN LOGIN</span>
-              </button>
-            ) : (
-              <button 
-                onClick={onLogout} 
-                className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 flex items-center gap-1 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
-                title="Logout Admin"
-              >
-                <Unlock size={11} className="shrink-0" />
-                <span>LOGOUT</span>
+                <ShieldCheck size={12} className="text-blue-600 shrink-0" />
+                <span>USER & PIN</span>
               </button>
             )}
           </div>

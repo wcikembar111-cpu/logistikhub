@@ -28,18 +28,23 @@ export interface AlertDialogState {
   type?: ToastType;
 }
 
+export interface ConfirmOptions {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'danger' | 'warning' | 'info';
+  onConfirm: () => void;
+  onCancel?: () => void;
+}
+
 interface NotificationContextType {
   showToast: (title: string, message?: string, type?: ToastType) => void;
   showAlert: (title: string, message?: string, type?: ToastType) => void;
-  showConfirm: (options: {
-    title: string;
-    message: string;
-    confirmText?: string;
-    cancelText?: string;
-    type?: 'danger' | 'warning' | 'info';
-    onConfirm: () => void;
-    onCancel?: () => void;
-  }) => void;
+  showConfirm: {
+    (options: ConfirmOptions): void;
+    (title: string, message: string, onConfirm: () => void, type?: 'danger' | 'warning' | 'info'): void;
+  };
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -78,32 +83,50 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  const showConfirm = useCallback((options: {
-    title: string;
-    message: string;
-    confirmText?: string;
-    cancelText?: string;
-    type?: 'danger' | 'warning' | 'info';
-    onConfirm: () => void;
-    onCancel?: () => void;
-  }) => {
+  const showConfirm = useCallback((
+    optionsOrTitle: ConfirmOptions | string,
+    messageArg?: string,
+    onConfirmArg?: () => void,
+    typeArg?: 'danger' | 'warning' | 'info'
+  ) => {
+    let opts: ConfirmOptions;
+
+    if (typeof optionsOrTitle === 'string') {
+      opts = {
+        title: optionsOrTitle,
+        message: messageArg || '',
+        onConfirm: onConfirmArg || (() => {}),
+        type: typeArg || 'danger',
+      };
+    } else {
+      opts = optionsOrTitle || {
+        title: '',
+        message: '',
+        onConfirm: () => {},
+      };
+    }
+
     setConfirmDialog({
       isOpen: true,
-      title: options.title,
-      message: options.message,
-      confirmText: options.confirmText || 'Ya, Lanjutkan',
-      cancelText: options.cancelText || 'Batal',
-      type: options.type || 'danger',
+      title: opts.title || 'Konfirmasi',
+      message: opts.message || '',
+      confirmText: opts.confirmText || 'Ya, Lanjutkan',
+      cancelText: opts.cancelText || 'Batal',
+      type: opts.type || 'danger',
       onConfirm: () => {
         setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        options.onConfirm();
+        if (typeof opts.onConfirm === 'function') {
+          opts.onConfirm();
+        }
       },
       onCancel: () => {
         setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        if (options.onCancel) options.onCancel();
+        if (typeof opts.onCancel === 'function') {
+          opts.onCancel();
+        }
       },
     });
-  }, []);
+  }, []) as NotificationContextType['showConfirm'];
 
   // Set global fallback so any accidental native alert/confirm gets redirected to custom popup
   useEffect(() => {

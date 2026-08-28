@@ -1390,16 +1390,16 @@ export function MonitoringPemusnahanModule() {
               <span>Upload Data Excel</span>
             </button>
 
-            {/* Sync All Local Table Data to Supabase */}
+            {/* Sync All Local Table Data to Database */}
             <button
               type="button"
               onClick={handleSyncAllToSupabase}
               disabled={isUploadingBatch || dataList.length === 0}
               className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-              title="Kirim dan sinkronkan seluruh data di tabel ke database Supabase"
+              title="Kirim dan sinkronkan seluruh data di tabel ke database"
             >
               <Server size={14} className={isUploadingBatch ? 'animate-spin' : ''} />
-              <span>Sync ke Supabase</span>
+              <span>Sinkronisasi</span>
               <span className="ml-0.5 px-1.5 py-0.2 bg-blue-800 text-[10px] rounded-full font-mono">
                 {dataList.length}
               </span>
@@ -1450,7 +1450,7 @@ export function MonitoringPemusnahanModule() {
               type="button"
               onClick={() => setSqlGuideModalOpen(true)}
               className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
-              title="Skrip SQL Tabel Database Supabase"
+              title="Panduan Struktur Tabel Database"
             >
               <Code2 size={14} className="text-indigo-600" />
             </button>
@@ -2536,8 +2536,8 @@ export function MonitoringPemusnahanModule() {
                   <Database size={20} className="text-blue-300" />
                 </div>
                 <div>
-                  <h3 className="font-black text-base tracking-tight">Skrip SQL Tabel Monitoring Pemusnahan</h3>
-                  <p className="text-xs text-blue-200 font-medium">Jalankan di Supabase SQL Editor jika tabel belum dibuat atau ada kendala schema</p>
+                  <h3 className="font-black text-base tracking-tight">Skrip Struktur Tabel Monitoring Pemusnahan</h3>
+                  <p className="text-xs text-blue-200 font-medium">Jalankan di database server jika tabel belum dibuat atau ada kendala schema</p>
                 </div>
               </div>
               <button
@@ -2551,7 +2551,7 @@ export function MonitoringPemusnahanModule() {
 
             <div className="p-6 overflow-y-auto space-y-4 text-xs">
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-950 font-medium leading-relaxed">
-                💡 <span className="font-bold">Langkah Cepat:</span> Buka dashboard <b>Supabase</b> Anda &gt; menu <b>SQL Editor</b> &gt; tempel (paste) skrip di bawah ini &gt; klik <b>Run</b>.
+                💡 <span className="font-bold">Langkah Cepat:</span> Buka dashboard database Anda &gt; menu <b>Query / Database Editor</b> &gt; tempel (paste) skrip di bawah ini &gt; klik <b>Run / Eksekusi</b>.
               </div>
 
               <div className="relative group">
@@ -2638,14 +2638,14 @@ GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;`;
                   className="absolute top-3 right-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
                 >
                   {copiedSql ? <Check size={14} /> : <Copy size={14} />}
-                  <span>{copiedSql ? 'Tersalin!' : 'Salin SQL'}</span>
+                  <span>{copiedSql ? 'Tersalin!' : 'Salin Struktur'}</span>
                 </button>
               </div>
             </div>
 
             <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
               <span className="text-[11px] text-slate-500 font-medium">
-                Setelah run SQL di Supabase, klik tombol <b>Sync ke Supabase</b> di toolbar.
+                Setelah eksekusi struktur di database, klik tombol <b>Sinkronisasi</b> di toolbar.
               </span>
               <button
                 type="button"

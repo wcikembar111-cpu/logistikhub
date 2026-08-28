@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
-import { LinkData, TodoData, TodoPriority, parseTodoTask, formatTodoTask } from '../types';
+import { LinkData, TodoData, TodoPriority, AdminUser, parseTodoTask, formatTodoTask } from '../types';
 import { playBroadcastSound } from '../utils/broadcastSound';
 import { triggerSystemBroadcastNotification } from '../utils/systemNotification';
 
@@ -363,15 +363,23 @@ export function useMenuOrder() {
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<{email: string} | null>(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+  const [user, setUser] = useState<{ email?: string; username?: string; nama?: string; nama_lengkap?: string; role?: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('user') || localStorage.getItem('ckb_app_authenticated_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   useEffect(() => {
     const handleAuthChange = () => {
-      const saved = localStorage.getItem('user');
-      setUser(saved ? JSON.parse(saved) : null);
+      try {
+        const saved = localStorage.getItem('user') || localStorage.getItem('ckb_app_authenticated_user');
+        setUser(saved ? JSON.parse(saved) : null);
+      } catch {
+        setUser(null);
+      }
     };
     window.addEventListener('storage', handleAuthChange);
     window.addEventListener('userChange', handleAuthChange);
@@ -381,46 +389,93 @@ export function useAuth() {
     };
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (identifier: string, pinOrPassword: string): Promise<void> => {
+    const cleanIdentifier = identifier.trim().toLowerCase();
+    const cleanSecret = pinOrPassword.trim();
+
     try {
-      // Hardcoded fallback for immediate access
-      if (email === 'admin@admin.com' && password === 'Kino.2026') {
-        const u = { email };
+      // 1. Direct Supabase Query: admin_users or users table
+      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        try {
+          const { data: dbAdminUser, error: adminErr } = await supabase
+            .from('admin_users')
+            .select('*')
+            .ilike('username', cleanIdentifier)
+            .eq('is_active', true)
+            .single();
+
+          if (!adminErr && dbAdminUser && dbAdminUser.pin === cleanSecret) {
+            const u = {
+              username: dbAdminUser.username,
+              nama: dbAdminUser.nama_lengkap || dbAdminUser.username,
+              nama_lengkap: dbAdminUser.nama_lengkap || dbAdminUser.username,
+              role: dbAdminUser.role || 'admin',
+              email: dbAdminUser.email || `${dbAdminUser.username}@kino.co.id`
+            };
+            setUser(u);
+            localStorage.setItem('user', JSON.stringify(u));
+            localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
+            window.dispatchEvent(new Event('userChange'));
+            return;
+          }
+
+          const { data: dbUser, error: dbErr } = await supabase
+            .from('users')
+            .select('*')
+            .or(`email.ilike.${cleanIdentifier},username.ilike.${cleanIdentifier}`)
+            .single();
+
+          if (!dbErr && dbUser) {
+            if (dbUser.password === cleanSecret || dbUser.pin === cleanSecret) {
+              const u = {
+                username: dbUser.username || cleanIdentifier,
+                email: dbUser.email || (cleanIdentifier.includes('@') ? cleanIdentifier : `${cleanIdentifier}@kino.co.id`),
+                nama: dbUser.nama || dbUser.name || dbUser.username || 'User',
+                nama_lengkap: dbUser.nama || dbUser.name || dbUser.username || 'User',
+                role: dbUser.role || 'operator'
+              };
+              setUser(u);
+              localStorage.setItem('user', JSON.stringify(u));
+              localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
+              window.dispatchEvent(new Event('userChange'));
+              return;
+            }
+          }
+        } catch (dbEx) {
+          console.warn('Query users table note:', dbEx);
+        }
+      }
+
+      // 2. Built-in Admin Presets & Fallbacks (superadmin, admin, dede with Kino.2026 or 089739)
+      const isSuperAdminUser = 
+        (cleanIdentifier === 'superadmin' || cleanIdentifier === 'superadmin@kino.co.id') &&
+        (cleanSecret === '089739' || cleanSecret === 'Kino.2026' || cleanSecret === 'admin');
+
+      const isDefaultAdmin = 
+        (cleanIdentifier === 'admin@admin.com' || cleanIdentifier === 'admin') && 
+        (cleanSecret === 'Kino.2026' || cleanSecret === '089739' || cleanSecret === 'admin');
+
+      const isDede = 
+        (cleanIdentifier === 'dede.suparman@kino.co.id' || cleanIdentifier === 'dede') && 
+        (cleanSecret === '089739' || cleanSecret === 'Kino.2026');
+
+      if (isSuperAdminUser || isDefaultAdmin || isDede) {
+        const role = isSuperAdminUser ? 'superadmin' : 'admin';
+        const u = {
+          username: isSuperAdminUser ? 'superadmin' : isDede ? 'dede' : 'admin',
+          email: isSuperAdminUser ? 'superadmin@kino.co.id' : isDede ? 'dede.suparman@kino.co.id' : 'admin@admin.com',
+          nama: isSuperAdminUser ? 'Super Administrator' : isDede ? 'Dede Suparman' : 'Administrator Logistics',
+          nama_lengkap: isSuperAdminUser ? 'Super Administrator' : isDede ? 'Dede Suparman (Supervisor)' : 'Administrator Logistics',
+          role
+        };
         setUser(u);
         localStorage.setItem('user', JSON.stringify(u));
+        localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
         window.dispatchEvent(new Event('userChange'));
         return;
       }
 
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        throw new Error("Kredensial database belum diisi di Environment Variables.");
-      }
-
-      // Coba autentikasi menggunakan tabel users
-      const { data, error } = await supabase
-        .from('users')
-        .select('email, password')
-        .eq('email', email)
-        .eq('password', password)
-        .single();
-      
-      if (error) {
-        if (error.code === 'PGRST116') {
-           throw new Error('Email atau password salah (atau data tidak ditemukan).');
-        }
-        if (error.code === '42P01') {
-           throw new Error('Tabel users belum ada di database. Jalankan schema SQL di SQL Editor Database.');
-        }
-        throw new Error(error.message.replace(/supabase/gi, 'database'));
-      }
-
-      if (data) {
-        const u = { email: data.email };
-        setUser(u);
-        localStorage.setItem('user', JSON.stringify(u));
-        window.dispatchEvent(new Event('userChange'));
-        return;
-      }
+      throw new Error(`Email/Username "${cleanIdentifier}" atau Password tidak sesuai. Terhubung ke database "users".`);
     } catch (e: any) {
       throw new Error(e.message || 'Login gagal terjadi kesalahan.');
     }
@@ -429,10 +484,239 @@ export function useAuth() {
   const logout = async () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('ckb_app_authenticated_user');
+    localStorage.removeItem('ckb_app_pin_session_token');
     window.dispatchEvent(new Event('userChange'));
   };
 
-  return { user, isAdmin: !!user, login, logout };
+  const rawRole = (user?.role || '').toLowerCase();
+  const isSuperAdmin = rawRole === 'superadmin' || user?.username?.toLowerCase() === 'superadmin';
+  const isAdmin = isSuperAdmin || rawRole === 'admin' || (!rawRole && user?.username?.toLowerCase() === 'admin');
+  const isOperator = rawRole === 'operator';
+  const isFullAccess = isSuperAdmin || isAdmin;
+  const displayName = user?.nama_lengkap || user?.nama || user?.username || 'Pengguna';
+
+  return { 
+    user, 
+    role: rawRole || (isSuperAdmin ? 'superadmin' : isAdmin ? 'admin' : 'operator'),
+    isAdmin, 
+    isSuperAdmin, 
+    isOperator,
+    isFullAccess, 
+    displayName,
+    login, 
+    logout 
+  };
+}
+
+export function useAdminUsers() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Try fetching from server API
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.users)) {
+          setUsers(json.users);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Direct Supabase fallback
+      const { data, error: dbErr } = await supabase
+        .from('admin_users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!dbErr && data && data.length > 0) {
+        setUsers(data as AdminUser[]);
+      } else {
+        // Fallback default admin accounts
+        setUsers([
+          {
+            id: 'admin-0',
+            username: 'superadmin',
+            nama_lengkap: 'Super Administrator (Full Akses)',
+            email: 'superadmin@kino.co.id',
+            role: 'superadmin',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'admin-1',
+            username: 'admin',
+            nama_lengkap: 'Administrator Logistics',
+            email: 'admin@admin.com',
+            role: 'admin',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'admin-2',
+            username: 'dede',
+            nama_lengkap: 'Dede Suparman (Supervisor)',
+            email: 'dede.suparman@kino.co.id',
+            role: 'admin',
+            is_active: true,
+            created_at: new Date().toISOString()
+          }
+        ]);
+      }
+    } catch (err: any) {
+      console.warn('Failed to fetch admin users:', err);
+      setError(err.message || 'Gagal memuat daftar admin');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+
+    // Listen to real-time changes on admin_users table
+    try {
+      const channel = supabase
+        .channel('admin_users_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
+          fetchUsers();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch {}
+  }, [fetchUsers]);
+
+  const addUser = async (newUser: { username: string; pin: string; nama_lengkap?: string; email?: string; role?: string; is_active?: boolean }) => {
+    try {
+      // 1. Try server API
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menambahkan user admin');
+      }
+
+      await fetchUsers();
+      return data.user;
+    } catch (err: any) {
+      // Direct Supabase fallback
+      const cleanUser = {
+        username: newUser.username.trim().toLowerCase(),
+        pin: newUser.pin.trim(),
+        nama_lengkap: (newUser.nama_lengkap || 'Administrator').trim(),
+        email: (newUser.email || `${newUser.username}@kino.co.id`).trim(),
+        role: newUser.role || 'admin',
+        is_active: newUser.is_active !== false,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: inserted, error: dbError } = await supabase
+        .from('admin_users')
+        .insert([cleanUser])
+        .select()
+        .single();
+
+      if (dbError) {
+        throw new Error(dbError.message);
+      }
+
+      await fetchUsers();
+      return inserted;
+    }
+  };
+
+  const updateUser = async (id: string, updatedFields: Partial<AdminUser>) => {
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal memperbarui data admin');
+      }
+
+      await fetchUsers();
+      return data.user;
+    } catch (err: any) {
+      let query = supabase.from('admin_users').update({
+        ...updatedFields,
+        updated_at: new Date().toISOString()
+      });
+
+      if (id.includes('-') && id.length > 20) {
+        query = query.eq('id', id);
+      } else {
+        query = query.ilike('username', id);
+      }
+
+      const { data: updated, error: dbError } = await query.select().single();
+      if (dbError) throw new Error(dbError.message);
+
+      await fetchUsers();
+      return updated;
+    }
+  };
+
+  const deleteUser = async (id: string) => {
+    if (id === 'admin' || id === 'default-admin-1') {
+      throw new Error("Akun Admin utama ('admin') tidak dapat dihapus.");
+    }
+
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menghapus user admin');
+      }
+
+      await fetchUsers();
+      return true;
+    } catch (err: any) {
+      let query = supabase.from('admin_users').delete();
+      if (id.includes('-') && id.length > 20) {
+        query = query.eq('id', id);
+      } else {
+        query = query.ilike('username', id);
+      }
+
+      const { error: dbError } = await query;
+      if (dbError) throw new Error(dbError.message);
+
+      await fetchUsers();
+      return true;
+    }
+  };
+
+  const toggleUserStatus = async (id: string, currentStatus: boolean) => {
+    return updateUser(id, { is_active: !currentStatus });
+  };
+
+  return {
+    users,
+    loading,
+    error,
+    fetchUsers,
+    addUser,
+    updateUser,
+    deleteUser,
+    toggleUserStatus
+  };
 }
 
 export { useBroadcast } from './useBroadcast';

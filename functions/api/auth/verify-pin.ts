@@ -1,17 +1,19 @@
-// Cloudflare Pages Function for Edge PIN Verification
+// Cloudflare Pages Function for Edge User & PIN Verification
 // Reads APP_PIN from Cloudflare Pages Environment Variables (context.env.APP_PIN)
 
 interface Env {
   APP_PIN?: string;
+  APP_USER?: string;
   SESSION_SECRET?: string;
 }
 
 export async function onRequestPost(context: { request: Request; env: Env }) {
   try {
     const { request, env } = context;
-    const body = (await request.json().catch(() => ({}))) as { pin?: string };
+    const body = (await request.json().catch(() => ({}))) as { username?: string; pin?: string };
+    const username = (body.username || 'admin').trim().toLowerCase();
     const pin = body.pin;
-    const serverPin = (env.APP_PIN || '089739').trim();
+    const defaultServerPin = (env.APP_PIN || '089739').trim();
 
     if (!pin || typeof pin !== 'string') {
       return new Response(
@@ -22,11 +24,29 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     const cleanInput = pin.trim();
 
-    if (cleanInput === serverPin) {
+    // Check allowed admin accounts
+    const allowedAdmins: Record<string, { pin: string; name: string }> = {
+      admin: { pin: defaultServerPin, name: 'Administrator Logistics' },
+      dede: { pin: defaultServerPin, name: 'Dede Suparman' }
+    };
+
+    if (env.APP_USER) {
+      allowedAdmins[env.APP_USER.trim().toLowerCase()] = {
+        pin: defaultServerPin,
+        name: 'Custom Admin'
+      };
+    }
+
+    const matchedAdmin = allowedAdmins[username];
+
+    if (matchedAdmin && cleanInput === matchedAdmin.pin) {
       const issuedAt = Date.now();
       const sessionToken = btoa(
         JSON.stringify({
           valid: true,
+          username,
+          name: matchedAdmin.name,
+          role: 'admin',
           iat: issuedAt,
           exp: issuedAt + 30 * 24 * 60 * 60 * 1000,
           origin: 'cloudflare-worker'
@@ -36,7 +56,12 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'Akses PIN berhasil diverifikasi (Cloudflare Edge).',
+          message: `Login Admin berhasil sebagai ${matchedAdmin.name}.`,
+          user: {
+            username,
+            nama_lengkap: matchedAdmin.name,
+            role: 'admin'
+          },
           token: sessionToken,
           expiresIn: 30 * 24 * 60 * 60 * 1000
         }),
@@ -44,13 +69,13 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
       );
     } else {
       return new Response(
-        JSON.stringify({ success: false, message: 'PIN 6 digit tidak sesuai. Silakan coba lagi.' }),
+        JSON.stringify({ success: false, message: `Username "${username}" atau PIN tidak sesuai. Khusus Admin.` }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
   } catch {
     return new Response(
-      JSON.stringify({ success: false, message: 'Terjadi kesalahan pada verifikasi PIN.' }),
+      JSON.stringify({ success: false, message: 'Terjadi kesalahan pada verifikasi User & PIN.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

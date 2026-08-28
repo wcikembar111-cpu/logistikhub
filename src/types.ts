@@ -218,3 +218,25 @@ export interface MonitoringPemusnahanItem {
   created_at?: string;
 }
 
+export interface AdminUser {
+  id?: string;
+  username: string;
+  pin?: string;
+  nama_lengkap?: string;
+  email?: string;
+  role?: string;
+  is_active?: boolean;
+  last_login?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AuthSessionUser {
+  username: string;
+  nama_lengkap: string;
+  email?: string;
+  role: string;
+  loggedInAt?: number;
+}
+
+
