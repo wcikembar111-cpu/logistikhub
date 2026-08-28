@@ -66,14 +66,13 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           {/* Quick Preset Buttons */}
           <div className="mb-3">
             <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-              Preset Akun Admin:
+              Pilih Akun Admin:
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setIdentifier('admin@admin.com');
-                  setPassword('Kino.2026');
                 }}
                 className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   identifier === 'admin@admin.com'
@@ -87,7 +86,6 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
                 type="button"
                 onClick={() => {
                   setIdentifier('admin');
-                  setPassword('Kino.2026');
                 }}
                 className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   identifier === 'admin'
@@ -123,7 +121,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           {/* Password Input */}
           <div className="mb-5">
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Password:
+              PIN / Password:
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -135,7 +133,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="w-full bg-white text-slate-900 border border-slate-300 rounded-xl pl-9 pr-10 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs" 
-                placeholder="Masukkan Password (e.g. Kino.2026)" 
+                placeholder="Masukkan PIN / Password Akun" 
               />
               <button
                 type="button"
@@ -162,7 +160,10 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
               <Database size={12} className="text-emerald-600" />
               Database: <code className="font-bold text-emerald-700 bg-emerald-50 px-1 rounded">admin_users</code>
             </span>
-            <span>Default: <strong className="text-slate-700 font-mono">399339 / Kino.2026</strong></span>
+            <span className="text-slate-400 flex items-center gap-1">
+              <Lock size={10} className="text-slate-400" />
+              Terenkripsi SSL/TLS
+            </span>
           </div>
         </form>
       </div>

@@ -26,7 +26,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     // Check allowed admin accounts
     const allowedAdmins: Record<string, { pin: string; name: string; role: string }> = {
-      admin: { pin: defaultServerPin, name: 'DedeSuparman', role: 'superadmin' },
+      admin: { pin: '399339', name: 'DedeSuparman', role: 'superadmin' },
+      dedesuparman: { pin: '399339', name: 'DedeSuparman', role: 'superadmin' },
+      dede: { pin: '399339', name: 'DedeSuparman', role: 'superadmin' },
       popy: { pin: '123456', name: 'Popy Rinawai', role: 'admin' },
       agung: { pin: '123456', name: 'Agung Siswanto', role: 'operator' },
       semi: { pin: '123456', name: 'Semi Hidayat', role: 'operator' },

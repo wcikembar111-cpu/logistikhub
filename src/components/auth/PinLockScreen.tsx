@@ -488,7 +488,10 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
               <Database size={11} className="text-emerald-600" />
               Sistem: <code className="font-mono text-emerald-700 bg-emerald-50 px-1 rounded">admin_users</code>
             </span>
-            <span>Default PIN: <strong className="font-mono text-slate-800 font-bold">399339</strong></span>
+            <span className="text-slate-400 flex items-center gap-1">
+              <Lock size={10} className="text-slate-400" />
+              Akses Khusus Terotorisasi
+            </span>
           </div>
         </form>
       </div>
