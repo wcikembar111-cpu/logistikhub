@@ -517,61 +517,87 @@ export function useAdminUsers() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    const defaultAdmins: AdminUser[] = [
+      {
+        id: 'admin-0',
+        username: 'superadmin',
+        pin: '089739',
+        nama_lengkap: 'Super Administrator (Full Akses)',
+        email: 'superadmin@kino.co.id',
+        role: 'superadmin',
+        is_active: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'admin-1',
+        username: 'admin',
+        pin: '089739',
+        nama_lengkap: 'Administrator Logistics',
+        email: 'admin@admin.com',
+        role: 'admin',
+        is_active: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'admin-2',
+        username: 'dede',
+        pin: '089739',
+        nama_lengkap: 'Dede Suparman (Supervisor)',
+        email: 'dede.suparman@kino.co.id',
+        role: 'admin',
+        is_active: true,
+        created_at: new Date().toISOString()
+      }
+    ];
+
     try {
-      // 1. Try fetching from server API
-      const res = await fetch('/api/admin/users');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.users)) {
-          setUsers(json.users);
-          setLoading(false);
-          return;
+      let dbUsers: AdminUser[] = [];
+
+      // 1. Direct Supabase Query (Primary Cloud Source of Truth for ALL devices)
+      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        try {
+          const { data, error: dbErr } = await supabase
+            .from('admin_users')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!dbErr && data && data.length > 0) {
+            dbUsers = data as AdminUser[];
+          }
+        } catch (dbEx) {
+          console.warn('Direct Supabase fetch admin_users notice:', dbEx);
         }
       }
 
-      // 2. Direct Supabase fallback
-      const { data, error: dbErr } = await supabase
-        .from('admin_users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!dbErr && data && data.length > 0) {
-        setUsers(data as AdminUser[]);
-      } else {
-        // Fallback default admin accounts
-        setUsers([
-          {
-            id: 'admin-0',
-            username: 'superadmin',
-            nama_lengkap: 'Super Administrator (Full Akses)',
-            email: 'superadmin@kino.co.id',
-            role: 'superadmin',
-            is_active: true,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: 'admin-1',
-            username: 'admin',
-            nama_lengkap: 'Administrator Logistics',
-            email: 'admin@admin.com',
-            role: 'admin',
-            is_active: true,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: 'admin-2',
-            username: 'dede',
-            nama_lengkap: 'Dede Suparman (Supervisor)',
-            email: 'dede.suparman@kino.co.id',
-            role: 'admin',
-            is_active: true,
-            created_at: new Date().toISOString()
+      // 2. Server API fallback if direct Supabase didn't find rows or was unreachable
+      if (dbUsers.length === 0) {
+        try {
+          const res = await fetch('/api/admin/users');
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && Array.isArray(json.users) && json.users.length > 0) {
+              dbUsers = json.users;
+            }
           }
-        ]);
+        } catch (apiEx) {
+          console.warn('Server API fetch admin_users notice:', apiEx);
+        }
+      }
+
+      if (dbUsers.length > 0) {
+        // Merge so default baseline accounts always exist, but DB values take precedence
+        const map = new Map<string, AdminUser>();
+        defaultAdmins.forEach(d => map.set(d.username.toLowerCase(), d));
+        dbUsers.forEach(u => map.set(u.username.toLowerCase(), u));
+        setUsers(Array.from(map.values()));
+      } else {
+        setUsers(defaultAdmins);
       }
     } catch (err: any) {
       console.warn('Failed to fetch admin users:', err);
       setError(err.message || 'Gagal memuat daftar admin');
+      setUsers(defaultAdmins);
     } finally {
       setLoading(false);
     }
@@ -580,10 +606,10 @@ export function useAdminUsers() {
   useEffect(() => {
     fetchUsers();
 
-    // Listen to real-time changes on admin_users table
+    // Listen to real-time changes on admin_users table across all devices
     try {
       const channel = supabase
-        .channel('admin_users_realtime')
+        .channel('admin_users_realtime_sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
           fetchUsers();
         })
@@ -596,111 +622,141 @@ export function useAdminUsers() {
   }, [fetchUsers]);
 
   const addUser = async (newUser: { username: string; pin: string; nama_lengkap?: string; email?: string; role?: string; is_active?: boolean }) => {
+    const cleanUser = {
+      username: newUser.username.trim().toLowerCase(),
+      pin: newUser.pin.trim(),
+      nama_lengkap: (newUser.nama_lengkap || 'Administrator').trim(),
+      email: (newUser.email || `${newUser.username.trim().toLowerCase()}@kino.co.id`).trim(),
+      role: newUser.role || 'admin',
+      is_active: newUser.is_active !== false,
+      updated_at: new Date().toISOString()
+    };
+
+    let insertedUser: AdminUser | null = null;
+    let savedToCloud = false;
+
+    // 1. Direct Supabase write (Primary Cloud Database)
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      try {
+        const { data, error: dbError } = await supabase
+          .from('admin_users')
+          .upsert([cleanUser], { onConflict: 'username' })
+          .select()
+          .single();
+
+        if (!dbError && data) {
+          insertedUser = data as AdminUser;
+          savedToCloud = true;
+        } else if (dbError) {
+          console.warn('Direct Supabase insert note:', dbError);
+        }
+      } catch (dbEx) {
+        console.warn('Direct Supabase insert exception:', dbEx);
+      }
+    }
+
+    // 2. Also notify/save to server API
     try {
-      // 1. Try server API
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser)
+        body: JSON.stringify(cleanUser)
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal menambahkan user admin');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          if (!insertedUser) insertedUser = data.user;
+          savedToCloud = true;
+        }
       }
-
-      await fetchUsers();
-      return data.user;
-    } catch (err: any) {
-      // Direct Supabase fallback
-      const cleanUser = {
-        username: newUser.username.trim().toLowerCase(),
-        pin: newUser.pin.trim(),
-        nama_lengkap: (newUser.nama_lengkap || 'Administrator').trim(),
-        email: (newUser.email || `${newUser.username}@kino.co.id`).trim(),
-        role: newUser.role || 'admin',
-        is_active: newUser.is_active !== false,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data: inserted, error: dbError } = await supabase
-        .from('admin_users')
-        .insert([cleanUser])
-        .select()
-        .single();
-
-      if (dbError) {
-        throw new Error(dbError.message);
-      }
-
-      await fetchUsers();
-      return inserted;
+    } catch (apiErr) {
+      console.warn('Server API save note:', apiErr);
     }
+
+    if (!savedToCloud && !insertedUser) {
+      throw new Error('Gagal menyimpan user ke database Cloud Supabase.');
+    }
+
+    await fetchUsers();
+    return insertedUser || cleanUser;
   };
 
   const updateUser = async (id: string, updatedFields: Partial<AdminUser>) => {
+    let updatedResult: any = null;
+
+    // 1. Direct Supabase write
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      try {
+        let query = supabase.from('admin_users').update({
+          ...updatedFields,
+          updated_at: new Date().toISOString()
+        });
+
+        if (id.includes('-') && id.length > 20) {
+          query = query.eq('id', id);
+        } else {
+          query = query.ilike('username', id);
+        }
+
+        const { data, error: dbError } = await query.select().single();
+        if (!dbError && data) {
+          updatedResult = data;
+        }
+      } catch (dbEx) {
+        console.warn('Direct Supabase update exception:', dbEx);
+      }
+    }
+
+    // 2. Also sync to server API
     try {
       const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedFields)
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal memperbarui data admin');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user && !updatedResult) {
+          updatedResult = data.user;
+        }
       }
-
-      await fetchUsers();
-      return data.user;
-    } catch (err: any) {
-      let query = supabase.from('admin_users').update({
-        ...updatedFields,
-        updated_at: new Date().toISOString()
-      });
-
-      if (id.includes('-') && id.length > 20) {
-        query = query.eq('id', id);
-      } else {
-        query = query.ilike('username', id);
-      }
-
-      const { data: updated, error: dbError } = await query.select().single();
-      if (dbError) throw new Error(dbError.message);
-
-      await fetchUsers();
-      return updated;
+    } catch (apiErr) {
+      console.warn('Server API update note:', apiErr);
     }
+
+    await fetchUsers();
+    return updatedResult;
   };
 
   const deleteUser = async (id: string) => {
-    if (id === 'admin' || id === 'default-admin-1') {
-      throw new Error("Akun Admin utama ('admin') tidak dapat dihapus.");
+    if (id === 'admin' || id === 'superadmin' || id === 'default-admin-1' || id === 'default-superadmin-0') {
+      throw new Error("Akun Utama ('admin' / 'superadmin') tidak dapat dihapus.");
     }
 
+    // 1. Direct Supabase delete
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      try {
+        let query = supabase.from('admin_users').delete();
+        if (id.includes('-') && id.length > 20) {
+          query = query.eq('id', id);
+        } else {
+          query = query.ilike('username', id);
+        }
+        await query;
+      } catch (dbEx) {
+        console.warn('Direct Supabase delete note:', dbEx);
+      }
+    }
+
+    // 2. Server API delete
     try {
-      const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
+      await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal menghapus user admin');
-      }
+    } catch {}
 
-      await fetchUsers();
-      return true;
-    } catch (err: any) {
-      let query = supabase.from('admin_users').delete();
-      if (id.includes('-') && id.length > 20) {
-        query = query.eq('id', id);
-      } else {
-        query = query.ilike('username', id);
-      }
-
-      const { error: dbError } = await query;
-      if (dbError) throw new Error(dbError.message);
-
-      await fetchUsers();
-      return true;
-    }
+    await fetchUsers();
+    return true;
   };
 
   const toggleUserStatus = async (id: string, currentStatus: boolean) => {

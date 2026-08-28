@@ -76,6 +76,9 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
   useEffect(() => {
     const fetchRegisteredUsers = async () => {
       try {
+        let fetched: LoadedUser[] = [];
+
+        // 1. Direct Supabase Query (Primary Cloud Source of Truth)
         if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
           const { data, error } = await supabase
             .from('admin_users')
@@ -84,14 +87,40 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
             .order('username', { ascending: true });
 
           if (!error && data && data.length > 0) {
-            const mapped: LoadedUser[] = data.map(u => ({
+            fetched = data.map(u => ({
               username: u.username,
               nama: u.nama_lengkap || u.username,
               role: u.role || (u.username.toLowerCase() === 'superadmin' ? 'superadmin' : 'admin'),
               isDefault: ['superadmin', 'admin'].includes(u.username.toLowerCase())
             }));
-            setAvailableUsers(mapped);
           }
+        }
+
+        // 2. Fallback to API if direct Supabase returned empty
+        if (fetched.length === 0) {
+          try {
+            const res = await fetch('/api/admin/users');
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && Array.isArray(json.users) && json.users.length > 0) {
+                fetched = json.users
+                  .filter((u: any) => u.is_active !== false)
+                  .map((u: any) => ({
+                    username: u.username,
+                    nama: u.nama_lengkap || u.username,
+                    role: u.role || (u.username.toLowerCase() === 'superadmin' ? 'superadmin' : 'admin'),
+                    isDefault: ['superadmin', 'admin'].includes(u.username.toLowerCase())
+                  }));
+              }
+            }
+          } catch {}
+        }
+
+        if (fetched.length > 0) {
+          const mergedMap = new Map<string, LoadedUser>();
+          DEFAULT_ADMIN_PRESETS.forEach(p => mergedMap.set(p.username.toLowerCase(), p));
+          fetched.forEach(u => mergedMap.set(u.username.toLowerCase(), u));
+          setAvailableUsers(Array.from(mergedMap.values()));
         }
       } catch (e) {
         console.warn('Could not fetch dynamic admin users list, using presets.', e);
@@ -99,6 +128,20 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
     };
 
     fetchRegisteredUsers();
+
+    // Listen to real-time changes on admin_users table so other devices update instantly
+    try {
+      const channel = supabase
+        .channel('pin_screen_realtime_users')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
+          fetchRegisteredUsers();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch {}
   }, []);
 
   // Synchronize custom user mode with current username
@@ -244,8 +287,8 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {availableUsers.slice(0, 5).map((u) => {
+            <div className="max-h-[160px] overflow-y-auto pr-1 grid grid-cols-3 gap-2">
+              {availableUsers.map((u) => {
                 const isSelected = !isCustomUser && username.toLowerCase() === u.username.toLowerCase();
                 const isSuper = u.role === 'superadmin' || u.username.toLowerCase() === 'superadmin';
                 return (

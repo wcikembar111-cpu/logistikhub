@@ -872,65 +872,12 @@ export function Hero({
                 {greeting}
               </h1>
               
-              <div className="flex items-center gap-2 flex-wrap mt-0.5 mb-1">
-                <span className="font-black text-slate-800 text-xs sm:text-sm uppercase tracking-tight">
-                  {resolvedFullName}
-                </span>
-                {user?.username && (
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded-md">
-                    @{user.username}
-                  </span>
-                )}
+              <div className="flex items-center gap-2 flex-wrap mt-1">
                 <span className={`${roleBadgeInfo.colorClass} border text-[9px] sm:text-[10px] font-extrabold py-0.5 px-2 uppercase rounded-full shadow-2xs flex items-center gap-1`}>
                   <span>{roleBadgeInfo.icon}</span>
                   <span>{roleBadgeInfo.label}</span>
                 </span>
               </div>
-
-              {/* Toggle Sembunyikan/Tampilkan Kontak */}
-              {showContacts ? (
-                <div className="flex items-center gap-1.5 flex-wrap mt-1.5 animate-fade-in">
-                  {isDedeUser && (
-                    <a 
-                      href="https://wa.me/6281911934000" 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200 transition-all"
-                      title="Hubungi WhatsApp"
-                    >
-                      <MessageCircle size={11} className="text-emerald-600 shrink-0" />
-                      <span>081911934000</span>
-                    </a>
-                  )}
-
-                  <a 
-                    href={`mailto:${resolvedEmail}`} 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-950 text-[10px] font-bold border border-blue-200 transition-all"
-                    title="Email Akun"
-                  >
-                    <Mail size={11} className="text-blue-900 shrink-0" />
-                    <span>{resolvedEmail}</span>
-                  </a>
-
-                  <button 
-                    onClick={() => setShowContacts(false)}
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-200 text-slate-600 hover:text-slate-900 text-[9px] font-bold transition-all cursor-pointer"
-                    title="Sembunyikan Info Kontak"
-                  >
-                    <ChevronUp size={10} /> Tutup
-                  </button>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setShowContacts(true)}
-                  className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-blue-900 bg-white hover:bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 transition-all cursor-pointer shadow-2xs"
-                  title="Tampilkan Info Pengguna & Kontak"
-                >
-                  <Mail size={11} className="text-slate-500" />
-                  <span>Info Kontak / Akun</span>
-                  <ChevronDown size={11} />
-                </button>
-              )}
             </div>
           </div>
 
