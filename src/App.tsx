@@ -209,6 +209,7 @@ export default function App() {
             todos={todos}
             loading={todosLoading}
             isAdmin={isAdmin}
+            currentUser={user}
             isOpen={isSidebarOpen}
             onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
             onAddTodo={addTodo}
@@ -256,6 +257,7 @@ export default function App() {
             onClearAll={isAdmin ? clearAllBroadcastMessages : undefined}
             initialSenderName={replyRecipient}
             isAdmin={isAdmin}
+            currentUser={user}
             notificationPermission={notificationPermission}
             onRequestNotificationPermission={requestNotificationPermission}
             isNotificationSupported={isNotificationSupported}

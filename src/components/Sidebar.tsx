@@ -7,6 +7,7 @@ interface SidebarProps {
   todos: TodoData[];
   loading: boolean;
   isAdmin: boolean;
+  currentUser?: { email?: string; username?: string; nama?: string; nama_lengkap?: string; role?: string } | null;
   isOpen: boolean;
   onToggle: () => void;
   onAddTodo: (task: string, priority?: TodoPriority, isBlinking?: boolean, senderName?: string) => void;
@@ -19,7 +20,7 @@ interface SidebarProps {
 
 const STATUS_CYCLE: TodoData['status'][] = ['no', 'onproses', 'close'];
 
-export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, onUpdateStatus, onUpdateTodo, onDeleteTodo, onDeleteCompletedTodos, onRefresh }: SidebarProps) {
+export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle, onAddTodo, onUpdateStatus, onUpdateTodo, onDeleteTodo, onDeleteCompletedTodos, onRefresh }: SidebarProps) {
   const { showConfirm, showToast } = useNotification();
   // Filter tab: 'all' | 'priority' | 'no' | 'onproses' | 'close'
   const [filter, setFilter] = useState<'all' | 'priority' | 'no' | 'onproses' | 'close'>('no');
@@ -95,8 +96,8 @@ export function Sidebar({ todos, loading, isAdmin, isOpen, onToggle, onAddTodo, 
       showToast('Perhatian', 'Silakan ketik isi tugas terlebih dahulu', 'warning');
       return;
     }
-    const savedSenderName = localStorage.getItem('broadcast_sender_name') || (isAdmin ? 'Admin' : 'Pengguna Public Todo');
-    onAddTodo(newTask.trim(), newPriority, newIsBlinking || newPriority === 'mendesak', savedSenderName);
+    const userSenderName = currentUser?.nama_lengkap || currentUser?.nama || (currentUser?.username ? (currentUser.username.toUpperCase() === 'ADMIN' ? 'Administrator' : currentUser.username) : '') || localStorage.getItem('broadcast_sender_name') || (isAdmin ? 'Admin' : 'Pengguna Public Todo');
+    onAddTodo(newTask.trim(), newPriority, newIsBlinking || newPriority === 'mendesak', userSenderName);
     showToast('Tersimpan & Disiarkan', 'Tugas baru berhasil disimpan dan disiarkan ke seluruh perangkat!', 'success');
     setNewTask('');
     setNewPriority('rendah');

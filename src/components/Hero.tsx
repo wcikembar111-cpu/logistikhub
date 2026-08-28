@@ -49,10 +49,44 @@ export function Hero({
   todos = [], 
   onOpenTodo 
 }: HeroProps) {
+  // Dynamic user profile resolution
+  const currentUsername = (user?.username || '').toLowerCase();
+  const isDedeUser = currentUsername === 'dede' || user?.nama?.toLowerCase().includes('dede') || user?.nama_lengkap?.toLowerCase().includes('dede');
+  const isSuperAdminUser = isSuperAdmin || (user?.role || '').toLowerCase() === 'superadmin' || currentUsername === 'superadmin';
+  const isAdminUser = !isSuperAdminUser && (isAdmin || (user?.role || '').toLowerCase() === 'admin' || currentUsername === 'admin');
+  const isOperatorUser = isOperator || (user?.role || '').toLowerCase() === 'operator';
+
+  // Resolved full name of active logged-in user
+  const resolvedFullName = user?.nama_lengkap || user?.nama || (
+    isSuperAdminUser ? 'Super Administrator' :
+    isDedeUser ? 'Dede Suparman' :
+    isAdminUser ? 'Administrator Logistics' :
+    isOperatorUser ? 'Operator Logistik' :
+    user?.username ? user.username : 'Administrator'
+  );
+
+  // Active user name for the dynamic greeting sapaan
+  const greetingUserName = (
+    user?.nama_lengkap ||
+    user?.nama ||
+    (user?.username ? (user.username.toUpperCase() === 'ADMIN' ? 'ADMINISTRATOR' : user.username) : '') ||
+    (isSuperAdminUser ? 'SUPER ADMINISTRATOR' : isDedeUser ? 'DEDE SUPARMAN' : isAdminUser ? 'ADMINISTRATOR' : 'REKAN LOGISTIK')
+  ).trim();
+
+  // Helper to compute initial and live greeting based on hour and user name
+  const computeGreeting = (name: string) => {
+    const hour = new Date().getHours();
+    let greet = 'SELAMAT MALAM';
+    if (hour >= 4 && hour < 11) greet = 'SELAMAT PAGI';
+    else if (hour >= 11 && hour < 15) greet = 'SELAMAT SIANG';
+    else if (hour >= 15 && hour < 18) greet = 'SELAMAT SORE';
+    return `${greet}, ${name.toUpperCase()}!`;
+  };
+
   const [showTimeoutDropdown, setShowTimeoutDropdown] = useState(false);
   const [time, setTime] = useState('');
   const [dateStr, setDateStr] = useState('');
-  const [greeting, setGreeting] = useState('SELAMAT SIANG, REKAN!');
+  const [greeting, setGreeting] = useState(() => computeGreeting(greetingUserName));
   
   const [prayerTimes, setPrayerTimes] = useState<PrayerJadwal | null>(null);
   const [nextPrayer, setNextPrayer] = useState<{ name: string; time: string } | null>(null);
@@ -63,22 +97,6 @@ export function Hero({
 
   // Modal Perbesar Foto Profil & Detail Kontak
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-
-  // Dynamic user profile resolution
-  const currentUsername = (user?.username || '').toLowerCase();
-  const isDedeUser = currentUsername === 'dede' || user?.nama?.toLowerCase().includes('dede') || user?.nama_lengkap?.toLowerCase().includes('dede');
-  const isSuperAdminUser = isSuperAdmin || (user?.role || '').toLowerCase() === 'superadmin' || currentUsername === 'superadmin';
-  const isAdminUser = !isSuperAdminUser && (isAdmin || (user?.role || '').toLowerCase() === 'admin' || currentUsername === 'admin');
-  const isOperatorUser = isOperator || (user?.role || '').toLowerCase() === 'operator';
-
-  // Resolved full name
-  const resolvedFullName = user?.nama_lengkap || user?.nama || (
-    isSuperAdminUser ? 'Super Administrator' :
-    isDedeUser ? 'Dede Suparman' :
-    isAdminUser ? 'Administrator Logistics' :
-    isOperatorUser ? 'Operator Logistik' :
-    user?.username ? `@${user.username}` : 'Administrator'
-  );
 
   // Resolved email
   const resolvedEmail = user?.email || (
@@ -235,6 +253,11 @@ export function Hero({
   };
 
   useEffect(() => {
+    // Immediately synchronize greeting whenever active user changes
+    setGreeting(computeGreeting(greetingUserName));
+  }, [greetingUserName]);
+
+  useEffect(() => {
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -249,14 +272,7 @@ export function Hero({
       setTime(currentTimeFormatted);
       setDateStr(`${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`);
       
-      const hour = now.getHours();
-      let greet = 'Selamat Malam';
-      if (hour < 11) greet = 'Selamat Pagi';
-      else if (hour < 15) greet = 'Selamat Siang';
-      else if (hour < 18) greet = 'Selamat Sore';
-      
-      const userFirstName = resolvedFullName ? resolvedFullName.split(' ')[0].toUpperCase() : 'REKAN';
-      setGreeting(`${greet.toUpperCase()}, ${userFirstName}!`);
+      setGreeting(computeGreeting(greetingUserName));
 
       // Cek apakah waktu sholat tiba (per detik ke-00)
       if (now.getSeconds() === 0 && prayerTimes) {
@@ -284,7 +300,7 @@ export function Hero({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [prayerTimes, soundEnabled]);
+  }, [prayerTimes, soundEnabled, greetingUserName]);
 
   // Fetch Jadwal Sholat Kab. Sukabumi
   useEffect(() => {

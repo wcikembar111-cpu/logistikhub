@@ -43,6 +43,7 @@ interface BroadcastModalProps {
   onClearAll?: () => Promise<void>;
   initialSenderName?: string;
   isAdmin?: boolean;
+  currentUser?: { email?: string; username?: string; nama?: string; nama_lengkap?: string; role?: string } | null;
   notificationPermission?: NotificationPermission;
   onRequestNotificationPermission?: () => Promise<any>;
   isNotificationSupported?: boolean;
@@ -65,6 +66,7 @@ export function BroadcastModal({
   onClearAll,
   initialSenderName,
   isAdmin,
+  currentUser,
   notificationPermission,
   onRequestNotificationPermission,
   isNotificationSupported = true,
@@ -77,9 +79,32 @@ export function BroadcastModal({
   const { showToast, showConfirm } = useNotification();
   const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'database_sync'>('compose');
 
+  // Dynamic user profile resolution for active logged-in user
+  const currentUsername = (currentUser?.username || '').toLowerCase();
+  const isSuperAdminUser = (currentUser?.role || '').toLowerCase() === 'superadmin' || currentUsername === 'superadmin';
+  const isDedeUser = currentUsername === 'dede' || currentUser?.nama?.toLowerCase().includes('dede') || currentUser?.nama_lengkap?.toLowerCase().includes('dede');
+  const isAdminUser = !isSuperAdminUser && ((currentUser?.role || '').toLowerCase() === 'admin' || currentUsername === 'admin');
+  const isOperatorUser = (currentUser?.role || '').toLowerCase() === 'operator';
+
+  const activeUserDisplayName = currentUser?.nama_lengkap || currentUser?.nama || (
+    isSuperAdminUser ? 'Super Administrator' :
+    isDedeUser ? 'Dede Suparman' :
+    isAdminUser ? 'Administrator Logistics' :
+    isOperatorUser ? 'Operator Logistik' :
+    currentUser?.username ? (currentUser.username.toUpperCase() === 'ADMIN' ? 'Administrator' : currentUser.username) : ''
+  );
+
   const [senderName, setSenderName] = useState<string>(() => {
+    if (activeUserDisplayName) return activeUserDisplayName;
     return localStorage.getItem('broadcast_sender_name') || 'Pos Logistik 1';
   });
+
+  // Automatically sync sender name with the logged-in user whenever modal opens or active user changes
+  useEffect(() => {
+    if (activeUserDisplayName) {
+      setSenderName(activeUserDisplayName);
+    }
+  }, [activeUserDisplayName, isOpen]);
 
   const [messageText, setMessageText] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
@@ -477,9 +502,16 @@ END $$;`;
 
               {/* Input Nama Pengirim */}
               <div>
-                <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
-                  Nama Pengirim / Pos
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Nama Pengirim / Pos
+                  </label>
+                  {activeUserDisplayName && (
+                    <span className="text-[10px] text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-bold truncate max-w-[220px]">
+                      User Login: {activeUserDisplayName}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={senderName}
@@ -488,6 +520,58 @@ END $$;`;
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all"
                   required
                 />
+                {/* Saran / Preset Cepat Nama Pengirim */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pilihan Cepat:</span>
+                  {activeUserDisplayName && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setSenderName(activeUserDisplayName)}
+                        className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                          senderName === activeUserDisplayName
+                            ? 'bg-blue-900 text-white border-blue-900'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        {activeUserDisplayName}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSenderName(`${activeUserDisplayName} (Pos 1)`)}
+                        className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                          senderName === `${activeUserDisplayName} (Pos 1)`
+                            ? 'bg-blue-900 text-white border-blue-900'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        {activeUserDisplayName} (Pos 1)
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSenderName('Pos Logistik 1')}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                      senderName === 'Pos Logistik 1'
+                        ? 'bg-blue-900 text-white border-blue-900'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    Pos Logistik 1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSenderName('Gudang CKB')}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                      senderName === 'Gudang CKB'
+                        ? 'bg-blue-900 text-white border-blue-900'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    Gudang CKB
+                  </button>
+                </div>
               </div>
 
               {/* Input Pesan */}
