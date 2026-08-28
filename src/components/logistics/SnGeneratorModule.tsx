@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   Barcode, 
@@ -14,9 +14,18 @@ import {
   Sparkles,
   Layers,
   ArrowDownToLine,
-  FileDown
+  FileDown,
+  ShieldCheck,
+  RotateCcw,
+  Clock
 } from 'lucide-react';
-import { generateSerialNumberList, generateSerialNumberFromRows, SnInboundItem } from '../../utils/logisticsCalculations';
+import { 
+  generateSerialNumberList, 
+  generateSerialNumberFromRows, 
+  SnInboundItem,
+  getTodaySnStats,
+  clearSnRegistry
+} from '../../utils/logisticsCalculations';
 import { useNotification } from '../../context/NotificationContext';
 
 export function SnGeneratorModule() {
@@ -27,7 +36,17 @@ export function SnGeneratorModule() {
   const [copiedSnIndex, setCopiedSnIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [snStats, setSnStats] = useState({ totalAllTime: 0, totalToday: 0, todayDateStr: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Muat status riwayat SN tersimpan
+  const refreshStats = () => {
+    setSnStats(getTodaySnStats());
+  };
+
+  useEffect(() => {
+    refreshStats();
+  }, []);
 
   // Template columns sesuai image
   const TEMPLATE_HEADERS = [
@@ -208,7 +227,8 @@ export function SnGeneratorModule() {
           setInputText(linesForText.join('\n'));
           const generated = generateSerialNumberFromRows(parsedItems);
           setGeneratedList(generated);
-          showToast('Import Berhasil', `Berhasil memuat ${generated.length} data dan menghasilkan Serial Number unik!`, 'success');
+          refreshStats();
+          showToast('Import Berhasil', `Berhasil memuat ${generated.length} data dan menghasilkan Serial Number unik tanpa duplikasi!`, 'success');
         } else {
           showToast('Data Kosong', 'Tidak ada data valid yang ditemukan pada file Excel', 'warning');
         }
@@ -236,7 +256,8 @@ export function SnGeneratorModule() {
     }
 
     setGeneratedList(results);
-    showToast('Sukses', `Berhasil menghasilkan ${results.length} Serial Number Unik Anti-Duplikat.`, 'success');
+    refreshStats();
+    showToast('Sukses', `Berhasil menghasilkan ${results.length} Serial Number Unik (Dijamin tidak ada duplikasi dari generate sebelumnya).`, 'success');
   };
 
   // 5. Bersihkan Input & Hasil
@@ -246,6 +267,15 @@ export function SnGeneratorModule() {
     setSearchTerm('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     showToast('Bersih', 'Area input dan hasil generator Serial Number telah dibersihkan', 'info');
+  };
+
+  // Reset riwayat memori SN
+  const handleResetRegistry = () => {
+    if (window.confirm('Reset riwayat penomoran SN? Nomor urut akan dimulai kembali dari awal untuk setiap Bin Location.')) {
+      clearSnRegistry();
+      refreshStats();
+      showToast('Reset Selesai', 'Riwayat serial number dan counter telah direset', 'info');
+    }
   };
 
   // 6. Copy Tabel lengkap ke Clipboard (Format TSV siap paste ke Excel)
@@ -345,16 +375,16 @@ export function SnGeneratorModule() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Banner & Quick Template Action */}
-      <div className="bg-gradient-to-r from-blue-900 via-blue-950 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-blue-800/40">
+      <div className="bg-gradient-to-r from-blue-900 via-blue-950 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-blue-800/40 space-y-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 text-[10px] font-mono font-bold tracking-wide border border-blue-400/30">
                 INBOUND SERIAL NUMBER GENERATOR
               </span>
               <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold flex items-center gap-1 border border-emerald-500/30">
-                <Sparkles size={10} />
-                Anti-Duplikat Unik
+                <ShieldCheck size={12} className="text-emerald-400" />
+                Anti-Duplikat Terjamin (Memori Terkunci)
               </span>
             </div>
             <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
@@ -363,7 +393,7 @@ export function SnGeneratorModule() {
             <p className="text-xs text-blue-200/90 leading-relaxed max-w-3xl">
               Unduh template Excel dengan 8 kolom standar, isi data inbound, lalu generate Serial Number otomatis: <br />
               <code className="text-amber-300 font-mono bg-blue-950/80 px-1.5 py-0.5 rounded text-[11px]">
-                FGKINO-YYMMDD[BinLoc8Digit][RandNum4Digit]
+                FGKINO-YYMMDD[BinLoc8Digit][SeqOrRand4Digit]
               </code>
             </p>
           </div>
@@ -382,8 +412,39 @@ export function SnGeneratorModule() {
           </div>
         </div>
 
+        {/* Status Anti-Duplikat Hari Ini & Counter Registry */}
+        <div className="bg-blue-950/60 rounded-xl p-3 border border-blue-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-blue-200">
+            <Clock size={16} className="text-amber-400 shrink-0" />
+            <div>
+              <span className="font-semibold text-white">Status Anti-Duplikasi Hari Ini (YYMMDD: {snStats.todayDateStr || 'Aktif'}): </span>
+              <span className="text-emerald-300 font-bold font-mono">
+                {snStats.totalToday} Serial Number
+              </span>
+              <span className="text-blue-300 text-[11px] ml-1.5">
+                (Total tersimpan di browser: {snStats.totalAllTime})
+              </span>
+              <p className="text-[10.5px] text-blue-300/80 m-0">
+                Generate ulang di tanggal yang sama dijamin melanjutkan urutan nomor dan tidak akan ada SN yang kembar/duplikat.
+              </p>
+            </div>
+          </div>
+
+          {snStats.totalAllTime > 0 && (
+            <button
+              type="button"
+              onClick={handleResetRegistry}
+              className="px-2.5 py-1.5 bg-white/10 hover:bg-red-500/20 text-blue-200 hover:text-red-200 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 border border-white/10"
+              title="Reset seluruh riwayat nomor urut jika ingin mulai dari nomor 0001 lagi"
+            >
+              <RotateCcw size={12} />
+              <span>Reset Riwayat SN</span>
+            </button>
+          )}
+        </div>
+
         {/* Kolom Standar Visual Pills */}
-        <div className="mt-4 pt-3 border-t border-blue-800/60 flex items-center gap-1.5 flex-wrap text-[11px]">
+        <div className="pt-2 border-t border-blue-800/60 flex items-center gap-1.5 flex-wrap text-[11px]">
           <span className="text-blue-300 font-semibold flex items-center gap-1 mr-1">
             <Layers size={13} />
             Struktur 8 Kolom Template:

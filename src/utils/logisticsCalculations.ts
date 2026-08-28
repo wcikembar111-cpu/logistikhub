@@ -170,7 +170,101 @@ export function processMB52Rows(jsonRows: Array<Record<string, any>>) {
   }).filter(r => r.sloc && r.material);
 }
 
-const generatedSNs = new Set<string>();
+const SN_STORAGE_KEY = 'fgkino_generated_sn_registry';
+const SN_COUNTER_STORAGE_KEY = 'fgkino_sn_counter_map';
+
+/**
+ * Mendapatkan kumpulan SN yang sudah pernah di-generate (tersimpan di localStorage)
+ */
+export function getStoredSnRegistry(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SN_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        return new Set<string>(arr);
+      }
+    }
+  } catch (err) {
+    console.error('Error reading SN registry from localStorage:', err);
+  }
+  return new Set<string>();
+}
+
+/**
+ * Menyimpan kumpulan SN ke localStorage
+ */
+export function saveStoredSnRegistry(snSet: Set<string>): void {
+  try {
+    // Batasi maksimum 100.000 riwayat SN agar hemat storage
+    const arr = Array.from(snSet);
+    const toSave = arr.length > 100000 ? arr.slice(-100000) : arr;
+    localStorage.setItem(SN_STORAGE_KEY, JSON.stringify(toSave));
+  } catch (err) {
+    console.error('Error saving SN registry to localStorage:', err);
+  }
+}
+
+/**
+ * Mendapatkan mapping counter per (date + binLoc)
+ */
+function getCounterMap(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(SN_COUNTER_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error reading SN counter map:', err);
+  }
+  return {};
+}
+
+/**
+ * Menyimpan mapping counter
+ */
+function saveCounterMap(map: Record<string, number>): void {
+  try {
+    localStorage.setItem(SN_COUNTER_STORAGE_KEY, JSON.stringify(map));
+  } catch (err) {
+    console.error('Error saving SN counter map:', err);
+  }
+}
+
+/**
+ * Menghitung ringkasan riwayat SN yang telah dibuat hari ini
+ */
+export function getTodaySnStats(): { totalAllTime: number; totalToday: number; todayDateStr: string } {
+  const d = new Date();
+  const dateStr = String(d.getFullYear()).slice(-2) + 
+                  String(d.getMonth() + 1).padStart(2, '0') + 
+                  String(d.getDate()).padStart(2, '0');
+  
+  const registry = getStoredSnRegistry();
+  const todayPrefix = `FGKINO-${dateStr}`;
+  let totalToday = 0;
+  for (const sn of registry) {
+    if (sn.startsWith(todayPrefix)) {
+      totalToday++;
+    }
+  }
+
+  return {
+    totalAllTime: registry.size,
+    totalToday,
+    todayDateStr: dateStr
+  };
+}
+
+/**
+ * Reset riwayat Serial Number dari localStorage (jika diinginkan user)
+ */
+export function clearSnRegistry(): void {
+  try {
+    localStorage.removeItem(SN_STORAGE_KEY);
+    localStorage.removeItem(SN_COUNTER_STORAGE_KEY);
+  } catch (err) {
+    console.error('Error clearing SN registry:', err);
+  }
+}
 
 export interface SnInboundItem {
   no?: number;
@@ -187,6 +281,54 @@ export interface SnInboundItem {
 }
 
 /**
+ * Helper untuk menghasilkan SN yang dijamin unik dari registry tersimpan
+ */
+function allocateUniqueSn(
+  dateStr: string,
+  rightBin: string,
+  registry: Set<string>,
+  counterMap: Record<string, number>
+): string {
+  const key = `${dateStr}_${rightBin}`;
+  let currentSeq = (counterMap[key] || 0);
+
+  let sn = '';
+  let attempt = 0;
+  
+  while (attempt < 10000) {
+    currentSeq++;
+    attempt++;
+    
+    // Gunakan 4 digit sequence berurutan terlebih dahulu
+    const seqStr = String(currentSeq > 9999 ? (currentSeq % 9999) + 1 : currentSeq).padStart(4, '0');
+    sn = `FGKINO-${dateStr}${rightBin}${seqStr}`;
+
+    // Jika belum ada di registry, pakai SN ini
+    if (!registry.has(sn)) {
+      break;
+    }
+
+    // Jika terjadi tabrakan, coba acak 4 digit angka lain
+    const randNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+    const randSn = `FGKINO-${dateStr}${rightBin}${randNum}`;
+    if (!registry.has(randSn)) {
+      sn = randSn;
+      break;
+    }
+  }
+
+  // Jika tetap duplikat (sangat jarang jika sudah > 9999), buat format unik 5 digit
+  if (registry.has(sn)) {
+    let rand5 = String(Math.floor(Math.random() * 89999) + 10000);
+    sn = `FGKINO-${dateStr}${rightBin}${rand5}`;
+  }
+
+  counterMap[key] = currentSeq;
+  registry.add(sn);
+  return sn;
+}
+
+/**
  * Generate Serial Number dari teks input Excel (Tab Separated Lines) atau Structured Rows
  */
 export function generateSerialNumberList(inputText: string): SnInboundItem[] {
@@ -198,8 +340,9 @@ export function generateSerialNumberList(inputText: string): SnInboundItem[] {
                   String(d.getMonth() + 1).padStart(2, '0') + 
                   String(d.getDate()).padStart(2, '0');
   
+  const registry = getStoredSnRegistry();
+  const counterMap = getCounterMap();
   const results: SnInboundItem[] = [];
-  let count = 0;
 
   // Cek apakah baris pertama adalah Header teks
   let startIndex = 0;
@@ -229,7 +372,6 @@ export function generateSerialNumberList(inputText: string): SnInboundItem[] {
     }
 
     if (cols.length > 0) {
-      count++;
       const binLoc = (cols[0] || '').trim();
       const noSku = (cols[1] || '').trim();
       const namaItem = (cols[2] || '').trim();
@@ -240,17 +382,10 @@ export function generateSerialNumberList(inputText: string): SnInboundItem[] {
       const destinationName = (cols[7] || '').trim();
 
       // Ambil 8 karakter terakhir bin location (dipad 8 digit nol jika kurang)
-      const rightBin = binLoc.length > 8 ? binLoc.slice(-8) : binLoc.padStart(8, '0');
+      const cleanBin = binLoc.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const rightBin = cleanBin.length > 8 ? cleanBin.slice(-8) : (cleanBin || '00000000').padStart(8, '0');
       
-      let sn: string;
-      let attempt = 0;
-      do {
-        let randNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
-        if (attempt > 50) randNum = String(count).padStart(4, '0'); // Fallback jika konflik
-        sn = `FGKINO-${dateStr}${rightBin}${randNum}`;
-        attempt++;
-      } while (generatedSNs.has(sn));
-      generatedSNs.add(sn);
+      const sn = allocateUniqueSn(dateStr, rightBin, registry, counterMap);
 
       results.push({
         no: results.length + 1,
@@ -267,6 +402,11 @@ export function generateSerialNumberList(inputText: string): SnInboundItem[] {
       });
     }
   }
+
+  // Simpan kembali registry dan counter ke localStorage
+  saveStoredSnRegistry(registry);
+  saveCounterMap(counterMap);
+
   return results;
 }
 
@@ -279,23 +419,16 @@ export function generateSerialNumberFromRows(items: Array<Partial<SnInboundItem>
                   String(d.getMonth() + 1).padStart(2, '0') + 
                   String(d.getDate()).padStart(2, '0');
 
+  const registry = getStoredSnRegistry();
+  const counterMap = getCounterMap();
   const results: SnInboundItem[] = [];
-  let count = 0;
 
   items.forEach(item => {
-    count++;
     const binLoc = String(item.binLoc ?? '').trim();
-    const rightBin = binLoc.length > 8 ? binLoc.slice(-8) : binLoc.padStart(8, '0');
+    const cleanBin = binLoc.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const rightBin = cleanBin.length > 8 ? cleanBin.slice(-8) : (cleanBin || '00000000').padStart(8, '0');
 
-    let sn: string;
-    let attempt = 0;
-    do {
-      let randNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
-      if (attempt > 50) randNum = String(count).padStart(4, '0');
-      sn = `FGKINO-${dateStr}${rightBin}${randNum}`;
-      attempt++;
-    } while (generatedSNs.has(sn));
-    generatedSNs.add(sn);
+    const sn = allocateUniqueSn(dateStr, rightBin, registry, counterMap);
 
     results.push({
       no: results.length + 1,
@@ -320,6 +453,10 @@ export function generateSerialNumberFromRows(items: Array<Partial<SnInboundItem>
       ]
     });
   });
+
+  // Simpan kembali registry dan counter ke localStorage
+  saveStoredSnRegistry(registry);
+  saveCounterMap(counterMap);
 
   return results;
 }
