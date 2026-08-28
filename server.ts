@@ -25,12 +25,12 @@ async function startServer() {
       const defaultUrl = "https://script.google.com/macros/s/AKfycby5KFkXtBiXWEJ1G7CSLhRippGbA-k8WbV4QQFyNfur1ktnS6oNbcnsboFrBCLVXlxN/exec";
       const targetUrl = (req.body?.gasUrl || req.query?.gasUrl || defaultUrl) as string;
       const sheetName = (req.body?.sheetName || req.query?.sheetName || "Pemusnahan") as string;
-      const action = (req.body?.action || req.query?.action || "getData") as string;
+      const action = (req.body?.action || req.query?.action || "read") as string;
 
-      // Build target URL with parameters
+      // Build target URL with parameters (try action=read first as Google Apps Script expects)
       const urlObj = new URL(targetUrl);
       urlObj.searchParams.set("sheet", sheetName);
-      urlObj.searchParams.set("action", action);
+      urlObj.searchParams.set("action", "read");
 
       // Attempt 1: Fetch with GET & follow redirects
       let fetchRes = await fetch(urlObj.toString(), {
@@ -43,34 +43,38 @@ async function startServer() {
 
       let text = await fetchRes.text();
 
-      // If GET returns webhook ready msg or html, attempt POST payload
+      // If GET returns webhook ready msg or html, attempt GET with action=getdata or POST payload
       if (!text || text.includes("siap menerima POST request") || text.includes("<!DOCTYPE html>")) {
         try {
-          const postRes = await fetch(targetUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "text/plain;charset=utf-8"
-            },
-            body: JSON.stringify({
-              action: action,
-              sheet: sheetName,
-              sheetName: sheetName
-            }),
+          const urlObj2 = new URL(targetUrl);
+          urlObj2.searchParams.set("sheet", sheetName);
+          urlObj2.searchParams.set("action", "getdata");
+          const getRes2 = await fetch(urlObj2.toString(), {
+            method: "GET",
+            headers: { "Accept": "application/json" },
             redirect: "follow"
           });
-          const postText = await postRes.text();
-          if (postText && !postText.includes("<!DOCTYPE html>")) {
-            text = postText;
+          const text2 = await getRes2.text();
+          if (text2 && !text2.includes("<!DOCTYPE html>") && !text2.includes("siap menerima POST request")) {
+            text = text2;
           }
         } catch {
-          // Keep original text
+          // fallback
         }
       }
 
       // Try to parse as JSON
       try {
         const json = JSON.parse(text);
-        return res.json({ success: true, data: json, raw: text });
+        // If it's a wrapper object like { status: 'ok', data: [...] }
+        const rows = Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : (Array.isArray(json?.rows) ? json.rows : null));
+        return res.json({ 
+          success: true, 
+          data: rows || json, 
+          fullResponse: json,
+          total: rows ? rows.length : (json?.total || 0),
+          raw: text 
+        });
       } catch {
         return res.json({ success: true, text: text });
       }

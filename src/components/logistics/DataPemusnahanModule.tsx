@@ -346,62 +346,104 @@ function normalizeKey(str: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-function parseItemFromRow(row: Record<string, any>, idx: number): DataPemusnahanItem {
-  // Map various casing and naming variations from spreadsheets/GAS
-  const getVal = (possibleKeys: string[], defaultVal = '-'): string => {
-    for (const key of possibleKeys) {
-      if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
-        return String(row[key]).trim();
+function parseItemFromRow(row: Record<string, any> | any[], idx: number): DataPemusnahanItem {
+  // If row is a raw array, convert to indexed object or map directly
+  const isArr = Array.isArray(row);
+
+  const getVal = (possibleKeys: string[], colIndex: number, defaultVal = '-'): string => {
+    if (isArr) {
+      if (row[colIndex] !== undefined && row[colIndex] !== null && String(row[colIndex]).trim() !== '') {
+        return String(row[colIndex]).trim();
       }
-    }
-    // Also try normalized comparison
-    const normKeys = possibleKeys.map(k => normalizeKey(k));
-    for (const rk of Object.keys(row)) {
-      const nRk = normalizeKey(rk);
-      if (normKeys.includes(nRk) && row[rk] !== undefined && row[rk] !== null && String(row[rk]).trim() !== '') {
-        return String(row[rk]).trim();
+    } else if (typeof row === 'object' && row !== null) {
+      for (const key of possibleKeys) {
+        if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+          return String(row[key]).trim();
+        }
+      }
+      // Also try normalized comparison
+      const normKeys = possibleKeys.map(k => normalizeKey(k));
+      for (const rk of Object.keys(row)) {
+        const nRk = normalizeKey(rk);
+        if (normKeys.includes(nRk) && row[rk] !== undefined && row[rk] !== null && String(row[rk]).trim() !== '') {
+          return String(row[rk]).trim();
+        }
+      }
+      // Check numerical key fallback e.g. row[0]
+      if (row[colIndex] !== undefined && row[colIndex] !== null && String(row[colIndex]).trim() !== '') {
+        return String(row[colIndex]).trim();
       }
     }
     return defaultVal;
   };
 
-  const getNum = (possibleKeys: string[], defaultNum = 0): number => {
-    const raw = getVal(possibleKeys, '');
+  const getNum = (possibleKeys: string[], colIndex: number, defaultNum = 0): number => {
+    const raw = getVal(possibleKeys, colIndex, '');
     if (!raw) return defaultNum;
     const clean = raw.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
     const num = parseFloat(clean);
     return isNaN(num) ? defaultNum : num;
   };
 
-  const idPms = getVal(['ID Pemusnahan', 'id_pemusnahan', 'ID_Pemusnahan', 'ID PMS', 'idPemusnahan'], `PMS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(idx + 1).padStart(4, '0')}`);
-  const itemCode = getVal(['Item Code', 'item_code', 'ItemCode', 'Material', 'Kode Barang', 'SKU'], '-');
-  const namaBarang = getVal(['Nama Barang', 'nama_barang', 'NamaBarang', 'Deskripsi', 'Description', 'Material Description'], '-');
-  const kategori = getVal(['Kategori', 'kategori', 'Category'], '-');
-  const lokasi = getVal(['Lokasi', 'lokasi', 'Location', 'Bin', 'Rak'], '-');
-  const tipeLokasi = getVal(['Tipe Lokasi', 'tipe_lokasi', 'TipeLokasi', 'Location Type'], '-');
-  const qtyAwal = getNum(['Qty Awal', 'qty_awal', 'QtyAwal', 'First Qty', 'Qty Awal (Pcs)'], 0);
-  const qtyAkhir = getNum(['Qty Akhir', 'qty_akhir', 'QtyAkhir', 'Last Qty', 'Qty', 'Qty (Pcs)'], 0);
-  const uom = getVal(['UOM', 'uom', 'Satuan', 'Unit'], 'PCS');
-  const qtyConvert = getNum(['Qty Convert', 'qty_convert', 'QtyConvert', 'Qty Ctn', 'Carton'], 0);
-  const uomConvert = getVal(['UOM Convert', 'uom_convert', 'UOMConvert', 'Satuan Convert'], '-');
-  const lpnSn = getVal(['LPN / SN', 'lpn_sn', 'LPN', 'SN', 'LPN/SN', 'Pallet'], '-');
-  const batch = getVal(['Batch', 'batch', 'Kode Batch', 'Lot', 'Batch Number'], '-');
-  const vendorBatch = getVal(['Vendor Batch', 'vendor_batch', 'VendorBatch', 'Batch Vendor'], batch);
-  const sloc = getVal(['SLOC', 'sloc', 'SLoc', 'Storage Location', 'Gudang'], '8A03');
-  const expiredDate = getVal(['Expired Date', 'expired_date', 'ExpiredDate', 'ED', 'SLED', 'Kadaluarsa'], '-');
-  const kodeTujuan = getVal(['Kode Tujuan', 'kode_tujuan', 'KodeTujuan'], '-');
-  const statusQc = getVal(['Status QC', 'status_qc', 'StatusQC', 'QC'], '-');
-  const userTally = getVal(['User Tally', 'user_tally', 'UserTally', 'Tally'], '-');
-  const shelfLife = getVal(['Shelf Life', 'shelf_life', 'ShelfLife'], '-');
-  const sumber = getVal(['Sumber', 'sumber', 'Source'], '-');
-  const tujuan = getVal(['Tujuan', 'tujuan', 'Destination', 'Pengajuan'], '-');
-  const userInput = getVal(['User Input', 'user_input', 'UserInput', 'User', 'Admin'], 'Dede Administrator');
-  const tanggalUpdate = getVal(['Tanggal Update', 'tanggal_update', 'TanggalUpdate', 'Date', 'Tanggal'], new Date().toLocaleDateString('id-ID'));
-  const status = getVal(['Status', 'status'], '-');
-  const catatan = getVal(['Catatan / Note', 'catatan', 'Catatan', 'Note', 'Keterangan'], '-');
+  // The exact 26 columns in spreadsheet:
+  // 1: ID Pemusnahan (Col 0)
+  // 2: Item Code (Col 1)
+  // 3: Nama Barang (Col 2)
+  // 4: Kategori (Col 3)
+  // 5: Lokasi (Col 4)
+  // 6: Tipe Lokasi (Col 5)
+  // 7: Qty Awal (Col 6)
+  // 8: Qty Akhir (Col 7)
+  // 9: UOM (Col 8)
+  // 10: Qty Convert (Col 9)
+  // 11: UOM Convert (Col 10)
+  // 12: LPN / SN (Col 11)
+  // 13: Batch (Col 12)
+  // 14: Vendor Batch (Col 13)
+  // 15: SLOC (Col 14)
+  // 16: Expired Date (Col 15)
+  // 17: Kode Tujuan (Col 16)
+  // 18: Status QC (Col 17)
+  // 19: User Tally (Col 18)
+  // 20: Shelf Life (Col 19)
+  // 21: Sumber (Col 20)
+  // 22: Tujuan (Col 21)
+  // 23: User Input (Col 22)
+  // 24: Tanggal Update (Col 23)
+  // 25: Status (Col 24)
+  // 26: Catatan / Note (Col 25)
+
+  const idPms = getVal(['ID Pemusnahan', 'id_pemusnahan', 'ID_Pemusnahan', 'ID PMS', 'idPemusnahan', 'ID'], 0, `PMS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(idx + 1).padStart(4, '0')}`);
+  const itemCode = getVal(['Item Code', 'item_code', 'ItemCode', 'Material', 'Kode Barang', 'SKU'], 1, '-');
+  const namaBarang = getVal(['Nama Barang', 'nama_barang', 'NamaBarang', 'Deskripsi', 'Description', 'Material Description'], 2, '-');
+  const kategori = getVal(['Kategori', 'kategori', 'Category'], 3, '-');
+  const lokasi = getVal(['Lokasi', 'lokasi', 'Location', 'Bin', 'Rak'], 4, '-');
+  const tipeLokasi = getVal(['Tipe Lokasi', 'tipe_lokasi', 'TipeLokasi', 'Location Type'], 5, '-');
+  const qtyAwal = getNum(['Qty Awal', 'qty_awal', 'QtyAwal', 'First Qty', 'Qty Awal (Pcs)'], 6, 0);
+  const qtyAkhir = getNum(['Qty Akhir', 'qty_akhir', 'QtyAkhir', 'Last Qty', 'Qty', 'Qty (Pcs)'], 7, 0);
+  const uom = getVal(['UOM', 'uom', 'Satuan', 'Unit'], 8, 'PCS');
+  const qtyConvert = getNum(['Qty Convert', 'qty_convert', 'QtyConvert', 'Qty Ctn', 'Carton'], 9, 0);
+  const uomConvert = getVal(['UOM Convert', 'uom_convert', 'UOMConvert', 'Satuan Convert'], 10, '-');
+  const lpnSn = getVal(['LPN / SN', 'lpn_sn', 'LPN', 'SN', 'LPN/SN', 'Pallet'], 11, '-');
+  const batch = getVal(['Batch', 'batch', 'Kode Batch', 'Lot', 'Batch Number'], 12, '-');
+  const vendorBatch = getVal(['Vendor Batch', 'vendor_batch', 'VendorBatch', 'Batch Vendor'], 13, batch);
+  const sloc = getVal(['SLOC', 'sloc', 'SLoc', 'Storage Location', 'Gudang'], 14, '8A03');
+  const expiredDate = getVal(['Expired Date', 'expired_date', 'ExpiredDate', 'ED', 'SLED', 'Kadaluarsa'], 15, '-');
+  const kodeTujuan = getVal(['Kode Tujuan', 'kode_tujuan', 'KodeTujuan'], 16, '-');
+  const statusQc = getVal(['Status QC', 'status_qc', 'StatusQC', 'QC'], 17, '-');
+  const userTally = getVal(['User Tally', 'user_tally', 'UserTally', 'Tally'], 18, '-');
+  const shelfLife = getVal(['Shelf Life', 'shelf_life', 'ShelfLife'], 19, '-');
+  const sumber = getVal(['Sumber', 'sumber', 'Source'], 20, '-');
+  const tujuan = getVal(['Tujuan', 'tujuan', 'Destination', 'Pengajuan'], 21, '-');
+  const userInput = getVal(['User Input', 'user_input', 'UserInput', 'User', 'Admin'], 22, 'Dede Administrator');
+  const tanggalUpdate = getVal(['Tanggal Update', 'tanggal_update', 'TanggalUpdate', 'Date', 'Tanggal'], 23, new Date().toLocaleDateString('id-ID'));
+  const status = getVal(['Status', 'status'], 24, '-');
+  const catatan = getVal(['Catatan / Note', 'catatan', 'Catatan', 'Note', 'Catatan / Note', 'Keterangan'], 25, '-');
+
+  const rowObj = !isArr && typeof row === 'object' && row !== null ? row : {};
 
   return {
-    id: row.id || generateId(),
+    id: rowObj.id || generateId(),
     id_pemusnahan: idPms,
     item_code: itemCode,
     nama_barang: namaBarang,
@@ -445,8 +487,8 @@ export function DataPemusnahanModule() {
   const [selectedSloc, setSelectedSloc] = useState<string>('all');
   const [selectedUom, setSelectedUom] = useState<string>('all');
 
-  // View Mode: 'operasional' | 'ringkas' | 'lengkap'
-  const [viewMode, setViewMode] = useState<'operasional' | 'ringkas' | 'lengkap'>('operasional');
+  // View Mode: 'utama' | 'operasional' | 'lengkap'
+  const [viewMode, setViewMode] = useState<'utama' | 'operasional' | 'lengkap'>('utama');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -474,6 +516,57 @@ export function DataPemusnahanModule() {
   const [pullStatusMsg, setPullStatusMsg] = useState('');
   const [pasteRawText, setPasteRawText] = useState('');
   const [gasActiveTab, setGasActiveTab] = useState<'api' | 'paste' | 'script'>('api');
+
+  // Render badge helper for status
+  const renderStatusBadge = (statusStr?: string) => {
+    const s = String(statusStr || '-').trim();
+    const upper = s.toUpperCase();
+    if (
+      upper === 'SELESAI' || 
+      upper === 'CLOSE' || 
+      upper === 'CLOSED' || 
+      upper === 'DONE' || 
+      upper === 'ACC' || 
+      upper === 'DISETUJUI' || 
+      upper === 'SUDAH' ||
+      upper === 'OK'
+    ) {
+      return (
+        <span className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px] inline-flex items-center gap-1">
+          <CheckCircle2 size={11} className="text-emerald-600" />
+          {s}
+        </span>
+      );
+    }
+    if (
+      upper === 'PROSES' || 
+      upper === 'PENGAJUAN' || 
+      upper === 'OPEN' || 
+      upper.includes('PROSES') || 
+      upper.includes('BAP') ||
+      upper.includes('REVIEW')
+    ) {
+      return (
+        <span className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 font-bold text-[11px] inline-flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+          {s}
+        </span>
+      );
+    }
+    if (upper === 'DITOLAK' || upper === 'REJECT' || upper === 'BATAL') {
+      return (
+        <span className="px-2.5 py-1 rounded-md bg-red-50 text-red-800 border border-red-200 font-bold text-[11px] inline-flex items-center gap-1">
+          <AlertTriangle size={11} className="text-red-500" />
+          {s}
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200">
+        {s || '-'}
+      </span>
+    );
+  };
 
   // Load Initial Data from localStorage or Supabase
   useEffect(() => {
@@ -590,7 +683,7 @@ export function DataPemusnahanModule() {
           body: JSON.stringify({
             gasUrl: gasUrl.trim(),
             sheetName: sheetName.trim(),
-            action: 'getData'
+            action: 'read'
           })
         });
         if (res.ok) {
@@ -599,10 +692,18 @@ export function DataPemusnahanModule() {
             rawData = json.data;
           } else if (json.data && json.data.data && Array.isArray(json.data.data)) {
             rawData = json.data.data;
+          } else if (json.fullResponse?.data && Array.isArray(json.fullResponse.data)) {
+            rawData = json.fullResponse.data;
           } else if (json.text) {
-            // Check if returned CSV text
-            const parsedCsv = parseCsvText(json.text);
-            if (parsedCsv.length > 0) rawData = parsedCsv;
+            // Check if returned CSV text or JSON string
+            try {
+              const parsed = JSON.parse(json.text);
+              if (Array.isArray(parsed)) rawData = parsed;
+              else if (Array.isArray(parsed?.data)) rawData = parsed.data;
+            } catch {
+              const parsedCsv = parseCsvText(json.text);
+              if (parsedCsv.length > 0) rawData = parsedCsv;
+            }
           }
         }
       } catch (proxyErr) {
@@ -614,7 +715,7 @@ export function DataPemusnahanModule() {
         setPullStatusMsg('Mencoba koneksi langsung browser...');
         const urlObj = new URL(gasUrl.trim());
         urlObj.searchParams.set('sheet', sheetName.trim());
-        urlObj.searchParams.set('action', 'getData');
+        urlObj.searchParams.set('action', 'read');
 
         const directRes = await fetch(urlObj.toString(), {
           method: 'GET',
@@ -748,31 +849,31 @@ export function DataPemusnahanModule() {
 
     const exportRows = filteredItems.map((item, idx) => ({
       'No': idx + 1,
-      'ID Pemusnahan': item.id_pemusnahan,
-      'Item Code': item.item_code,
+      'Tujuan / Pengajuan': item.tujuan,
       'Nama Barang': item.nama_barang,
+      'Qty Akhir': item.qty_akhir,
+      'UOM': item.uom,
+      'Batch': item.batch,
+      'Expired Date': item.expired_date,
+      'LPN / SN': item.lpn_sn,
+      'Status': item.status,
+      'Item Code': item.item_code,
+      'ID Pemusnahan': item.id_pemusnahan,
       'Kategori': item.kategori,
       'Lokasi': item.lokasi,
       'Tipe Lokasi': item.tipe_lokasi,
       'Qty Awal': item.qty_awal,
-      'Qty Akhir': item.qty_akhir,
-      'UOM': item.uom,
       'Qty Convert': item.qty_convert,
       'UOM Convert': item.uom_convert,
-      'LPN / SN': item.lpn_sn,
-      'Batch': item.batch,
       'Vendor Batch': item.vendor_batch,
       'SLOC': item.sloc,
-      'Expired Date': item.expired_date,
       'Kode Tujuan': item.kode_tujuan,
       'Status QC': item.status_qc,
       'User Tally': item.user_tally,
       'Shelf Life': item.shelf_life,
       'Sumber': item.sumber,
-      'Tujuan': item.tujuan,
       'User Input': item.user_input,
       'Tanggal Update': item.tanggal_update,
-      'Status': item.status,
       'Catatan / Note': item.catatan
     }));
 
@@ -1316,20 +1417,20 @@ function handleRequest(e) {
           {/* View Mode Switcher */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
             <button
+              onClick={() => setViewMode('utama')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'utama' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Tampilan Utama (8 Kolom)
+            </button>
+            <button
               onClick={() => setViewMode('operasional')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'operasional' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Tampilan Operasional
-            </button>
-            <button
-              onClick={() => setViewMode('ringkas')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'ringkas' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Ringkas
+              Operasional
             </button>
             <button
               onClick={() => setViewMode('lengkap')}
@@ -1337,7 +1438,7 @@ function handleRequest(e) {
                 viewMode === 'lengkap' ? 'bg-white text-blue-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Lengkap (26 Kolom)
+              Lengkap (26 Kolom Spreadsheet)
             </button>
           </div>
 
@@ -1377,9 +1478,9 @@ function handleRequest(e) {
         </div>
       </div>
 
-      {/* 4. MAIN DATA TABLE (26 COLUMNS DENSE DESIGN) */}
+      {/* 4. MAIN DATA TABLE (CUSTOM ORDER & DENSE DESIGN) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto max-h-[580px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0 z-20 border-b border-slate-200">
               <tr>
@@ -1392,55 +1493,55 @@ function handleRequest(e) {
                     title="Pilih semua baris pada halaman ini"
                   />
                 </th>
-                <th className="p-3 whitespace-nowrap">#</th>
-                <th className="p-3 whitespace-nowrap">ID Pemusnahan</th>
-                <th className="p-3 whitespace-nowrap">Item Code</th>
+                <th className="p-3 whitespace-nowrap text-slate-400">#</th>
+
+                {/* 1. Tujuan / Pengajuan */}
+                <th className="p-3 whitespace-nowrap">Tujuan / Pengajuan</th>
+
+                {/* 2. Nama Barang */}
                 <th className="p-3 whitespace-nowrap min-w-[220px]">Nama Barang</th>
 
-                {/* Additional columns based on viewMode */}
+                {/* 3. Qty Akhir */}
+                <th className="p-3 whitespace-nowrap text-right">Qty Akhir</th>
+
+                {/* 4. UOM */}
+                <th className="p-3 whitespace-nowrap text-center">UOM</th>
+
+                {/* 5. Batch */}
+                <th className="p-3 whitespace-nowrap">Batch</th>
+
+                {/* 6. Expired Date */}
+                <th className="p-3 whitespace-nowrap">Expired Date</th>
+
+                {/* 7. LPN / SN */}
+                <th className="p-3 whitespace-nowrap">LPN / SN</th>
+
+                {/* 8. Status */}
+                <th className="p-3 whitespace-nowrap">Status</th>
+
+                {/* Operasional extra columns */}
+                {viewMode === 'operasional' && (
+                  <>
+                    <th className="p-3 whitespace-nowrap">Lokasi</th>
+                    <th className="p-3 whitespace-nowrap text-center">SLOC</th>
+                    <th className="p-3 whitespace-nowrap">User Input</th>
+                    <th className="p-3 whitespace-nowrap">Catatan</th>
+                  </>
+                )}
+
+                {/* Lengkap extra columns (all remaining 26 columns) */}
                 {viewMode === 'lengkap' && (
                   <>
+                    <th className="p-3 whitespace-nowrap">ID Pemusnahan</th>
+                    <th className="p-3 whitespace-nowrap">Item Code</th>
                     <th className="p-3 whitespace-nowrap">Kategori</th>
                     <th className="p-3 whitespace-nowrap">Lokasi</th>
                     <th className="p-3 whitespace-nowrap">Tipe Lokasi</th>
                     <th className="p-3 whitespace-nowrap text-right">Qty Awal</th>
-                  </>
-                )}
-
-                {viewMode === 'operasional' && (
-                  <th className="p-3 whitespace-nowrap">Lokasi</th>
-                )}
-
-                <th className="p-3 whitespace-nowrap text-right">Qty Akhir</th>
-                <th className="p-3 whitespace-nowrap text-center">UOM</th>
-
-                {viewMode === 'lengkap' && (
-                  <>
                     <th className="p-3 whitespace-nowrap text-right">Qty Convert</th>
                     <th className="p-3 whitespace-nowrap">UOM Convert</th>
-                  </>
-                )}
-
-                {(viewMode === 'operasional' || viewMode === 'lengkap') && (
-                  <th className="p-3 whitespace-nowrap">LPN / SN</th>
-                )}
-
-                <th className="p-3 whitespace-nowrap">Batch</th>
-
-                {viewMode === 'lengkap' && (
-                  <th className="p-3 whitespace-nowrap">Vendor Batch</th>
-                )}
-
-                <th className="p-3 whitespace-nowrap text-center">SLOC</th>
-
-                {(viewMode === 'operasional' || viewMode === 'lengkap') && (
-                  <th className="p-3 whitespace-nowrap">Expired Date</th>
-                )}
-
-                <th className="p-3 whitespace-nowrap">Tujuan / Pengajuan</th>
-
-                {viewMode === 'lengkap' && (
-                  <>
+                    <th className="p-3 whitespace-nowrap">Vendor Batch</th>
+                    <th className="p-3 whitespace-nowrap text-center">SLOC</th>
                     <th className="p-3 whitespace-nowrap">Kode Tujuan</th>
                     <th className="p-3 whitespace-nowrap">Status QC</th>
                     <th className="p-3 whitespace-nowrap">User Tally</th>
@@ -1448,8 +1549,7 @@ function handleRequest(e) {
                     <th className="p-3 whitespace-nowrap">Sumber</th>
                     <th className="p-3 whitespace-nowrap">User Input</th>
                     <th className="p-3 whitespace-nowrap">Tanggal Update</th>
-                    <th className="p-3 whitespace-nowrap">Status</th>
-                    <th className="p-3 whitespace-nowrap">Catatan</th>
+                    <th className="p-3 whitespace-nowrap">Catatan / Note</th>
                   </>
                 )}
 
@@ -1461,14 +1561,14 @@ function handleRequest(e) {
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={28} className="p-8 text-center text-slate-400">
+                  <td colSpan={30} className="p-8 text-center text-slate-400">
                     <RefreshCw size={20} className="animate-spin mx-auto text-blue-900 mb-2" />
                     Memuat data pemusnahan...
                   </td>
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={28} className="p-12 text-center text-slate-400">
+                  <td colSpan={30} className="p-12 text-center text-slate-400">
                     <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2">
                       <Flame size={24} />
                     </div>
@@ -1500,98 +1600,109 @@ function handleRequest(e) {
                       </td>
                       <td className="p-3 text-slate-400 font-mono text-[11px]">{globalIdx}</td>
                       
-                      {/* ID Pemusnahan */}
-                      <td className="p-3 font-mono font-bold text-blue-950 whitespace-nowrap">
-                        <span
-                          onClick={() => {
-                            navigator.clipboard.writeText(item.id_pemusnahan);
-                            showToast('Disalin', `ID ${item.id_pemusnahan} disalin ke clipboard`, 'info');
-                          }}
-                          className="hover:underline cursor-pointer flex items-center gap-1 group"
-                          title="Klik untuk menyalin ID"
-                        >
-                          {item.id_pemusnahan}
-                          <Copy size={11} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      {/* 1. Tujuan / Pengajuan */}
+                      <td className="p-3 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-bold text-[11px] border border-amber-200 inline-block shadow-2xs">
+                          {item.tujuan || '-'}
                         </span>
                       </td>
 
-                      {/* Item Code */}
+                      {/* 2. Nama Barang */}
+                      <td className="p-3 min-w-[200px] max-w-[280px]">
+                        <div className="font-bold text-slate-900 leading-snug line-clamp-2" title={item.nama_barang}>
+                          {item.nama_barang || '-'}
+                        </div>
+                        {item.item_code && item.item_code !== '-' && (
+                          <div className="text-[10px] font-mono text-slate-400 font-medium mt-0.5">
+                            SKU: {item.item_code}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 3. Qty Akhir */}
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <span className="font-mono font-black text-blue-900 text-sm">
+                          {Number(item.qty_akhir || 0).toLocaleString('id-ID')}
+                        </span>
+                      </td>
+
+                      {/* 4. UOM */}
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-extrabold text-[11px] border border-slate-200">
+                          {item.uom || 'PCS'}
+                        </span>
+                      </td>
+
+                      {/* 5. Batch */}
                       <td className="p-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                        {item.item_code}
+                        <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-800">
+                          {item.batch || '-'}
+                        </span>
                       </td>
 
-                      {/* Nama Barang */}
-                      <td className="p-3 font-semibold text-slate-900 max-w-[280px] truncate" title={item.nama_barang}>
-                        {item.nama_barang}
+                      {/* 6. Expired Date */}
+                      <td className="p-3 font-mono text-slate-800 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold">
+                          <Calendar size={12} className="text-slate-400 shrink-0" />
+                          <span>{item.expired_date || '-'}</span>
+                        </div>
                       </td>
 
-                      {/* View Lengkap Specific Columns */}
+                      {/* 7. LPN / SN */}
+                      <td className="p-3 font-mono font-bold text-slate-700 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100/80 text-slate-700 border border-slate-200 text-[11px]">
+                          {item.lpn_sn || '-'}
+                        </span>
+                      </td>
+
+                      {/* 8. Status */}
+                      <td className="p-3 whitespace-nowrap">
+                        {renderStatusBadge(item.status)}
+                      </td>
+
+                      {/* Operasional extra columns */}
+                      {viewMode === 'operasional' && (
+                        <>
+                          <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{item.lokasi || '-'}</td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-extrabold text-[10px] border border-blue-200">
+                              {item.sloc || '-'}
+                            </span>
+                          </td>
+                          <td className="p-3 whitespace-nowrap text-slate-700">{item.user_input || '-'}</td>
+                          <td className="p-3 max-w-[150px] truncate text-slate-600" title={item.catatan}>{item.catatan || '-'}</td>
+                        </>
+                      )}
+
+                      {/* Lengkap extra columns */}
                       {viewMode === 'lengkap' && (
                         <>
+                          <td className="p-3 font-mono font-bold text-blue-950 whitespace-nowrap">
+                            <span
+                              onClick={() => {
+                                navigator.clipboard.writeText(item.id_pemusnahan);
+                                showToast('Disalin', `ID ${item.id_pemusnahan} disalin ke clipboard`, 'info');
+                              }}
+                              className="hover:underline cursor-pointer flex items-center gap-1 group"
+                              title="Klik untuk menyalin ID"
+                            >
+                              {item.id_pemusnahan}
+                              <Copy size={11} className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono font-bold text-slate-900 whitespace-nowrap">{item.item_code}</td>
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.kategori}</td>
                           <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{item.lokasi}</td>
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.tipe_lokasi}</td>
                           <td className="p-3 text-right font-mono text-slate-600">{item.qty_awal}</td>
-                        </>
-                      )}
-
-                      {/* View Operasional Specific Columns */}
-                      {viewMode === 'operasional' && (
-                        <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{item.lokasi}</td>
-                      )}
-
-                      {/* Qty Akhir */}
-                      <td className="p-3 text-right font-mono font-extrabold text-blue-900 whitespace-nowrap">
-                        {item.qty_akhir}
-                      </td>
-
-                      {/* UOM */}
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200">
-                          {item.uom}
-                        </span>
-                      </td>
-
-                      {viewMode === 'lengkap' && (
-                        <>
                           <td className="p-3 text-right font-mono text-slate-600">{item.qty_convert}</td>
                           <td className="p-3 text-slate-600 whitespace-nowrap">{item.uom_convert}</td>
-                        </>
-                      )}
-
-                      {(viewMode === 'operasional' || viewMode === 'lengkap') && (
-                        <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{item.lpn_sn}</td>
-                      )}
-
-                      {/* Batch */}
-                      <td className="p-3 font-mono font-bold text-slate-800 whitespace-nowrap">
-                        {item.batch}
-                      </td>
-
-                      {viewMode === 'lengkap' && (
-                        <td className="p-3 font-mono text-slate-600 whitespace-nowrap">{item.vendor_batch}</td>
-                      )}
-
-                      {/* SLOC */}
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-extrabold text-[10px] border border-blue-200">
-                          {item.sloc}
-                        </span>
-                      </td>
-
-                      {(viewMode === 'operasional' || viewMode === 'lengkap') && (
-                        <td className="p-3 font-mono text-slate-700 whitespace-nowrap">{item.expired_date}</td>
-                      )}
-
-                      {/* Tujuan / Pengajuan */}
-                      <td className="p-3 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-bold text-[11px] border border-amber-200">
-                          {item.tujuan}
-                        </span>
-                      </td>
-
-                      {viewMode === 'lengkap' && (
-                        <>
+                          <td className="p-3 font-mono text-slate-600 whitespace-nowrap">{item.vendor_batch}</td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-extrabold text-[10px] border border-blue-200">
+                              {item.sloc}
+                            </span>
+                          </td>
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.kode_tujuan}</td>
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.status_qc}</td>
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.user_tally}</td>
@@ -1599,7 +1710,6 @@ function handleRequest(e) {
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.sumber}</td>
                           <td className="p-3 whitespace-nowrap text-slate-700">{item.user_input}</td>
                           <td className="p-3 whitespace-nowrap font-mono text-slate-600">{item.tanggal_update}</td>
-                          <td className="p-3 whitespace-nowrap text-slate-600">{item.status}</td>
                           <td className="p-3 max-w-[150px] truncate text-slate-600" title={item.catatan}>{item.catatan}</td>
                         </>
                       )}
@@ -2221,6 +2331,17 @@ function handleRequest(e) {
                     onChange={(e) => setFormData({ ...formData, tujuan: e.target.value })}
                     placeholder="Pengajuan Sept 26 - W1"
                     className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Status:</label>
+                  <input
+                    type="text"
+                    value={formData.status || ''}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    placeholder="Contoh: Selesai, Proses, Open"
+                    className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-blue-600 outline-none"
                   />
                 </div>
 

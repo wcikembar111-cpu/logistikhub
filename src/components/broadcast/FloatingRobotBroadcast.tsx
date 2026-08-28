@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Heart, Volume2, X, Reply, Sparkles, Send } from 'lucide-react';
+import { Heart, Volume2, X, Reply, Check } from 'lucide-react';
 import { BroadcastMessage } from '../../types';
 import { playBroadcastSound } from '../../utils/broadcastSound';
 
@@ -16,26 +15,6 @@ export function FloatingRobotBroadcast({
   onReply,
   soundEnabled
 }: FloatingRobotBroadcastProps) {
-  const [autoCloseTimer, setAutoCloseTimer] = useState<number>(25);
-
-  useEffect(() => {
-    if (!broadcast) return;
-
-    setAutoCloseTimer(25);
-    const interval = setInterval(() => {
-      setAutoCloseTimer(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onClose();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [broadcast, onClose]);
-
   if (!broadcast) return null;
 
   const timeFormatted = new Date(broadcast.created_at).toLocaleTimeString('id-ID', {
@@ -150,6 +129,7 @@ export function FloatingRobotBroadcast({
                 type="button"
                 onClick={onClose}
                 className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all cursor-pointer"
+                title="Tutup"
               >
                 <X size={15} />
               </button>
@@ -160,20 +140,6 @@ export function FloatingRobotBroadcast({
           <div className="p-4 sm:p-5 bg-gradient-to-b from-pink-50/40 via-rose-50/20 to-white">
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-pink-100 shadow-xs text-slate-800 text-sm sm:text-base font-bold leading-relaxed whitespace-pre-wrap break-words max-h-52 overflow-y-auto">
               "{broadcast.message}"
-            </div>
-
-            {/* Auto Close Timer Bar with Heart Indicator */}
-            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 font-medium px-1">
-              <span className="flex items-center gap-1 text-pink-600 font-semibold">
-                <Heart size={12} className="fill-pink-500 text-pink-500 animate-pulse" />
-                Robot menutup otomatis dalam {autoCloseTimer}s
-              </span>
-              <div className="w-24 bg-pink-100 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 transition-all duration-1000"
-                  style={{ width: `${(autoCloseTimer / 25) * 100}%` }}
-                />
-              </div>
             </div>
           </div>
 
@@ -196,10 +162,10 @@ export function FloatingRobotBroadcast({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white text-xs font-extrabold transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
-              <Heart size={13} className="fill-white" />
-              <span>Oke, Mengerti</span>
+              <Check size={14} className="stroke-[3]" />
+              <span>OK, Saya Mengerti</span>
             </button>
           </div>
         </div>
