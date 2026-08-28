@@ -60,7 +60,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         <form onSubmit={handleLogin} className="p-6 bg-white">
           <div className="mb-4 text-[11px] font-semibold text-blue-900 border border-blue-200 p-2.5 bg-blue-50 rounded-xl flex items-center gap-2">
             <ShieldCheck size={15} className="text-blue-600 shrink-0" />
-            <span>Login Administrator sistem beranda (terhubung ke tabel <strong>users</strong>)</span>
+            <span>Login Administrator sistem beranda (terhubung ke tabel <strong>admin_users</strong>)</span>
           </div>
 
           {/* Quick Preset Buttons */}
@@ -160,9 +160,9 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center gap-1">
               <Database size={12} className="text-emerald-600" />
-              Database: <code className="font-bold text-slate-700">users</code>
+              Database: <code className="font-bold text-emerald-700 bg-emerald-50 px-1 rounded">admin_users</code>
             </span>
-            <span>Default: <strong className="text-slate-700 font-mono">Kino.2026</strong></span>
+            <span>Default: <strong className="text-slate-700 font-mono">399339 / Kino.2026</strong></span>
           </div>
         </form>
       </div>

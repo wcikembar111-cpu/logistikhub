@@ -1,5 +1,5 @@
 // Secure User & PIN Authentication Utility & Inactivity Auto-Lock Manager
-// Protects the app with Username and 6-Digit PIN (Khusus Admin) with SQL Database Integration
+// Protects the app with Username and 6-Digit PIN (Khusus Admin) with SQL Database Integration (tabel admin_users)
 
 import { supabase } from '../supabase';
 
@@ -25,9 +25,11 @@ export interface PinUserPreset {
 }
 
 export const DEFAULT_ADMIN_PRESETS: PinUserPreset[] = [
-  { username: 'superadmin', nama: 'Super Administrator', role: 'superadmin', isDefault: true },
-  { username: 'admin', nama: 'Administrator Logistics', role: 'admin' },
-  { username: 'dede', nama: 'Dede Suparman (Supervisor)', role: 'admin' }
+  { username: 'admin', nama: 'DedeSuparman', role: 'superadmin', isDefault: true },
+  { username: 'popy', nama: 'Popy Rinawai', role: 'admin' },
+  { username: 'agung', nama: 'Agung Siswanto', role: 'operator' },
+  { username: 'semi', nama: 'Semi Hidayat', role: 'operator' },
+  { username: 'superadmin', nama: 'Super Administrator', role: 'superadmin' }
 ];
 
 export function getAuthenticatedUser(): { username: string; nama_lengkap: string; role: string; email?: string } | null {
@@ -41,8 +43,8 @@ export function getAuthenticatedUser(): { username: string; nama_lengkap: string
 
 // Fallback SHA-256 salted hash for offline PWA mode when server is unreachable.
 const OFFLINE_SALT = 'CKB_SECURE_SALT_v1_2026';
-// SHA-256 of ('089739' + OFFLINE_SALT)
-const OFFLINE_DEFAULT_HASH = '927fc844da10bea2a76f52483162154f6eae6accd444ef3fad63963a423a5105';
+// SHA-256 of ('399339' + OFFLINE_SALT)
+const OFFLINE_ADMIN_399339_HASH = '90f0ca97be8f6cbb70d9ddf4daeeea9b02bbfe4c1d683777d130a84e5658e3b3';
 // Legacy hash fallback for 123456
 const OFFLINE_LEGACY_HASH = '1f5c6e86daecae8e090df4a78cb586e24feecfca48c1e7d7fe3d7dfd110ce424';
 
@@ -173,7 +175,7 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
           username: cleanUsername,
           email: `${cleanUsername}@kino.co.id`,
           role: 'admin',
-          nama_lengkap: cleanUsername === 'dede' ? 'Dede Suparman (Supervisor)' : 'Administrator'
+          nama_lengkap: cleanUsername === 'admin' ? 'DedeSuparman' : 'Administrator'
         };
 
         // Store session token and user profile
@@ -207,11 +209,11 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
     console.warn('Server PIN endpoint unreachable, attempting Direct SQL Database verification...', serverErr);
   }
 
-  // 2. Direct SQL Database Query via Supabase Client (Tabel Tunggal: users)
+  // 2. Direct SQL Database Query via Supabase Client (Tabel: admin_users)
   try {
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       const { data: dbUser, error: dbErr } = await supabase
-        .from('users')
+        .from('admin_users')
         .select('id, username, pin, password, nama_lengkap, nama, email, role, is_active')
         .or(`username.ilike.${cleanUsername},email.ilike.${cleanUsername}`)
         .eq('is_active', true)
@@ -245,8 +247,8 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
         localStorage.setItem('user', JSON.stringify(authenticatedUser));
         window.dispatchEvent(new Event('userChange'));
 
-        // Update last_login
-        void supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
+        // Update last_login into admin_users
+        void supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
 
         updateLastActivity();
         return { success: true, user: authenticatedUser };
@@ -258,40 +260,57 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
 
   // 3. Fallback Built-in Users & Offline PWA Mode:
   try {
-    const hash = await computeSha256(cleanPin + OFFLINE_SALT);
-    const isDefaultPin = hash === OFFLINE_DEFAULT_HASH || hash === OFFLINE_LEGACY_HASH;
+    const isMatch399339 = cleanPin === '399339' || cleanPin === 'Kino.2026';
+    const isMatch123456 = cleanPin === '123456';
     
     // Check if custom VITE_APP_PIN was provided at build time
     const clientCustomPin = (import.meta.env.VITE_APP_PIN as string | undefined)?.trim();
     const isClientCustomMatch = Boolean(clientCustomPin && cleanPin === clientCustomPin);
 
-    const isRecognizedUser = ['superadmin', 'admin', 'dede'].includes(cleanUsername);
+    const isRecognizedUser = ['admin', 'popy', 'agung', 'semi', 'dede', 'superadmin'].includes(cleanUsername);
 
-    if ((isDefaultPin || isClientCustomMatch) && isRecognizedUser) {
+    if ((isMatch399339 || isMatch123456 || isClientCustomMatch) && isRecognizedUser) {
       localStorage.removeItem(PIN_FAIL_COUNT_KEY);
       localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
 
-      const userRole = cleanUsername === 'superadmin' ? 'superadmin' : 'admin';
+      let userRole = 'admin';
+      let fullName = 'Administrator';
+      let email = `${cleanUsername}@kino.co.id`;
+
+      if (cleanUsername === 'admin') {
+        userRole = 'superadmin';
+        fullName = 'DedeSuparman';
+        email = 'admin@admin.com';
+      } else if (cleanUsername === 'popy') {
+        userRole = 'admin';
+        fullName = 'Popy Rinawai';
+        email = 'popy@kino.co.id';
+      } else if (cleanUsername === 'agung') {
+        userRole = 'operator';
+        fullName = 'Agung Siswanto';
+        email = 'agung@kino.co.id';
+      } else if (cleanUsername === 'semi') {
+        userRole = 'operator';
+        fullName = 'Semi Hidayat';
+        email = 'semi@kino.co.id';
+      } else if (cleanUsername === 'superadmin') {
+        userRole = 'superadmin';
+        fullName = 'Super Administrator (Full Akses)';
+        email = 'superadmin@kino.co.id';
+      }
+
       const authenticatedUser = {
         username: cleanUsername,
-        nama_lengkap: cleanUsername === 'superadmin'
-          ? 'Super Administrator (Full Akses)'
-          : cleanUsername === 'dede'
-          ? 'Dede Suparman (Supervisor)'
-          : 'Administrator Logistics',
+        nama_lengkap: fullName,
         role: userRole,
-        email: cleanUsername === 'superadmin'
-          ? 'superadmin@kino.co.id'
-          : cleanUsername === 'dede'
-          ? 'dede.suparman@kino.co.id'
-          : 'admin@admin.com'
+        email: email
       };
 
       const fakeToken = btoa(JSON.stringify({ 
         mode: 'client-verified', 
         username: cleanUsername,
         iat: Date.now(), 
-        sig: hash 
+        sig: cleanPin 
       }));
 
       if (rememberDevice) {

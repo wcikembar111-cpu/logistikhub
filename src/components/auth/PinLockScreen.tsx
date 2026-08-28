@@ -72,16 +72,16 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch registered users list from database (tabel users) for dynamic multi-user selector
+  // Fetch registered users list from database (tabel admin_users) for dynamic multi-user selector
   useEffect(() => {
     const fetchRegisteredUsers = async () => {
       try {
         let fetched: LoadedUser[] = [];
 
-        // 1. Direct Supabase Query from unified "users" table (Primary Cloud Source of Truth)
+        // 1. Direct Supabase Query from "admin_users" table (Primary Cloud Source of Truth)
         if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
           const { data, error } = await supabase
-            .from('users')
+            .from('admin_users')
             .select('username, nama_lengkap, nama, role, is_active')
             .eq('is_active', true)
             .order('created_at', { ascending: true });
@@ -129,11 +129,11 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
 
     fetchRegisteredUsers();
 
-    // Listen to real-time changes on "users" table so other devices update instantly
+    // Listen to real-time changes on "admin_users" table so other devices update instantly
     try {
       const channel = supabase
         .channel('pin_screen_realtime_users')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
           fetchRegisteredUsers();
         })
         .subscribe();
@@ -486,9 +486,9 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center gap-1">
               <Database size={11} className="text-emerald-600" />
-              Sistem: <code>users</code>
+              Sistem: <code className="font-mono text-emerald-700 bg-emerald-50 px-1 rounded">admin_users</code>
             </span>
-            <span>Default PIN: <strong className="font-mono text-slate-800 font-bold">089739</strong></span>
+            <span>Default PIN: <strong className="font-mono text-slate-800 font-bold">399339</strong></span>
           </div>
         </form>
       </div>
