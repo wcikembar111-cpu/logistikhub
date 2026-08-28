@@ -304,7 +304,7 @@ END $$;`;
 
   return (
     <div 
-      className="fixed inset-0 z-[800] flex items-center justify-center p-3 sm:p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div 
