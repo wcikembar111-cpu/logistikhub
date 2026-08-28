@@ -1,28 +1,59 @@
-CREATE TABLE IF NOT EXISTS users (
+-- =================================================================
+-- SKEMA TABEL USER & PIN LOGIN (SATU TABEL TUNGGAL: users)
+-- =================================================================
+CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  username TEXT UNIQUE,
-  pin TEXT,
-  role TEXT DEFAULT 'admin',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  username VARCHAR(100) UNIQUE NOT NULL,
+  pin VARCHAR(50) NOT NULL DEFAULT '089739',
+  nama_lengkap VARCHAR(255) DEFAULT 'Administrator',
+  email VARCHAR(255) UNIQUE,
+  password VARCHAR(255) DEFAULT 'Kino.2026',
+  role VARCHAR(50) DEFAULT 'admin', -- 'superadmin', 'admin', 'operator'
+  is_active BOOLEAN DEFAULT true,
+  last_login TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- =================================================================
--- SKEMA TABEL USER & PIN LOGIN ADMIN (KHUSUS ADMIN)
--- =================================================================
-CREATE TABLE IF NOT EXISTS public.admin_users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(100) UNIQUE NOT NULL,
-    pin VARCHAR(50) NOT NULL,
-    nama_lengkap VARCHAR(255) DEFAULT 'Administrator',
-    email VARCHAR(255),
-    role VARCHAR(50) DEFAULT 'admin', -- 'admin', 'superadmin'
-    is_active BOOLEAN DEFAULT true,
-    last_login TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- Pastikan semua kolom baru terdaftar jika tabel users sudah ada sebelumnya
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS username VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS pin VARCHAR(50) DEFAULT '089739',
+  ADD COLUMN IF NOT EXISTS nama_lengkap VARCHAR(255) DEFAULT 'Administrator',
+  ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT 'Kino.2026',
+  ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'admin',
+  ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
+  ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now());
+
+-- Migrasi data otomatis jika sebelumnya ada data di admin_users
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'admin_users') THEN
+    INSERT INTO public.users (username, pin, nama_lengkap, email, role, is_active, last_login, created_at, updated_at)
+    SELECT 
+      username, 
+      pin, 
+      COALESCE(nama_lengkap, 'Administrator'), 
+      email, 
+      COALESCE(role, 'admin'), 
+      COALESCE(is_active, true), 
+      last_login, 
+      created_at, 
+      updated_at
+    FROM public.admin_users
+    ON CONFLICT (username) DO UPDATE 
+    SET 
+      pin = EXCLUDED.pin,
+      nama_lengkap = EXCLUDED.nama_lengkap,
+      email = EXCLUDED.email,
+      role = EXCLUDED.role,
+      is_active = EXCLUDED.is_active;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -139,18 +170,17 @@ CREATE TABLE IF NOT EXISTS public.broadcast_messages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert admin user jika belum ada
-INSERT INTO users (email, password, username, pin, role) 
-VALUES ('admin@admin.com', 'Kino.2026', 'admin', '089739', 'admin') 
-ON CONFLICT (email) DO NOTHING;
-
--- Seed Admin Users dengan Username dan PIN (Khusus Admin)
-INSERT INTO public.admin_users (username, pin, nama_lengkap, email, role)
+-- Seed User Admin Awal (Khusus Tabel users)
+INSERT INTO public.users (username, pin, nama_lengkap, email, password, role, is_active)
 VALUES 
-  ('admin', '089739', 'Administrator Logistics', 'admin@admin.com', 'admin'),
-  ('dede', '089739', 'Dede Suparman', 'dede.suparman@kino.co.id', 'admin')
+  ('admin', '089739', 'Administrator Logistics', 'admin@admin.com', 'Kino.2026', 'admin', true),
+  ('dede', '089739', 'Dede Suparman', 'dede.suparman@kino.co.id', 'Kino.2026', 'admin', true)
 ON CONFLICT (username) DO UPDATE 
-SET pin = EXCLUDED.pin, nama_lengkap = EXCLUDED.nama_lengkap;
+SET 
+  pin = EXCLUDED.pin, 
+  nama_lengkap = EXCLUDED.nama_lengkap,
+  role = EXCLUDED.role,
+  is_active = EXCLUDED.is_active;
 
 -- Insert default announcements jika belum ada
 INSERT INTO settings (id, messages) 
@@ -275,8 +305,7 @@ ALTER TABLE public.monitoring_pemusnahan
 ALTER TABLE links DISABLE ROW LEVEL SECURITY;
 ALTER TABLE todos DISABLE ROW LEVEL SECURITY;
 ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.jenis DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tujuan DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pengirim DISABLE ROW LEVEL SECURITY;
@@ -289,14 +318,22 @@ ALTER TABLE public.retur_inventory DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.monitoring_pemusnahan DISABLE ROW LEVEL SECURITY;
 
 -- Berikan izin akses penuh ke anon & authenticated
-GRANT ALL ON TABLE public.admin_users TO anon, authenticated;
+GRANT ALL ON TABLE public.users TO anon, authenticated;
 GRANT ALL ON TABLE public.broadcast_messages TO anon, authenticated;
 GRANT ALL ON TABLE public.retur_inventory TO anon, authenticated;
 GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;
 
--- Aktifkan Realtime Replication untuk tabel broadcast_messages, retur_inventory, monitoring_pemusnahan
+-- Aktifkan Realtime Replication untuk tabel users, broadcast_messages, retur_inventory, monitoring_pemusnahan
 DO $$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'users'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_publication_tables 
     WHERE pubname = 'supabase_realtime' 

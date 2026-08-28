@@ -394,50 +394,34 @@ export function useAuth() {
     const cleanSecret = pinOrPassword.trim();
 
     try {
-      // 1. Direct Supabase Query: admin_users or users table
+      // 1. Direct Supabase Query: users table (Tabel Tunggal)
       if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
         try {
-          const { data: dbAdminUser, error: adminErr } = await supabase
-            .from('admin_users')
-            .select('*')
-            .ilike('username', cleanIdentifier)
-            .eq('is_active', true)
-            .single();
-
-          if (!adminErr && dbAdminUser && dbAdminUser.pin === cleanSecret) {
-            const u = {
-              username: dbAdminUser.username,
-              nama: dbAdminUser.nama_lengkap || dbAdminUser.username,
-              nama_lengkap: dbAdminUser.nama_lengkap || dbAdminUser.username,
-              role: dbAdminUser.role || 'admin',
-              email: dbAdminUser.email || `${dbAdminUser.username}@kino.co.id`
-            };
-            setUser(u);
-            localStorage.setItem('user', JSON.stringify(u));
-            localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
-            window.dispatchEvent(new Event('userChange'));
-            return;
-          }
-
           const { data: dbUser, error: dbErr } = await supabase
             .from('users')
             .select('*')
             .or(`email.ilike.${cleanIdentifier},username.ilike.${cleanIdentifier}`)
-            .single();
+            .eq('is_active', true)
+            .maybeSingle();
 
           if (!dbErr && dbUser) {
-            if (dbUser.password === cleanSecret || dbUser.pin === cleanSecret) {
+            const isPinValid = dbUser.pin === cleanSecret || dbUser.password === cleanSecret;
+            if (isPinValid) {
               const u = {
+                id: dbUser.id,
                 username: dbUser.username || cleanIdentifier,
                 email: dbUser.email || (cleanIdentifier.includes('@') ? cleanIdentifier : `${cleanIdentifier}@kino.co.id`),
-                nama: dbUser.nama || dbUser.name || dbUser.username || 'User',
-                nama_lengkap: dbUser.nama || dbUser.name || dbUser.username || 'User',
-                role: dbUser.role || 'operator'
+                nama: dbUser.nama_lengkap || dbUser.nama || dbUser.name || dbUser.username || 'User',
+                nama_lengkap: dbUser.nama_lengkap || dbUser.nama || dbUser.name || dbUser.username || 'User',
+                role: (dbUser.role || 'admin').toLowerCase()
               };
               setUser(u);
               localStorage.setItem('user', JSON.stringify(u));
               localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
               window.dispatchEvent(new Event('userChange'));
+
+              // Update last_login timestamp asynchronously
+              void supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
               return;
             }
           }
@@ -518,21 +502,12 @@ export function useAdminUsers() {
     setLoading(true);
     setError(null);
 
-    const defaultAdmins: AdminUser[] = [
+    const defaultFallbackUsers: AdminUser[] = [
       {
-        id: 'admin-0',
-        username: 'superadmin',
-        pin: '089739',
-        nama_lengkap: 'Super Administrator (Full Akses)',
-        email: 'superadmin@kino.co.id',
-        role: 'superadmin',
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'admin-1',
+        id: 'default-admin-0',
         username: 'admin',
         pin: '089739',
+        password: 'Kino.2026',
         nama_lengkap: 'Administrator Logistics',
         email: 'admin@admin.com',
         role: 'admin',
@@ -540,9 +515,10 @@ export function useAdminUsers() {
         created_at: new Date().toISOString()
       },
       {
-        id: 'admin-2',
+        id: 'default-admin-1',
         username: 'dede',
         pin: '089739',
+        password: 'Kino.2026',
         nama_lengkap: 'Dede Suparman (Supervisor)',
         email: 'dede.suparman@kino.co.id',
         role: 'admin',
@@ -554,19 +530,31 @@ export function useAdminUsers() {
     try {
       let dbUsers: AdminUser[] = [];
 
-      // 1. Direct Supabase Query (Primary Cloud Source of Truth for ALL devices)
+      // 1. Direct Supabase Query (Primary Cloud Source of Truth from table "users")
       if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
         try {
           const { data, error: dbErr } = await supabase
-            .from('admin_users')
+            .from('users')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: true });
 
-          if (!dbErr && data && data.length > 0) {
-            dbUsers = data as AdminUser[];
+          if (!dbErr && data && Array.isArray(data)) {
+            dbUsers = data.map((u: any) => ({
+              id: u.id,
+              username: u.username || u.email?.split('@')[0] || 'user',
+              pin: u.pin || '089739',
+              password: u.password || 'Kino.2026',
+              nama_lengkap: u.nama_lengkap || u.nama || u.name || u.username || 'Administrator',
+              email: u.email || `${u.username || 'user'}@kino.co.id`,
+              role: (u.role || 'admin').toLowerCase(),
+              is_active: u.is_active !== false,
+              last_login: u.last_login,
+              created_at: u.created_at,
+              updated_at: u.updated_at
+            }));
           }
         } catch (dbEx) {
-          console.warn('Direct Supabase fetch admin_users notice:', dbEx);
+          console.warn('Direct Supabase fetch users notice:', dbEx);
         }
       }
 
@@ -581,23 +569,20 @@ export function useAdminUsers() {
             }
           }
         } catch (apiEx) {
-          console.warn('Server API fetch admin_users notice:', apiEx);
+          console.warn('Server API fetch users notice:', apiEx);
         }
       }
 
+      // Display EXACTLY the database records when available, or initial fallbacks if DB is completely empty
       if (dbUsers.length > 0) {
-        // Merge so default baseline accounts always exist, but DB values take precedence
-        const map = new Map<string, AdminUser>();
-        defaultAdmins.forEach(d => map.set(d.username.toLowerCase(), d));
-        dbUsers.forEach(u => map.set(u.username.toLowerCase(), u));
-        setUsers(Array.from(map.values()));
+        setUsers(dbUsers);
       } else {
-        setUsers(defaultAdmins);
+        setUsers(defaultFallbackUsers);
       }
     } catch (err: any) {
-      console.warn('Failed to fetch admin users:', err);
-      setError(err.message || 'Gagal memuat daftar admin');
-      setUsers(defaultAdmins);
+      console.warn('Failed to fetch users from database:', err);
+      setError(err.message || 'Gagal memuat daftar user dari database');
+      setUsers(defaultFallbackUsers);
     } finally {
       setLoading(false);
     }
@@ -606,11 +591,11 @@ export function useAdminUsers() {
   useEffect(() => {
     fetchUsers();
 
-    // Listen to real-time changes on admin_users table across all devices
+    // Listen to real-time changes on "users" table across all devices
     try {
       const channel = supabase
-        .channel('admin_users_realtime_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
+        .channel('users_realtime_sync_channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
           fetchUsers();
         })
         .subscribe();
@@ -625,9 +610,10 @@ export function useAdminUsers() {
     const cleanUser = {
       username: newUser.username.trim().toLowerCase(),
       pin: newUser.pin.trim(),
+      password: newUser.pin.trim() || 'Kino.2026',
       nama_lengkap: (newUser.nama_lengkap || 'Administrator').trim(),
-      email: (newUser.email || `${newUser.username.trim().toLowerCase()}@kino.co.id`).trim(),
-      role: newUser.role || 'admin',
+      email: (newUser.email || `${newUser.username.trim().toLowerCase()}@kino.co.id`).trim().toLowerCase(),
+      role: (newUser.role || 'admin').toLowerCase(),
       is_active: newUser.is_active !== false,
       updated_at: new Date().toISOString()
     };
@@ -635,11 +621,11 @@ export function useAdminUsers() {
     let insertedUser: AdminUser | null = null;
     let savedToCloud = false;
 
-    // 1. Direct Supabase write (Primary Cloud Database)
+    // 1. Direct Supabase write (Primary Cloud Database - table "users")
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       try {
         const { data, error: dbError } = await supabase
-          .from('admin_users')
+          .from('users')
           .upsert([cleanUser], { onConflict: 'username' })
           .select()
           .single();
@@ -648,10 +634,10 @@ export function useAdminUsers() {
           insertedUser = data as AdminUser;
           savedToCloud = true;
         } else if (dbError) {
-          console.warn('Direct Supabase insert note:', dbError);
+          console.warn('Direct Supabase insert into users note:', dbError);
         }
       } catch (dbEx) {
-        console.warn('Direct Supabase insert exception:', dbEx);
+        console.warn('Direct Supabase insert into users exception:', dbEx);
       }
     }
 
@@ -674,7 +660,7 @@ export function useAdminUsers() {
     }
 
     if (!savedToCloud && !insertedUser) {
-      throw new Error('Gagal menyimpan user ke database Cloud Supabase.');
+      throw new Error('Gagal menyimpan user ke database Supabase (tabel users).');
     }
 
     await fetchUsers();
@@ -684,13 +670,18 @@ export function useAdminUsers() {
   const updateUser = async (id: string, updatedFields: Partial<AdminUser>) => {
     let updatedResult: any = null;
 
-    // 1. Direct Supabase write
+    const payload: any = {
+      ...updatedFields,
+      updated_at: new Date().toISOString()
+    };
+    if (payload.pin && !payload.password) {
+      payload.password = payload.pin;
+    }
+
+    // 1. Direct Supabase write to "users" table
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       try {
-        let query = supabase.from('admin_users').update({
-          ...updatedFields,
-          updated_at: new Date().toISOString()
-        });
+        let query = supabase.from('users').update(payload);
 
         if (id.includes('-') && id.length > 20) {
           query = query.eq('id', id);
@@ -712,7 +703,7 @@ export function useAdminUsers() {
       const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFields)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
@@ -729,14 +720,14 @@ export function useAdminUsers() {
   };
 
   const deleteUser = async (id: string) => {
-    if (id === 'admin' || id === 'superadmin' || id === 'default-admin-1' || id === 'default-superadmin-0') {
-      throw new Error("Akun Utama ('admin' / 'superadmin') tidak dapat dihapus.");
+    if (id === 'admin' || id === 'superadmin' || id === 'default-admin-0' || id === 'default-admin-1') {
+      throw new Error("Akun Utama ('admin') tidak dapat dihapus.");
     }
 
-    // 1. Direct Supabase delete
+    // 1. Direct Supabase delete from "users" table
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       try {
-        let query = supabase.from('admin_users').delete();
+        let query = supabase.from('users').delete();
         if (id.includes('-') && id.length > 20) {
           query = query.eq('id', id);
         } else {

@@ -207,24 +207,24 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
     console.warn('Server PIN endpoint unreachable, attempting Direct SQL Database verification...', serverErr);
   }
 
-  // 2. Direct SQL Database Query via Supabase Client (if direct connection is configured)
+  // 2. Direct SQL Database Query via Supabase Client (Tabel Tunggal: users)
   try {
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       const { data: dbUser, error: dbErr } = await supabase
-        .from('admin_users')
-        .select('username, pin, nama_lengkap, email, role, is_active')
-        .ilike('username', cleanUsername)
+        .from('users')
+        .select('id, username, pin, password, nama_lengkap, nama, email, role, is_active')
+        .or(`username.ilike.${cleanUsername},email.ilike.${cleanUsername}`)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (!dbErr && dbUser && dbUser.pin === cleanPin) {
+      if (!dbErr && dbUser && (dbUser.pin === cleanPin || dbUser.password === cleanPin)) {
         localStorage.removeItem(PIN_FAIL_COUNT_KEY);
         localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
 
         const authenticatedUser = {
           username: dbUser.username,
-          nama_lengkap: dbUser.nama_lengkap || 'Administrator',
-          role: dbUser.role || 'admin',
+          nama_lengkap: dbUser.nama_lengkap || dbUser.nama || dbUser.username || 'Administrator',
+          role: (dbUser.role || 'admin').toLowerCase(),
           email: dbUser.email || `${dbUser.username}@kino.co.id`
         };
 
@@ -244,6 +244,9 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
         localStorage.setItem(PIN_USER_KEY, JSON.stringify(authenticatedUser));
         localStorage.setItem('user', JSON.stringify(authenticatedUser));
         window.dispatchEvent(new Event('userChange'));
+
+        // Update last_login
+        void supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', dbUser.id);
 
         updateLastActivity();
         return { success: true, user: authenticatedUser };

@@ -72,25 +72,25 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch registered admin_users list from database for dynamic multi-user selector
+  // Fetch registered users list from database (tabel users) for dynamic multi-user selector
   useEffect(() => {
     const fetchRegisteredUsers = async () => {
       try {
         let fetched: LoadedUser[] = [];
 
-        // 1. Direct Supabase Query (Primary Cloud Source of Truth)
+        // 1. Direct Supabase Query from unified "users" table (Primary Cloud Source of Truth)
         if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
           const { data, error } = await supabase
-            .from('admin_users')
-            .select('username, nama_lengkap, role, is_active')
+            .from('users')
+            .select('username, nama_lengkap, nama, role, is_active')
             .eq('is_active', true)
-            .order('username', { ascending: true });
+            .order('created_at', { ascending: true });
 
           if (!error && data && data.length > 0) {
-            fetched = data.map(u => ({
+            fetched = data.map((u: any) => ({
               username: u.username,
-              nama: u.nama_lengkap || u.username,
-              role: u.role || (u.username.toLowerCase() === 'superadmin' ? 'superadmin' : 'admin'),
+              nama: u.nama_lengkap || u.nama || u.username,
+              role: (u.role || 'admin').toLowerCase(),
               isDefault: ['superadmin', 'admin'].includes(u.username.toLowerCase())
             }));
           }
@@ -107,8 +107,8 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
                   .filter((u: any) => u.is_active !== false)
                   .map((u: any) => ({
                     username: u.username,
-                    nama: u.nama_lengkap || u.username,
-                    role: u.role || (u.username.toLowerCase() === 'superadmin' ? 'superadmin' : 'admin'),
+                    nama: u.nama_lengkap || u.nama || u.username,
+                    role: (u.role || 'admin').toLowerCase(),
                     isDefault: ['superadmin', 'admin'].includes(u.username.toLowerCase())
                   }));
               }
@@ -117,23 +117,23 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
         }
 
         if (fetched.length > 0) {
-          const mergedMap = new Map<string, LoadedUser>();
-          DEFAULT_ADMIN_PRESETS.forEach(p => mergedMap.set(p.username.toLowerCase(), p));
-          fetched.forEach(u => mergedMap.set(u.username.toLowerCase(), u));
-          setAvailableUsers(Array.from(mergedMap.values()));
+          setAvailableUsers(fetched);
+        } else {
+          setAvailableUsers(DEFAULT_ADMIN_PRESETS);
         }
       } catch (e) {
-        console.warn('Could not fetch dynamic admin users list, using presets.', e);
+        console.warn('Could not fetch dynamic users list, using presets.', e);
+        setAvailableUsers(DEFAULT_ADMIN_PRESETS);
       }
     };
 
     fetchRegisteredUsers();
 
-    // Listen to real-time changes on admin_users table so other devices update instantly
+    // Listen to real-time changes on "users" table so other devices update instantly
     try {
       const channel = supabase
         .channel('pin_screen_realtime_users')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
           fetchRegisteredUsers();
         })
         .subscribe();
@@ -257,7 +257,7 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-300 font-medium">
             <span className="flex items-center gap-1.5 text-blue-200 font-semibold">
               <ShieldCheck size={12} className="text-emerald-400 shrink-0" />
-              Otentikasi Akun & PIN (admin_users)
+              Otentikasi Akun & PIN (users)
             </span>
             <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-400/20">
               Secure v2.6
@@ -486,7 +486,7 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center gap-1">
               <Database size={11} className="text-emerald-600" />
-              Sistem: <code>admin_users</code>
+              Sistem: <code>users</code>
             </span>
             <span>Default PIN: <strong className="font-mono text-slate-800 font-bold">089739</strong></span>
           </div>

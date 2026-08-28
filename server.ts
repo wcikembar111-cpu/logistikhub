@@ -104,7 +104,7 @@ async function startServer() {
     if (supabaseServerClient) {
       try {
         const { count, error } = await supabaseServerClient
-          .from("admin_users")
+          .from("users")
           .select("*", { count: "exact", head: true });
         if (!error) {
           sqlConnected = true;
@@ -122,10 +122,10 @@ async function startServer() {
       authMethod: "user-and-pin-sql-gate",
       sqlDatabase: {
         connected: sqlConnected,
-        table: "admin_users",
+        table: "users",
         usersCount: sqlUsersCount
       },
-      defaultUsers: ["superadmin", "admin", "dede"]
+      defaultUsers: ["admin", "dede"]
     });
   });
 
@@ -147,49 +147,33 @@ async function startServer() {
     const cleanPin = pin.trim();
     let authenticatedUser: { username: string; nama_lengkap: string; role: string; email?: string } | null = null;
 
-    // 1. Attempt verification via SQL Database (Supabase PostgreSQL admin_users table)
+    // 1. Attempt verification via SQL Database (Supabase PostgreSQL users table)
     if (supabaseServerClient) {
       try {
         const { data: dbUser, error: dbError } = await supabaseServerClient
-          .from("admin_users")
-          .select("username, pin, nama_lengkap, email, role, is_active")
-          .ilike("username", cleanUsername)
+          .from("users")
+          .select("id, username, pin, password, nama_lengkap, nama, email, role, is_active")
+          .or(`username.ilike.${cleanUsername},email.ilike.${cleanUsername}`)
           .eq("is_active", true)
-          .single();
+          .maybeSingle();
 
-        if (!dbError && dbUser && dbUser.pin === cleanPin) {
+        if (!dbError && dbUser && (dbUser.pin === cleanPin || dbUser.password === cleanPin)) {
           authenticatedUser = {
-            username: dbUser.username,
-            nama_lengkap: dbUser.nama_lengkap || "Administrator",
-            role: dbUser.role || "admin",
-            email: dbUser.email || `${dbUser.username}@kino.co.id`
+            username: dbUser.username || cleanUsername,
+            nama_lengkap: dbUser.nama_lengkap || dbUser.nama || dbUser.username || "Administrator",
+            role: (dbUser.role || "admin").toLowerCase(),
+            email: dbUser.email || `${dbUser.username || cleanUsername}@kino.co.id`
           };
 
           // Update last_login timestamp asynchronously
           void (async () => {
             try {
               await supabaseServerClient
-                .from("admin_users")
+                .from("users")
                 .update({ last_login: new Date().toISOString() })
-                .ilike("username", cleanUsername);
+                .eq("id", dbUser.id);
             } catch {}
           })();
-        } else if (!dbError && !dbUser) {
-          // Check fallback users table in SQL database
-          const { data: legacyUser } = await supabaseServerClient
-            .from("users")
-            .select("email, password, username, pin, role")
-            .or(`email.ilike.${cleanUsername},username.ilike.${cleanUsername}`)
-            .single();
-
-          if (legacyUser && (legacyUser.pin === cleanPin || legacyUser.password === cleanPin)) {
-            authenticatedUser = {
-              username: legacyUser.username || cleanUsername,
-              nama_lengkap: "Administrator",
-              role: legacyUser.role || "admin",
-              email: legacyUser.email
-            };
-          }
         }
       } catch (sqlErr) {
         console.warn("[SQL Auth Warning]:", sqlErr);
@@ -199,12 +183,6 @@ async function startServer() {
     // 2. Fallback / Built-in Admin Users (Guarantees zero-downtime offline or instant startup)
     if (!authenticatedUser) {
       const allowedAdmins: Record<string, { pin: string; name: string; email: string; role: string }> = {
-        superadmin: {
-          pin: defaultServerPin,
-          name: "Super Administrator (Full Akses)",
-          email: "superadmin@kino.co.id",
-          role: "superadmin"
-        },
         admin: {
           pin: defaultServerPin,
           name: "Administrator Logistics",
@@ -216,6 +194,12 @@ async function startServer() {
           name: "Dede Suparman (Supervisor)",
           email: "dede.suparman@kino.co.id",
           role: "admin"
+        },
+        superadmin: {
+          pin: defaultServerPin,
+          name: "Super Administrator (Full Akses)",
+          email: "superadmin@kino.co.id",
+          role: "superadmin"
         }
       };
 
@@ -335,26 +319,17 @@ async function startServer() {
   });
 
   // =================================================================
-  // ADMIN USERS CRUD API (Database SQL admin_users Management)
+  // ADMIN USERS CRUD API (Database SQL users Management)
   // =================================================================
 
   // GET: Fetch all admin users
   app.get("/api/admin/users", async (_req, res) => {
     const defaultAdmins = [
       {
-        id: "default-superadmin-0",
-        username: "superadmin",
-        pin: (process.env.APP_PIN || "089739").trim(),
-        nama_lengkap: "Super Administrator (Full Akses)",
-        email: "superadmin@kino.co.id",
-        role: "superadmin",
-        is_active: true,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: "default-admin-1",
+        id: "default-admin-0",
         username: "admin",
         pin: (process.env.APP_PIN || "089739").trim(),
+        password: "Kino.2026",
         nama_lengkap: "Administrator Logistics",
         email: "admin@admin.com",
         role: "admin",
@@ -362,9 +337,10 @@ async function startServer() {
         created_at: new Date().toISOString()
       },
       {
-        id: "default-admin-2",
+        id: "default-admin-1",
         username: "dede",
         pin: (process.env.APP_PIN || "089739").trim(),
+        password: "Kino.2026",
         nama_lengkap: "Dede Suparman (Supervisor)",
         email: "dede.suparman@kino.co.id",
         role: "admin",
@@ -383,12 +359,12 @@ async function startServer() {
 
     try {
       const { data, error } = await supabaseServerClient
-        .from("admin_users")
+        .from("users")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (error) {
-        console.warn("[Admin Users List SQL Warning]:", error.message);
+        console.warn("[Users List SQL Warning]:", error.message);
         return res.json({
           success: true,
           source: "fallback-on-error",
@@ -398,17 +374,17 @@ async function startServer() {
       }
 
       if (!data || data.length === 0) {
-        // Auto-seed default admins if table exists but empty
+        // Auto-seed default users if table exists but empty
         try {
-          await supabaseServerClient.from("admin_users").upsert([
-            { username: "admin", pin: "089739", nama_lengkap: "Administrator Logistics", email: "admin@admin.com", role: "admin", is_active: true },
-            { username: "dede", pin: "089739", nama_lengkap: "Dede Suparman", email: "dede.suparman@kino.co.id", role: "admin", is_active: true }
+          await supabaseServerClient.from("users").upsert([
+            { username: "admin", pin: "089739", password: "Kino.2026", nama_lengkap: "Administrator Logistics", email: "admin@admin.com", role: "admin", is_active: true },
+            { username: "dede", pin: "089739", password: "Kino.2026", nama_lengkap: "Dede Suparman", email: "dede.suparman@kino.co.id", role: "admin", is_active: true }
           ], { onConflict: "username" });
 
           const { data: refetched } = await supabaseServerClient
-            .from("admin_users")
+            .from("users")
             .select("*")
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: true });
           return res.json({
             success: true,
             source: "sql-seeded",
@@ -423,10 +399,24 @@ async function startServer() {
         }
       }
 
+      const formatted = data.map((u: any) => ({
+        id: u.id,
+        username: u.username || u.email?.split('@')[0] || 'user',
+        pin: u.pin || '089739',
+        password: u.password || 'Kino.2026',
+        nama_lengkap: u.nama_lengkap || u.nama || u.username || 'Administrator',
+        email: u.email || `${u.username || 'user'}@kino.co.id`,
+        role: (u.role || 'admin').toLowerCase(),
+        is_active: u.is_active !== false,
+        last_login: u.last_login,
+        created_at: u.created_at,
+        updated_at: u.updated_at
+      }));
+
       return res.json({
         success: true,
         source: "sql-database",
-        users: data
+        users: formatted
       });
     } catch (err: any) {
       return res.json({
@@ -438,7 +428,7 @@ async function startServer() {
     }
   });
 
-  // POST: Create new admin user
+  // POST: Create new user
   app.post("/api/admin/users", async (req, res) => {
     const { username, pin, nama_lengkap, email, role, is_active } = req.body;
 
@@ -456,8 +446,9 @@ async function startServer() {
     const newUserPayload = {
       username: cleanUsername,
       pin: cleanPin,
+      password: cleanPin,
       nama_lengkap: (nama_lengkap || "Administrator").trim(),
-      email: (email || `${cleanUsername}@kino.co.id`).trim(),
+      email: (email || `${cleanUsername}@kino.co.id`).trim().toLowerCase(),
       role: (role || "admin").trim().toLowerCase(),
       is_active: is_active !== false,
       updated_at: new Date().toISOString()
@@ -466,8 +457,8 @@ async function startServer() {
     if (supabaseServerClient) {
       try {
         const { data, error } = await supabaseServerClient
-          .from("admin_users")
-          .insert([newUserPayload])
+          .from("users")
+          .upsert([newUserPayload], { onConflict: "username" })
           .select()
           .single();
 
@@ -480,7 +471,7 @@ async function startServer() {
 
         return res.json({
           success: true,
-          message: `User Admin "${cleanUsername}" berhasil ditambahkan ke database.`,
+          message: `User "${cleanUsername}" berhasil disimpan ke database.`,
           user: data
         });
       } catch (err: any) {
@@ -490,12 +481,12 @@ async function startServer() {
 
     return res.json({
       success: true,
-      message: `User Admin "${cleanUsername}" berhasil dibuat (mode lokal).`,
+      message: `User "${cleanUsername}" berhasil dibuat (mode lokal).`,
       user: { id: `local-${Date.now()}`, ...newUserPayload, created_at: new Date().toISOString() }
     });
   });
 
-  // PUT: Update admin user & PIN
+  // PUT: Update user & PIN
   app.put("/api/admin/users/:id", async (req, res) => {
     const { id } = req.params;
     const { username, pin, nama_lengkap, email, role, is_active } = req.body;
@@ -511,7 +502,7 @@ async function startServer() {
       updatePayload.nama_lengkap = String(nama_lengkap).trim();
     }
     if (email !== undefined) {
-      updatePayload.email = String(email).trim();
+      updatePayload.email = String(email).trim().toLowerCase();
     }
     if (role !== undefined) {
       updatePayload.role = String(role).trim().toLowerCase();
@@ -525,11 +516,12 @@ async function startServer() {
         return res.status(400).json({ success: false, message: "PIN harus berupa 6 digit angka." });
       }
       updatePayload.pin = cleanPin;
+      updatePayload.password = cleanPin;
     }
 
     if (supabaseServerClient) {
       try {
-        let query = supabaseServerClient.from("admin_users").update(updatePayload);
+        let query = supabaseServerClient.from("users").update(updatePayload);
         
         // Handle ID as UUID or username match
         if (id.includes("-") && id.length > 20) {
@@ -545,7 +537,7 @@ async function startServer() {
 
         return res.json({
           success: true,
-          message: "Data user & PIN admin berhasil diperbarui di database.",
+          message: "Data user & PIN berhasil diperbarui di database.",
           user: data
         });
       } catch (err: any) {
@@ -560,20 +552,20 @@ async function startServer() {
     });
   });
 
-  // DELETE: Delete admin user
+  // DELETE: Delete user
   app.delete("/api/admin/users/:id", async (req, res) => {
     const { id } = req.params;
 
-    if (id === "admin" || id === "default-admin-1" || id === "superadmin" || id === "default-superadmin") {
+    if (id === "admin" || id === "default-admin-0" || id === "default-admin-1") {
       return res.status(400).json({ 
         success: false, 
-        message: "Akun Super Admin dan Admin utama tidak dapat dihapus demi keamanan sistem." 
+        message: "Akun Admin utama ('admin') tidak dapat dihapus demi keamanan sistem." 
       });
     }
 
     if (supabaseServerClient) {
       try {
-        let query = supabaseServerClient.from("admin_users").delete();
+        let query = supabaseServerClient.from("users").delete();
         if (id.includes("-") && id.length > 20) {
           query = query.eq("id", id);
         } else {
@@ -587,7 +579,7 @@ async function startServer() {
 
         return res.json({
           success: true,
-          message: "User Admin berhasil dihapus dari database SQL."
+          message: "User berhasil dihapus dari database SQL."
         });
       } catch (err: any) {
         return res.status(500).json({ success: false, message: err.message });
@@ -596,7 +588,7 @@ async function startServer() {
 
     return res.json({
       success: true,
-      message: "User Admin berhasil dihapus."
+      message: "User berhasil dihapus."
     });
   });
 

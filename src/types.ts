@@ -222,7 +222,9 @@ export interface AdminUser {
   id?: string;
   username: string;
   pin?: string;
+  password?: string;
   nama_lengkap?: string;
+  nama?: string;
   email?: string;
   role?: string;
   is_active?: boolean;

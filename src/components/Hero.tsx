@@ -960,7 +960,7 @@ export function Hero({
                 type="button"
                 onClick={onManageUsers}
                 className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap active:scale-95"
-                title="Kelola Akun User & PIN 6 Digit (Database admin_users)"
+                title="Kelola Akun User & PIN 6 Digit (Database users)"
               >
                 <ShieldCheck size={12} className="text-blue-600 shrink-0" />
                 <span>USER & PIN</span>
