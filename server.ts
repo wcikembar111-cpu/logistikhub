@@ -154,54 +154,102 @@ async function startServer() {
     const cleanPin = pin.trim();
     let authenticatedUser: { username: string; nama_lengkap: string; role: string; email?: string } | null = null;
 
+    // Helper matcher
+    const checkMatch = (dbUsers: any[]) => {
+      return dbUsers.find((u: any) => {
+        if (u.is_active === false || u.is_active === "false" || u.is_active === 0) return false;
+
+        const uName = String(u.username || '').trim().toLowerCase();
+        const uEmail = String(u.email || '').trim().toLowerCase();
+        const uFullName = String(u.nama_lengkap || u.nama || u.name || '').trim().toLowerCase();
+        const uId = String(u.id || '').trim().toLowerCase();
+        const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+        const uFullNameNoSpace = uFullName.replace(/[\s._-]+/g, '');
+        const emailPrefix = cleanUsername.includes('@') ? cleanUsername.split('@')[0] : cleanUsername;
+
+        const isUserMatch = (
+          uName === cleanUsername ||
+          uEmail === cleanUsername ||
+          uName === emailPrefix ||
+          (cleanNoSpace.length >= 3 && uNameNoSpace === cleanNoSpace) ||
+          (cleanNoSpace.length >= 3 && uFullNameNoSpace === cleanNoSpace) ||
+          uFullName === cleanUsername ||
+          (cleanNoSpace.length >= 4 && uFullNameNoSpace.includes(cleanNoSpace)) ||
+          (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullNameNoSpace)) ||
+          (cleanUsername.length > 10 && uId === cleanUsername)
+        );
+
+        if (!isUserMatch) return false;
+
+        const dbPin = String(u.pin ?? '').trim();
+        const dbPassword = String(u.password ?? '').trim();
+        const dbPinCode = String(u.pin_code ?? u.kode_pin ?? u.access_code ?? '').trim();
+
+        const cleanPinNum = cleanPin.replace(/^0+/, '') || '0';
+        const dbPinNum = dbPin.replace(/^0+/, '') || '0';
+        const dbPinPadded = dbPin.padStart(6, '0');
+        const cleanPinPadded = cleanPin.padStart(6, '0');
+
+        return (
+          (dbPin && cleanPin === dbPin) ||
+          (dbPin && cleanPinPadded === dbPinPadded) ||
+          (dbPin && /^\d+$/.test(cleanPin) && /^\d+$/.test(dbPin) && cleanPinNum === dbPinNum) ||
+          (dbPassword && cleanPin === dbPassword) ||
+          (dbPassword && cleanPin.toLowerCase() === dbPassword.toLowerCase()) ||
+          (dbPinCode && cleanPin === dbPinCode)
+        );
+      });
+    };
+
     // 1. Attempt verification via SQL Database (Supabase PostgreSQL admin_users table)
     if (supabaseServerClient) {
       try {
-        const { data: dbUsers, error: dbError } = await supabaseServerClient
+        let dbUsersList: any[] = [];
+
+        // Check admin_users table first
+        const { data: adminUsers, error: dbError } = await supabaseServerClient
           .from("admin_users")
-          .select("id, username, pin, password, nama_lengkap, nama, email, role, is_active")
-          .eq("is_active", true);
+          .select("*");
 
-        if (!dbError && Array.isArray(dbUsers) && dbUsers.length > 0) {
-          const matchedDbUser = dbUsers.find((u: any) => {
-            const uName = String(u.username || '').trim().toLowerCase();
-            const uEmail = String(u.email || '').trim().toLowerCase();
-            const uFullName = String(u.nama_lengkap || u.nama || '').trim().toLowerCase().replace(/[\s._-]+/g, '');
-            const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+        if (!dbError && Array.isArray(adminUsers) && adminUsers.length > 0) {
+          dbUsersList = adminUsers;
+        } else {
+          // Fallback: check users table
+          const { data: generalUsers, error: usersErr } = await supabaseServerClient
+            .from("users")
+            .select("*");
 
-            return (
-              uName === cleanUsername ||
-              uNameNoSpace === cleanNoSpace ||
-              uEmail === cleanUsername ||
-              uFullName === cleanNoSpace ||
-              (cleanNoSpace.length >= 4 && uFullName.includes(cleanNoSpace)) ||
-              (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName))
-            );
-          });
+          if (!usersErr && Array.isArray(generalUsers) && generalUsers.length > 0) {
+            dbUsersList = generalUsers;
+          }
+        }
+
+        if (dbUsersList.length > 0) {
+          const matchedDbUser = checkMatch(dbUsersList);
 
           if (matchedDbUser) {
-            const dbPin = String(matchedDbUser.pin || '').trim();
-            const dbPassword = String(matchedDbUser.password || '').trim();
-            const isPinValid = (dbPin && cleanPin === dbPin) || (dbPassword && cleanPin === dbPassword);
+            authenticatedUser = {
+              username: matchedDbUser.username || cleanUsername,
+              nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || "Pengguna",
+              role: (matchedDbUser.role || "admin").toLowerCase(),
+              email: matchedDbUser.email || `${matchedDbUser.username || cleanUsername}@kino.co.id`
+            };
 
-            if (isPinValid) {
-              authenticatedUser = {
-                username: matchedDbUser.username || cleanUsername,
-                nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || "Pengguna",
-                role: (matchedDbUser.role || "admin").toLowerCase(),
-                email: matchedDbUser.email || `${matchedDbUser.username || cleanUsername}@kino.co.id`
-              };
-
-              // Update last_login timestamp asynchronously
-              void (async () => {
-                try {
+            // Update last_login timestamp asynchronously
+            void (async () => {
+              try {
+                if (matchedDbUser.id) {
                   await supabaseServerClient
                     .from("admin_users")
                     .update({ last_login: new Date().toISOString() })
                     .eq("id", matchedDbUser.id);
-                } catch {}
-              })();
-            }
+                  await supabaseServerClient
+                    .from("users")
+                    .update({ last_login: new Date().toISOString() })
+                    .eq("id", matchedDbUser.id);
+                }
+              } catch {}
+            })();
           }
         }
       } catch (sqlErr) {
@@ -241,7 +289,7 @@ async function startServer() {
     } else {
       return res.status(401).json({
         success: false,
-        message: `Username "${rawUsername}" atau PIN / Password tidak sesuai dengan data di database.`
+        message: `Username "${rawUsername}" atau PIN / Password tidak sesuai dengan data di tabel admin_users database.`
       });
     }
   });

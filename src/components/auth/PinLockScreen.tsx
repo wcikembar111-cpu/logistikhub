@@ -71,31 +71,55 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch registered users list from database (tabel admin_users) for dynamic multi-user selector
+  // Fetch registered users list from database (tabel admin_users / users) for dynamic multi-user selector
   useEffect(() => {
     const fetchRegisteredUsers = async () => {
       try {
         let fetched: LoadedUser[] = [];
 
         // 1. Direct Supabase Query from "admin_users" table (Primary Cloud Source of Truth)
-        if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        try {
           const { data, error } = await supabase
             .from('admin_users')
-            .select('username, nama_lengkap, nama, role, is_active')
-            .eq('is_active', true)
-            .order('created_at', { ascending: true });
+            .select('*');
 
-          if (!error && data && data.length > 0) {
-            fetched = data.map((u: any) => ({
-              username: u.username,
-              nama: u.nama_lengkap || u.nama || u.username,
-              role: (u.role || 'admin').toLowerCase(),
-              isDefault: ['superadmin', 'admin'].includes(u.username.toLowerCase())
-            }));
+          if (!error && data && Array.isArray(data) && data.length > 0) {
+            fetched = data
+              .filter((u: any) => u.is_active !== false && u.is_active !== 'false' && u.is_active !== 0)
+              .map((u: any) => ({
+                username: u.username || u.email?.split('@')[0] || 'user',
+                nama: u.nama_lengkap || u.nama || u.name || u.username || 'Administrator',
+                role: (u.role || 'admin').toLowerCase(),
+                isDefault: ['superadmin', 'admin'].includes(String(u.username || '').toLowerCase())
+              }));
+          }
+        } catch (dbEx) {
+          console.warn('admin_users fetch notice:', dbEx);
+        }
+
+        // 2. Fallback to "users" table if admin_users is empty
+        if (fetched.length === 0) {
+          try {
+            const { data: usersData, error: usersErr } = await supabase
+              .from('users')
+              .select('*');
+
+            if (!usersErr && usersData && Array.isArray(usersData) && usersData.length > 0) {
+              fetched = usersData
+                .filter((u: any) => u.is_active !== false && u.is_active !== 'false' && u.is_active !== 0)
+                .map((u: any) => ({
+                  username: u.username || u.email?.split('@')[0] || 'user',
+                  nama: u.nama_lengkap || u.nama || u.name || u.username || 'Administrator',
+                  role: (u.role || 'admin').toLowerCase(),
+                  isDefault: ['superadmin', 'admin'].includes(String(u.username || '').toLowerCase())
+                }));
+            }
+          } catch (usersEx) {
+            console.warn('users table fetch notice:', usersEx);
           }
         }
 
-        // 2. Fallback to API if direct Supabase returned empty
+        // 3. Fallback to API if direct Supabase returned empty
         if (fetched.length === 0) {
           try {
             const res = await fetch('/api/admin/users');
@@ -117,22 +141,40 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
 
         if (fetched.length > 0) {
           setAvailableUsers(fetched);
+          if (!username && fetched[0]) {
+            setUsername(fetched[0].username);
+          }
         } else {
-          setAvailableUsers([]);
+          // Provide standard defaults
+          const defaultList: LoadedUser[] = [
+            { username: 'admin', nama: 'Administrator', role: 'admin', isDefault: true },
+            { username: 'dede', nama: 'Dede Suparman', role: 'admin', isDefault: true }
+          ];
+          setAvailableUsers(defaultList);
+          if (!username) {
+            setUsername('admin');
+          }
         }
       } catch (e) {
         console.warn('Could not fetch dynamic users list:', e);
-        setAvailableUsers([]);
+        const defaultList: LoadedUser[] = [
+          { username: 'admin', nama: 'Administrator', role: 'admin', isDefault: true },
+          { username: 'dede', nama: 'Dede Suparman', role: 'admin', isDefault: true }
+        ];
+        setAvailableUsers(defaultList);
       }
     };
 
     fetchRegisteredUsers();
 
-    // Listen to real-time changes on "admin_users" table so other devices update instantly
+    // Listen to real-time changes on "admin_users" and "users" tables so other devices update instantly
     try {
       const channel = supabase
         .channel('pin_screen_realtime_users')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
+          fetchRegisteredUsers();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
           fetchRegisteredUsers();
         })
         .subscribe();

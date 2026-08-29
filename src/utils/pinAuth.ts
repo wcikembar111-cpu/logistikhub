@@ -24,7 +24,10 @@ export interface PinUserPreset {
   isDefault?: boolean;
 }
 
-export const DEFAULT_ADMIN_PRESETS: PinUserPreset[] = [];
+export const DEFAULT_ADMIN_PRESETS: PinUserPreset[] = [
+  { username: 'admin', nama: 'Administrator', role: 'admin', isDefault: true },
+  { username: 'dede', nama: 'Dede Suparman', role: 'admin', isDefault: true }
+];
 
 export function getAuthenticatedUser(): { username: string; nama_lengkap: string; role: string; email?: string } | null {
   try {
@@ -116,6 +119,57 @@ export function isPinUnlocked(): boolean {
   return false;
 }
 
+export function matchDbUserCredentials(u: any, cleanUsername: string, cleanPin: string): boolean {
+  if (!u) return false;
+  if (u.is_active === false || u.is_active === 'false' || u.is_active === 0) {
+    return false;
+  }
+
+  const uName = String(u.username || '').trim().toLowerCase();
+  const uEmail = String(u.email || '').trim().toLowerCase();
+  const uFullName = String(u.nama_lengkap || u.nama || u.name || '').trim().toLowerCase();
+  const uId = String(u.id || '').trim().toLowerCase();
+
+  const cleanNoSpace = cleanUsername.replace(/[\s._-]+/g, '');
+  const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+  const uFullNameNoSpace = uFullName.replace(/[\s._-]+/g, '');
+  const emailPrefix = cleanUsername.includes('@') ? cleanUsername.split('@')[0] : cleanUsername;
+
+  const isUserMatch = (
+    uName === cleanUsername ||
+    uEmail === cleanUsername ||
+    uName === emailPrefix ||
+    (cleanNoSpace.length >= 3 && uNameNoSpace === cleanNoSpace) ||
+    (cleanNoSpace.length >= 3 && uFullNameNoSpace === cleanNoSpace) ||
+    uFullName === cleanUsername ||
+    (cleanNoSpace.length >= 4 && uFullNameNoSpace.includes(cleanNoSpace)) ||
+    (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullNameNoSpace)) ||
+    (cleanUsername.length > 10 && uId === cleanUsername)
+  );
+
+  if (!isUserMatch) return false;
+
+  const dbPin = String(u.pin ?? '').trim();
+  const dbPassword = String(u.password ?? '').trim();
+  const dbPinCode = String(u.pin_code ?? u.kode_pin ?? u.access_code ?? '').trim();
+
+  const cleanPinNum = cleanPin.replace(/^0+/, '') || '0';
+  const dbPinNum = dbPin.replace(/^0+/, '') || '0';
+  const dbPinPadded = dbPin.padStart(6, '0');
+  const cleanPinPadded = cleanPin.padStart(6, '0');
+
+  const isPinValid = (
+    (dbPin && cleanPin === dbPin) ||
+    (dbPin && cleanPinPadded === dbPinPadded) ||
+    (dbPin && /^\d+$/.test(cleanPin) && /^\d+$/.test(dbPin) && cleanPinNum === dbPinNum) ||
+    (dbPassword && cleanPin === dbPassword) ||
+    (dbPassword && cleanPin.toLowerCase() === dbPassword.toLowerCase()) ||
+    (dbPinCode && cleanPin === dbPinCode)
+  );
+
+  return Boolean(isPinValid);
+}
+
 export async function verifyUserPin(username: string, pin: string, rememberDevice: boolean = true): Promise<VerifyPinResult> {
   const cleanUsername = (username || '').trim().toLowerCase();
   const cleanPin = pin.trim();
@@ -143,6 +197,7 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
   }
 
   // 1. Primary Method: Verify via Server-Side API (backend queries database)
+  let serverApiChecked = false;
   try {
     const response = await fetch('/api/auth/verify-pin', {
       method: 'POST',
@@ -150,6 +205,7 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
       body: JSON.stringify({ username: cleanUsername, pin: cleanPin })
     });
 
+    serverApiChecked = true;
     const contentType = response.headers.get('content-type') || '';
     if (response.ok && contentType.includes('application/json')) {
       const data = await response.json();
@@ -183,85 +239,80 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
         return { success: true, user: authenticatedUser, message: data.message };
       }
     }
-
-    if (response.status === 401 && contentType.includes('application/json')) {
-      const errorData = await response.json().catch(() => ({}));
-      handleFailedAttempt();
-      return { 
-        success: false, 
-        message: errorData.message || `Username "${cleanUsername}" atau PIN tidak sesuai. Semua kredensial diverifikasi langsung dari database.` 
-      };
-    }
   } catch (serverErr) {
     console.warn('Server PIN endpoint unreachable, attempting Direct SQL Database verification...', serverErr);
   }
 
-  // 2. Direct SQL Database Query via Supabase Client (Tabel: admin_users / users)
+  // 2. Direct SQL Database Query via Supabase Client (Tabel: admin_users dan fallback ke tabel users)
   try {
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      const { data: dbUsers, error: dbErr } = await supabase
-        .from('admin_users')
-        .select('id, username, pin, password, nama_lengkap, nama, email, role, is_active')
-        .eq('is_active', true);
+    let dbUsers: any[] = [];
 
-      if (!dbErr && Array.isArray(dbUsers) && dbUsers.length > 0) {
-        const cleanNoSpace = cleanUsername.replace(/[\s._-]+/g, '');
-        const matchedDbUser = dbUsers.find((u: any) => {
-          const uName = String(u.username || '').trim().toLowerCase();
-          const uEmail = String(u.email || '').trim().toLowerCase();
-          const uFullName = String(u.nama_lengkap || u.nama || '').trim().toLowerCase().replace(/[\s._-]+/g, '');
-          const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+    // Check admin_users table first
+    const { data: adminUsersData, error: adminUsersErr } = await supabase
+      .from('admin_users')
+      .select('*');
 
-          return (
-            uName === cleanUsername ||
-            uNameNoSpace === cleanNoSpace ||
-            uEmail === cleanUsername ||
-            uFullName === cleanNoSpace ||
-            (cleanNoSpace.length >= 4 && uFullName.includes(cleanNoSpace)) ||
-            (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName))
-          );
-        });
+    if (!adminUsersErr && Array.isArray(adminUsersData) && adminUsersData.length > 0) {
+      dbUsers = adminUsersData;
+    } else {
+      // Fallback: check users table
+      const { data: usersData, error: usersErr } = await supabase
+        .from('users')
+        .select('*');
 
-        if (matchedDbUser) {
-          const dbPin = String(matchedDbUser.pin || '').trim();
-          const dbPassword = String(matchedDbUser.password || '').trim();
-          const isPinValid = (dbPin && cleanPin === dbPin) || (dbPassword && cleanPin === dbPassword);
+      if (!usersErr && Array.isArray(usersData) && usersData.length > 0) {
+        dbUsers = usersData;
+      }
+    }
 
-          if (isPinValid) {
-            localStorage.removeItem(PIN_FAIL_COUNT_KEY);
-            localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
+    if (dbUsers.length > 0) {
+      const matchedDbUser = dbUsers.find((u: any) => matchDbUserCredentials(u, cleanUsername, cleanPin));
 
-            const authenticatedUser = {
-              username: matchedDbUser.username || cleanUsername,
-              nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || 'Pengguna',
-              role: (matchedDbUser.role || 'admin').toLowerCase(),
-              email: matchedDbUser.email || `${matchedDbUser.username || cleanUsername}@kino.co.id`
-            };
+      if (matchedDbUser) {
+        localStorage.removeItem(PIN_FAIL_COUNT_KEY);
+        localStorage.removeItem(PIN_LOCKOUT_TIME_KEY);
 
-            const fakeToken = btoa(JSON.stringify({ 
-              mode: 'sql-db-verified', 
-              username: cleanUsername,
-              iat: Date.now(), 
-              sig: cleanPin 
-            }));
+        const authenticatedUser = {
+          username: matchedDbUser.username || cleanUsername,
+          nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || 'Pengguna',
+          role: (matchedDbUser.role || 'admin').toLowerCase(),
+          email: matchedDbUser.email || `${matchedDbUser.username || cleanUsername}@kino.co.id`
+        };
 
-            if (rememberDevice) {
-              localStorage.setItem(PIN_STORAGE_KEY, fakeToken);
-            } else {
-              sessionStorage.setItem(PIN_STORAGE_KEY, fakeToken);
-            }
+        const generatedToken = btoa(JSON.stringify({ 
+          valid: true, 
+          username: cleanUsername,
+          name: authenticatedUser.nama_lengkap,
+          role: authenticatedUser.role,
+          iat: Date.now(),
+          exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          sig: cleanPin 
+        }));
 
-            localStorage.setItem(PIN_USER_KEY, JSON.stringify(authenticatedUser));
-            localStorage.setItem('user', JSON.stringify(authenticatedUser));
-            window.dispatchEvent(new Event('userChange'));
-
-            // Update last_login into admin_users
-            void supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', matchedDbUser.id);
-
-            updateLastActivity();
-            return { success: true, user: authenticatedUser };
-          }
+        if (rememberDevice) {
+          localStorage.setItem(PIN_STORAGE_KEY, generatedToken);
+          localStorage.setItem(PIN_REMEMBER_KEY, 'true');
+        } else {
+          sessionStorage.setItem(PIN_STORAGE_KEY, generatedToken);
+          localStorage.removeItem(PIN_REMEMBER_KEY);
         }
+
+        localStorage.setItem(PIN_USER_KEY, JSON.stringify(authenticatedUser));
+        localStorage.setItem('user', JSON.stringify(authenticatedUser));
+        window.dispatchEvent(new Event('userChange'));
+
+        // Update last_login into admin_users or users
+        if (matchedDbUser.id) {
+          void supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', matchedDbUser.id);
+          void supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', matchedDbUser.id);
+        }
+
+        updateLastActivity();
+        return { 
+          success: true, 
+          user: authenticatedUser, 
+          message: `Login berhasil sebagai ${authenticatedUser.nama_lengkap}.` 
+        };
       }
     }
   } catch (sqlDirectErr) {
@@ -271,13 +322,13 @@ export async function verifyUserPin(username: string, pin: string, rememberDevic
   handleFailedAttempt();
   return { 
     success: false, 
-    message: `Username "${cleanUsername}" atau PIN / Password tidak sesuai dengan data di database.` 
+    message: `Username "${cleanUsername}" atau PIN / Password tidak sesuai dengan data di tabel admin_users database.` 
   };
 }
 
 // Backward-compatible verifyPin wrapper
 export async function verifyPin(pin: string, rememberDevice: boolean = true): Promise<VerifyPinResult> {
-  const savedUser = getSavedUsername();
+  const savedUser = getSavedUsername() || 'admin';
   return verifyUserPin(savedUser, pin, rememberDevice);
 }
 

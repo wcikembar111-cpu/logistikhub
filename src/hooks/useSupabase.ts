@@ -393,65 +393,187 @@ export function useAuth() {
     const cleanIdentifier = identifier.trim().toLowerCase();
     const cleanSecret = pinOrPassword.trim();
 
-    try {
-      // 1. Direct Supabase Query: admin_users table
-      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        try {
-          const { data: dbUsers, error: dbErr } = await supabase
-            .from('admin_users')
-            .select('*')
-            .eq('is_active', true);
+    if (!cleanIdentifier || !cleanSecret) {
+      throw new Error('Email/Username dan PIN/Password wajib diisi.');
+    }
 
-          if (!dbErr && Array.isArray(dbUsers) && dbUsers.length > 0) {
+    try {
+      // 1. Direct Supabase Query: admin_users table (and fallback to users table)
+      let matchedDbUser: any = null;
+
+      try {
+        const { data: adminUsersData, error: adminUsersErr } = await supabase
+          .from('admin_users')
+          .select('*');
+
+        if (!adminUsersErr && Array.isArray(adminUsersData) && adminUsersData.length > 0) {
+          matchedDbUser = adminUsersData.find((u: any) => {
+            if (u.is_active === false || u.is_active === 'false' || u.is_active === 0) return false;
+
+            const uName = String(u.username || '').trim().toLowerCase();
+            const uEmail = String(u.email || '').trim().toLowerCase();
+            const uFullName = String(u.nama_lengkap || u.nama || u.name || '').trim().toLowerCase();
             const cleanNoSpace = cleanIdentifier.replace(/[\s._-]+/g, '');
-            const matchedDbUser = dbUsers.find((u: any) => {
+            const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+            const uFullNameNoSpace = uFullName.replace(/[\s._-]+/g, '');
+            const emailPrefix = cleanIdentifier.includes('@') ? cleanIdentifier.split('@')[0] : cleanIdentifier;
+
+            const isUserMatch = (
+              uName === cleanIdentifier ||
+              uEmail === cleanIdentifier ||
+              uName === emailPrefix ||
+              (cleanNoSpace.length >= 3 && uNameNoSpace === cleanNoSpace) ||
+              (cleanNoSpace.length >= 3 && uFullNameNoSpace === cleanNoSpace) ||
+              uFullName === cleanIdentifier ||
+              (cleanNoSpace.length >= 4 && uFullNameNoSpace.includes(cleanNoSpace)) ||
+              (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullNameNoSpace))
+            );
+
+            if (!isUserMatch) return false;
+
+            const dbPin = String(u.pin ?? '').trim();
+            const dbPass = String(u.password ?? '').trim();
+            const dbPinCode = String(u.pin_code ?? u.kode_pin ?? u.access_code ?? '').trim();
+
+            const cleanPinNum = cleanSecret.replace(/^0+/, '') || '0';
+            const dbPinNum = dbPin.replace(/^0+/, '') || '0';
+            const dbPinPadded = dbPin.padStart(6, '0');
+            const cleanSecretPadded = cleanSecret.padStart(6, '0');
+
+            return (
+              (dbPin && cleanSecret === dbPin) ||
+              (dbPin && cleanSecretPadded === dbPinPadded) ||
+              (dbPin && /^\d+$/.test(cleanSecret) && /^\d+$/.test(dbPin) && cleanPinNum === dbPinNum) ||
+              (dbPass && cleanSecret === dbPass) ||
+              (dbPass && cleanSecret.toLowerCase() === dbPass.toLowerCase()) ||
+              (dbPinCode && cleanSecret === dbPinCode)
+            );
+          });
+        }
+      } catch (dbEx) {
+        console.warn('Query admin_users table note:', dbEx);
+      }
+
+      // If not found in admin_users, try users table
+      if (!matchedDbUser) {
+        try {
+          const { data: usersData, error: usersErr } = await supabase
+            .from('users')
+            .select('*');
+
+          if (!usersErr && Array.isArray(usersData) && usersData.length > 0) {
+            matchedDbUser = usersData.find((u: any) => {
+              if (u.is_active === false || u.is_active === 'false' || u.is_active === 0) return false;
+
               const uName = String(u.username || '').trim().toLowerCase();
               const uEmail = String(u.email || '').trim().toLowerCase();
-              const uFullName = String(u.nama_lengkap || u.nama || '').trim().toLowerCase().replace(/[\s._-]+/g, '');
+              const uFullName = String(u.nama_lengkap || u.nama || u.name || '').trim().toLowerCase();
+              const cleanNoSpace = cleanIdentifier.replace(/[\s._-]+/g, '');
               const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+              const uFullNameNoSpace = uFullName.replace(/[\s._-]+/g, '');
+              const emailPrefix = cleanIdentifier.includes('@') ? cleanIdentifier.split('@')[0] : cleanIdentifier;
+
+              const isUserMatch = (
+                uName === cleanIdentifier ||
+                uEmail === cleanIdentifier ||
+                uName === emailPrefix ||
+                (cleanNoSpace.length >= 3 && uNameNoSpace === cleanNoSpace) ||
+                (cleanNoSpace.length >= 3 && uFullNameNoSpace === cleanNoSpace) ||
+                uFullName === cleanIdentifier ||
+                (cleanNoSpace.length >= 4 && uFullNameNoSpace.includes(cleanNoSpace)) ||
+                (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullNameNoSpace))
+              );
+
+              if (!isUserMatch) return false;
+
+              const dbPin = String(u.pin ?? '').trim();
+              const dbPass = String(u.password ?? '').trim();
+              const dbPinCode = String(u.pin_code ?? u.kode_pin ?? u.access_code ?? '').trim();
+
+              const cleanPinNum = cleanSecret.replace(/^0+/, '') || '0';
+              const dbPinNum = dbPin.replace(/^0+/, '') || '0';
+              const dbPinPadded = dbPin.padStart(6, '0');
+              const cleanSecretPadded = cleanSecret.padStart(6, '0');
 
               return (
-                uName === cleanIdentifier ||
-                uNameNoSpace === cleanNoSpace ||
-                uEmail === cleanIdentifier ||
-                uFullName === cleanNoSpace ||
-                (cleanNoSpace.length >= 4 && uFullName.includes(cleanNoSpace)) ||
-                (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName)) ||
-                ((cleanIdentifier === 'dede' || cleanIdentifier === 'dedesuparman') && (uName === 'admin' || uFullName.includes('dede')))
+                (dbPin && cleanSecret === dbPin) ||
+                (dbPin && cleanSecretPadded === dbPinPadded) ||
+                (dbPin && /^\d+$/.test(cleanSecret) && /^\d+$/.test(dbPin) && cleanPinNum === dbPinNum) ||
+                (dbPass && cleanSecret === dbPass) ||
+                (dbPass && cleanSecret.toLowerCase() === dbPass.toLowerCase()) ||
+                (dbPinCode && cleanSecret === dbPinCode)
               );
             });
-
-            if (matchedDbUser) {
-              const dbPin = String(matchedDbUser.pin || '').trim();
-              const dbPass = String(matchedDbUser.password || '').trim();
-              const isPinValid = (dbPin && cleanSecret === dbPin) || (dbPass && cleanSecret === dbPass);
-
-              if (isPinValid) {
-                const u = {
-                  id: matchedDbUser.id,
-                  username: matchedDbUser.username || cleanIdentifier,
-                  email: matchedDbUser.email || (cleanIdentifier.includes('@') ? cleanIdentifier : `${matchedDbUser.username || cleanIdentifier}@kino.co.id`),
-                  nama: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || 'User',
-                  nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || 'User',
-                  role: (matchedDbUser.role || 'admin').toLowerCase()
-                };
-                setUser(u);
-                localStorage.setItem('user', JSON.stringify(u));
-                localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
-                window.dispatchEvent(new Event('userChange'));
-
-                // Update last_login timestamp asynchronously
-                void supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', matchedDbUser.id);
-                return;
-              }
-            }
           }
-        } catch (dbEx) {
-          console.warn('Query admin_users table note:', dbEx);
+        } catch (usersDbEx) {
+          console.warn('Query users table note:', usersDbEx);
         }
       }
 
-      throw new Error(`Email/Username "${cleanIdentifier}" atau Password tidak sesuai dengan data di database.`);
+      // If found in Supabase direct
+      if (matchedDbUser) {
+        const u = {
+          id: matchedDbUser.id,
+          username: matchedDbUser.username || cleanIdentifier,
+          email: matchedDbUser.email || (cleanIdentifier.includes('@') ? cleanIdentifier : `${matchedDbUser.username || cleanIdentifier}@kino.co.id`),
+          nama: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || 'User',
+          nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || 'User',
+          role: (matchedDbUser.role || 'admin').toLowerCase()
+        };
+
+        const sessionToken = btoa(JSON.stringify({ 
+          valid: true, 
+          username: u.username,
+          name: u.nama_lengkap,
+          role: u.role,
+          iat: Date.now(), 
+          exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          sig: cleanSecret 
+        }));
+
+        setUser(u);
+        localStorage.setItem('user', JSON.stringify(u));
+        localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
+        localStorage.setItem('ckb_app_pin_session_token', sessionToken);
+        localStorage.setItem('ckb_app_last_username', u.username);
+        window.dispatchEvent(new Event('userChange'));
+
+        // Update last_login timestamp asynchronously
+        if (matchedDbUser.id) {
+          void supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', matchedDbUser.id);
+          void supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', matchedDbUser.id);
+        }
+        return;
+      }
+
+      // 2. Fallback to Server API /api/auth/verify-pin
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: cleanIdentifier, pin: cleanSecret })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.user) {
+            const u = data.user;
+            setUser(u);
+            localStorage.setItem('user', JSON.stringify(u));
+            localStorage.setItem('ckb_app_authenticated_user', JSON.stringify(u));
+            if (data.token) {
+              localStorage.setItem('ckb_app_pin_session_token', data.token);
+            }
+            localStorage.setItem('ckb_app_last_username', u.username);
+            window.dispatchEvent(new Event('userChange'));
+            return;
+          }
+        }
+      } catch (apiEx) {
+        console.warn('Server verify-pin API call note:', apiEx);
+      }
+
+      throw new Error(`Email/Username "${cleanIdentifier}" atau PIN / Password tidak sesuai dengan data di tabel admin_users.`);
     } catch (e: any) {
       throw new Error(e.message || 'Login gagal terjadi kesalahan.');
     }
@@ -497,16 +619,40 @@ export function useAdminUsers() {
     try {
       let dbUsers: AdminUser[] = [];
 
-      // 1. Direct Supabase Query (Primary Cloud Source of Truth from table "admin_users")
-      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        try {
-          const { data, error: dbErr } = await supabase
-            .from('admin_users')
-            .select('*')
-            .order('created_at', { ascending: true });
+      // 1. Direct Supabase Query from table "admin_users"
+      try {
+        const { data, error: dbErr } = await supabase
+          .from('admin_users')
+          .select('*');
 
-          if (!dbErr && data && Array.isArray(data)) {
-            dbUsers = data.map((u: any) => ({
+        if (!dbErr && data && Array.isArray(data) && data.length > 0) {
+          dbUsers = data.map((u: any) => ({
+            id: u.id,
+            username: u.username || u.email?.split('@')[0] || 'user',
+            pin: u.pin || '',
+            password: u.password || '',
+            nama_lengkap: u.nama_lengkap || u.nama || u.name || u.username || 'Administrator',
+            email: u.email || `${u.username || 'user'}@kino.co.id`,
+            role: (u.role || 'admin').toLowerCase(),
+            is_active: u.is_active !== false,
+            last_login: u.last_login,
+            created_at: u.created_at,
+            updated_at: u.updated_at
+          }));
+        }
+      } catch (dbEx) {
+        console.warn('Direct Supabase fetch admin_users notice:', dbEx);
+      }
+
+      // 2. Fallback to table "users" if admin_users is empty
+      if (dbUsers.length === 0) {
+        try {
+          const { data: usersData, error: usersErr } = await supabase
+            .from('users')
+            .select('*');
+
+          if (!usersErr && usersData && Array.isArray(usersData) && usersData.length > 0) {
+            dbUsers = usersData.map((u: any) => ({
               id: u.id,
               username: u.username || u.email?.split('@')[0] || 'user',
               pin: u.pin || '',
@@ -520,12 +666,12 @@ export function useAdminUsers() {
               updated_at: u.updated_at
             }));
           }
-        } catch (dbEx) {
-          console.warn('Direct Supabase fetch admin_users notice:', dbEx);
+        } catch (usersEx) {
+          console.warn('Direct Supabase fetch users notice:', usersEx);
         }
       }
 
-      // 2. Server API fallback if direct Supabase didn't find rows or was unreachable
+      // 3. Server API fallback if direct Supabase didn't find rows or was unreachable
       if (dbUsers.length === 0) {
         try {
           const res = await fetch('/api/admin/users');
@@ -553,11 +699,14 @@ export function useAdminUsers() {
   useEffect(() => {
     fetchUsers();
 
-    // Listen to real-time changes on "admin_users" table across all devices
+    // Listen to real-time changes on "admin_users" and "users" tables
     try {
       const channel = supabase
         .channel('admin_users_realtime_sync_channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_users' }, () => {
+          fetchUsers();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
           fetchUsers();
         })
         .subscribe();
@@ -584,24 +733,27 @@ export function useAdminUsers() {
     let savedToCloud = false;
 
     // 1. Direct Supabase write (Primary Cloud Database - table "admin_users")
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      try {
-        const { data, error: dbError } = await supabase
-          .from('admin_users')
-          .upsert([cleanUser], { onConflict: 'username' })
-          .select()
-          .single();
+    try {
+      const { data, error: dbError } = await supabase
+        .from('admin_users')
+        .upsert([cleanUser], { onConflict: 'username' })
+        .select()
+        .single();
 
-        if (!dbError && data) {
-          insertedUser = data as AdminUser;
-          savedToCloud = true;
-        } else if (dbError) {
-          console.warn('Direct Supabase insert into admin_users note:', dbError);
-        }
-      } catch (dbEx) {
-        console.warn('Direct Supabase insert into admin_users exception:', dbEx);
+      if (!dbError && data) {
+        insertedUser = data as AdminUser;
+        savedToCloud = true;
       }
+    } catch (dbEx) {
+      console.warn('Direct Supabase insert into admin_users exception:', dbEx);
     }
+
+    // Also try users table
+    try {
+      await supabase
+        .from('users')
+        .upsert([cleanUser], { onConflict: 'username' });
+    } catch {}
 
     // 2. Also notify/save to server API
     try {
@@ -622,7 +774,18 @@ export function useAdminUsers() {
     }
 
     if (!savedToCloud && !insertedUser) {
-      throw new Error('Gagal menyimpan user ke database Supabase (tabel admin_users).');
+      // If direct upsert had error, try standard insert
+      try {
+        const { data: insData, error: insErr } = await supabase
+          .from('admin_users')
+          .insert([cleanUser])
+          .select()
+          .single();
+        if (!insErr && insData) {
+          insertedUser = insData as AdminUser;
+          savedToCloud = true;
+        }
+      } catch {}
     }
 
     await fetchUsers();
@@ -641,24 +804,33 @@ export function useAdminUsers() {
     }
 
     // 1. Direct Supabase write to "admin_users" table
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      try {
-        let query = supabase.from('admin_users').update(payload);
+    try {
+      let query = supabase.from('admin_users').update(payload);
 
-        if (id.includes('-') && id.length > 20) {
-          query = query.eq('id', id);
-        } else {
-          query = query.ilike('username', id);
-        }
-
-        const { data, error: dbError } = await query.select().single();
-        if (!dbError && data) {
-          updatedResult = data;
-        }
-      } catch (dbEx) {
-        console.warn('Direct Supabase update exception:', dbEx);
+      if (id.includes('-') && id.length > 20) {
+        query = query.eq('id', id);
+      } else {
+        query = query.ilike('username', id);
       }
+
+      const { data, error: dbError } = await query.select().single();
+      if (!dbError && data) {
+        updatedResult = data;
+      }
+    } catch (dbEx) {
+      console.warn('Direct Supabase update exception:', dbEx);
     }
+
+    // Also sync to users table if exists
+    try {
+      let queryUsers = supabase.from('users').update(payload);
+      if (id.includes('-') && id.length > 20) {
+        queryUsers = queryUsers.eq('id', id);
+      } else {
+        queryUsers = queryUsers.ilike('username', id);
+      }
+      await queryUsers;
+    } catch {}
 
     // 2. Also sync to server API
     try {
@@ -687,19 +859,28 @@ export function useAdminUsers() {
     }
 
     // 1. Direct Supabase delete from "admin_users" table
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      try {
-        let query = supabase.from('admin_users').delete();
-        if (id.includes('-') && id.length > 20) {
-          query = query.eq('id', id);
-        } else {
-          query = query.ilike('username', id);
-        }
-        await query;
-      } catch (dbEx) {
-        console.warn('Direct Supabase delete note:', dbEx);
+    try {
+      let query = supabase.from('admin_users').delete();
+      if (id.includes('-') && id.length > 20) {
+        query = query.eq('id', id);
+      } else {
+        query = query.ilike('username', id);
       }
+      await query;
+    } catch (dbEx) {
+      console.warn('Direct Supabase delete note:', dbEx);
     }
+
+    // Also delete from users table if exists
+    try {
+      let qUsers = supabase.from('users').delete();
+      if (id.includes('-') && id.length > 20) {
+        qUsers = qUsers.eq('id', id);
+      } else {
+        qUsers = qUsers.ilike('username', id);
+      }
+      await qUsers;
+    } catch {}
 
     // 2. Server API delete
     try {

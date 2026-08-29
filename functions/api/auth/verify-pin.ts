@@ -39,7 +39,8 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
 
     if (supabaseUrl && supabaseKey) {
       try {
-        const res = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=id,username,pin,password,nama_lengkap,nama,email,role,is_active&is_active=eq.true`, {
+        let dbUsers: any[] = [];
+        const res = await fetch(`${supabaseUrl}/rest/v1/admin_users?select=*`, {
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`
@@ -47,39 +48,80 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
         });
 
         if (res.ok) {
-          const dbUsers = (await res.json()) as any[];
-          if (Array.isArray(dbUsers)) {
-            const cleanNoSpace = username.replace(/[\s._-]+/g, '');
-            const matchedDbUser = dbUsers.find((u: any) => {
-              const uName = String(u.username || '').trim().toLowerCase();
-              const uEmail = String(u.email || '').trim().toLowerCase();
-              const uFullName = String(u.nama_lengkap || u.nama || '').trim().toLowerCase().replace(/[\s._-]+/g, '');
-              const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+          const fetched = await res.json();
+          if (Array.isArray(fetched) && fetched.length > 0) {
+            dbUsers = fetched;
+          }
+        }
 
-              return (
-                uName === username ||
-                uNameNoSpace === cleanNoSpace ||
-                uEmail === username ||
-                uFullName === cleanNoSpace ||
-                (cleanNoSpace.length >= 4 && uFullName.includes(cleanNoSpace)) ||
-                (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullName))
-              );
-            });
-
-            if (matchedDbUser) {
-              const dbPin = String(matchedDbUser.pin || '').trim();
-              const dbPassword = String(matchedDbUser.password || '').trim();
-              const isPinValid = (dbPin && cleanInput === dbPin) || (dbPassword && cleanInput === dbPassword);
-
-              if (isPinValid) {
-                authenticatedUser = {
-                  username: matchedDbUser.username || username,
-                  nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.username || 'Pengguna',
-                  role: (matchedDbUser.role || 'admin').toLowerCase(),
-                  email: matchedDbUser.email || `${matchedDbUser.username || username}@kino.co.id`
-                };
-              }
+        if (dbUsers.length === 0) {
+          const resUsers = await fetch(`${supabaseUrl}/rest/v1/users?select=*`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
             }
+          });
+          if (resUsers.ok) {
+            const fetchedUsers = await resUsers.json();
+            if (Array.isArray(fetchedUsers)) {
+              dbUsers = fetchedUsers;
+            }
+          }
+        }
+
+        if (dbUsers.length > 0) {
+          const cleanNoSpace = username.replace(/[\s._-]+/g, '');
+          const matchedDbUser = dbUsers.find((u: any) => {
+            if (u.is_active === false || u.is_active === 'false' || u.is_active === 0) return false;
+
+            const uName = String(u.username || '').trim().toLowerCase();
+            const uEmail = String(u.email || '').trim().toLowerCase();
+            const uFullName = String(u.nama_lengkap || u.nama || u.name || '').trim().toLowerCase();
+            const uId = String(u.id || '').trim().toLowerCase();
+            const uNameNoSpace = uName.replace(/[\s._-]+/g, '');
+            const uFullNameNoSpace = uFullName.replace(/[\s._-]+/g, '');
+            const emailPrefix = username.includes('@') ? username.split('@')[0] : username;
+
+            const isUserMatch = (
+              uName === username ||
+              uEmail === username ||
+              uName === emailPrefix ||
+              (cleanNoSpace.length >= 3 && uNameNoSpace === cleanNoSpace) ||
+              (cleanNoSpace.length >= 3 && uFullNameNoSpace === cleanNoSpace) ||
+              uFullName === username ||
+              (cleanNoSpace.length >= 4 && uFullNameNoSpace.includes(cleanNoSpace)) ||
+              (cleanNoSpace.length >= 4 && cleanNoSpace.includes(uFullNameNoSpace)) ||
+              (username.length > 10 && uId === username)
+            );
+
+            if (!isUserMatch) return false;
+
+            const dbPin = String(u.pin ?? '').trim();
+            const dbPassword = String(u.password ?? '').trim();
+            const dbPinCode = String(u.pin_code ?? u.kode_pin ?? u.access_code ?? '').trim();
+
+            const cleanPinNum = cleanInput.replace(/^0+/, '') || '0';
+            const dbPinNum = dbPin.replace(/^0+/, '') || '0';
+            const dbPinPadded = dbPin.padStart(6, '0');
+            const cleanPinPadded = cleanInput.padStart(6, '0');
+
+            return (
+              (dbPin && cleanInput === dbPin) ||
+              (dbPin && cleanPinPadded === dbPinPadded) ||
+              (dbPin && /^\d+$/.test(cleanInput) && /^\d+$/.test(dbPin) && cleanPinNum === dbPinNum) ||
+              (dbPassword && cleanInput === dbPassword) ||
+              (dbPassword && cleanInput.toLowerCase() === dbPassword.toLowerCase()) ||
+              (dbPinCode && cleanInput === dbPinCode)
+            );
+          });
+
+          if (matchedDbUser) {
+            authenticatedUser = {
+              username: matchedDbUser.username || username,
+              nama_lengkap: matchedDbUser.nama_lengkap || matchedDbUser.nama || matchedDbUser.name || matchedDbUser.username || 'Pengguna',
+              role: (matchedDbUser.role || 'admin').toLowerCase(),
+              email: matchedDbUser.email || `${matchedDbUser.username || username}@kino.co.id`
+            };
           }
         }
       } catch (dbEx) {
