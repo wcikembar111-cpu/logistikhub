@@ -24,7 +24,7 @@ export function FloatingRobotBroadcast({
 
   return (
     <div 
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 bg-slate-950/65 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
@@ -63,7 +63,7 @@ export function FloatingRobotBroadcast({
               </div>
 
               {/* Robot Face Screen (Glossy Visor) */}
-              <div className="w-12 h-8 sm:w-14 sm:h-10 rounded-2xl bg-slate-950 border border-pink-400/60 flex items-center justify-around px-1.5 sm:px-2 shadow-inner relative overflow-hidden">
+              <div className="w-12 h-8 sm:w-14 sm:h-10 rounded-2xl bg-slate-900 border border-pink-400/60 flex items-center justify-around px-1.5 sm:px-2 shadow-inner relative overflow-hidden">
                 
                 {/* Glowing Heart / Love Eyes */}
                 <div className="flex items-center justify-center animate-pulse">
@@ -94,32 +94,32 @@ export function FloatingRobotBroadcast({
         </div>
 
         {/* Message Speech Bubble Dialog Delivered by Pink Love Robot */}
-        <div className="w-full bg-white rounded-3xl shadow-2xl border-2 border-pink-400/60 overflow-hidden animate-in zoom-in-95 duration-150 relative">
+        <div className="w-full bg-white rounded-3xl shadow-2xl border-2 border-pink-200 overflow-hidden animate-in zoom-in-95 duration-150 relative">
           
           {/* Header Tag */}
-          <div className="px-4 py-2.5 bg-gradient-to-r from-pink-900 via-rose-900 to-slate-900 text-white flex items-center justify-between gap-2 border-b border-pink-400/30">
+          <div className="px-4 py-2.5 bg-pink-50 text-slate-800 flex items-center justify-between gap-2 border-b border-pink-200">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 rounded-lg bg-pink-500/25 text-pink-300 flex items-center justify-center">
-                <Heart size={14} className="fill-pink-300 animate-pulse" />
+              <div className="p-1 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">
+                <Heart size={14} className="fill-pink-600 animate-pulse" />
               </div>
-              <span className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-700 truncate flex items-center gap-1.5">
                 <span>Pesan dari:</span>
-                <strong className="text-pink-300 uppercase">{broadcast.sender_name}</strong>
+                <strong className="text-pink-600 uppercase">{broadcast.sender_name}</strong>
                 {broadcast.origin === 'external' && (
-                  <span className="bg-indigo-500/80 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border border-indigo-300/40">
+                  <span className="bg-indigo-50 text-indigo-700 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border border-indigo-200">
                     App Lain
                   </span>
                 )}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-slate-300">
+            <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-slate-500">
               <span>{timeFormatted}</span>
               {soundEnabled && (
                 <button
                   type="button"
                   onClick={() => playBroadcastSound('info')}
-                  className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-pink-300 cursor-pointer"
+                  className="p-1 rounded-lg bg-white hover:bg-pink-100 text-pink-600 border border-pink-200 cursor-pointer"
                   title="Bunyikan Nada"
                 >
                   <Volume2 size={13} />
@@ -128,7 +128,7 @@ export function FloatingRobotBroadcast({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all cursor-pointer"
+                className="p-1 rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 transition-all cursor-pointer"
                 title="Tutup"
               >
                 <X size={15} />

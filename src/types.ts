@@ -218,6 +218,50 @@ export interface MonitoringPemusnahanItem {
   created_at?: string;
 }
 
+export interface UserPermissions {
+  canInputIncoming: boolean;
+  canTally: boolean;
+  canEditMasterBarang: boolean;
+  canManageUsers: boolean;
+  canApproveQC: boolean;
+  canAccessDatabase: boolean;
+}
+
+export type UserRole = 'Admin' | 'Pelaksana' | string;
+export type UserStatus = 'Aktif' | 'Nonaktif' | string;
+
+export interface UserSession {
+  id: string;
+  username: string;
+  nama: string;
+  role: UserRole;
+  status: UserStatus;
+  avatar: string;
+  email_google: string;
+  permissions: UserPermissions;
+  loggedInAt?: number;
+}
+
+export interface UserRecord {
+  id: string;
+  username: string;
+  nama: string;
+  pin: string;
+  avatar?: string;
+  role: 'Admin' | 'Pelaksana';
+  status: 'Aktif' | 'Nonaktif';
+  email_google?: string;
+  permissions: UserPermissions;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AuthLoginResult {
+  success: boolean;
+  user?: UserSession;
+  message: string;
+}
+
 export interface AdminUser {
   id?: string;
   username: string;
@@ -226,19 +270,30 @@ export interface AdminUser {
   nama_lengkap?: string;
   nama?: string;
   email?: string;
+  email_google?: string;
   role?: string;
+  status?: string;
   is_active?: boolean;
+  avatar?: string;
+  permissions?: UserPermissions;
   last_login?: string;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface AuthSessionUser {
+  id?: string;
   username: string;
-  nama_lengkap: string;
+  nama?: string;
+  nama_lengkap?: string;
   email?: string;
+  email_google?: string;
   role: string;
+  status?: string;
+  avatar?: string;
+  permissions?: UserPermissions;
   loggedInAt?: number;
 }
+
 
 

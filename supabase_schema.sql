@@ -1,59 +1,96 @@
 -- =================================================================
--- SKEMA TABEL USER & PIN LOGIN (SATU TABEL TUNGGAL: users)
+-- SKEMA TABEL USERS & AUTENTIKASI BARU (PostgreSQL / Supabase)
 -- =================================================================
+-- 1. Aktifkan ekstensi pendukung (opsional jika belum aktif)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- 2. Fungsi trigger untuk otomatis memperbarui kolom updated_at
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = TIMEZONE('utc'::text, NOW());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Pembuatan Tabel USERS
 CREATE TABLE IF NOT EXISTS public.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(100) UNIQUE NOT NULL,
-  pin VARCHAR(50) NOT NULL DEFAULT '089739',
-  nama_lengkap VARCHAR(255) DEFAULT 'Administrator',
-  email VARCHAR(255) UNIQUE,
-  password VARCHAR(255) DEFAULT 'Kino.2026',
-  role VARCHAR(50) DEFAULT 'admin', -- 'superadmin', 'admin', 'operator'
-  is_active BOOLEAN DEFAULT true,
-  last_login TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    nama VARCHAR(255) NOT NULL,
+    pin VARCHAR(20) NOT NULL,                    -- PIN 4-6 digit (atau hashed password)
+    avatar TEXT DEFAULT '',
+    role VARCHAR(50) NOT NULL DEFAULT 'Pelaksana', -- 'Admin' | 'Pelaksana'
+    status VARCHAR(50) NOT NULL DEFAULT 'Aktif',   -- 'Aktif' | 'Nonaktif'
+    email_google VARCHAR(255) DEFAULT '',
+    permissions JSONB NOT NULL DEFAULT '{
+        "canInputIncoming": true,
+        "canTally": true,
+        "canEditMasterBarang": false,
+        "canManageUsers": false,
+        "canApproveQC": false,
+        "canAccessDatabase": false
+    }'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Pastikan semua kolom baru terdaftar jika tabel users sudah ada sebelumnya
+-- Pastikan kolom baru terpasang jika tabel users sudah ada sebelumnya
 ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS username VARCHAR(100),
-  ADD COLUMN IF NOT EXISTS pin VARCHAR(50) DEFAULT '089739',
-  ADD COLUMN IF NOT EXISTS nama_lengkap VARCHAR(255) DEFAULT 'Administrator',
-  ADD COLUMN IF NOT EXISTS email VARCHAR(255),
-  ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT 'Kino.2026',
-  ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'admin',
-  ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
-  ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now());
+    ADD COLUMN IF NOT EXISTS nama VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS pin VARCHAR(20) DEFAULT '123456',
+    ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '',
+    ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'Pelaksana',
+    ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Aktif',
+    ADD COLUMN IF NOT EXISTS email_google VARCHAR(255) DEFAULT '',
+    ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{
+        "canInputIncoming": true,
+        "canTally": true,
+        "canEditMasterBarang": false,
+        "canManageUsers": false,
+        "canApproveQC": false,
+        "canAccessDatabase": false
+    }'::jsonb;
 
--- Migrasi data otomatis jika sebelumnya ada data di admin_users
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'admin_users') THEN
-    INSERT INTO public.users (username, pin, nama_lengkap, email, role, is_active, last_login, created_at, updated_at)
-    SELECT 
-      username, 
-      pin, 
-      COALESCE(nama_lengkap, 'Administrator'), 
-      email, 
-      COALESCE(role, 'admin'), 
-      COALESCE(is_active, true), 
-      last_login, 
-      created_at, 
-      updated_at
-    FROM public.admin_users
-    ON CONFLICT (username) DO UPDATE 
-    SET 
-      pin = EXCLUDED.pin,
-      nama_lengkap = EXCLUDED.nama_lengkap,
-      email = EXCLUDED.email,
-      role = EXCLUDED.role,
-      is_active = EXCLUDED.is_active;
-  END IF;
-EXCEPTION WHEN OTHERS THEN
-  NULL;
-END $$;
+-- 4. Indexing untuk mempercepat query pencarian login
+CREATE INDEX IF NOT EXISTS idx_users_username ON public.users(username);
+CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
+CREATE INDEX IF NOT EXISTS idx_users_status ON public.users(status);
+
+-- 5. Pasang Trigger auto-update timestamp
+DROP TRIGGER IF EXISTS set_users_updated_at ON public.users;
+CREATE TRIGGER set_users_updated_at
+    BEFORE UPDATE ON public.users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- 6. Seed Data: Akun Admin Default Awal
+INSERT INTO public.users (id, username, nama, pin, role, status, permissions)
+VALUES (
+    'usr-admin-default',
+    'admin',
+    'Administrator Utama',
+    '123456',
+    'Admin',
+    'Aktif',
+    '{
+        "canInputIncoming": true,
+        "canTally": true,
+        "canEditMasterBarang": true,
+        "canManageUsers": true,
+        "canApproveQC": true,
+        "canAccessDatabase": true
+    }'::jsonb
+)
+ON CONFLICT (username) DO UPDATE
+SET
+    nama = EXCLUDED.nama,
+    pin = EXCLUDED.pin,
+    role = EXCLUDED.role,
+    status = EXCLUDED.status,
+    permissions = EXCLUDED.permissions;
+
 
 CREATE TABLE IF NOT EXISTS links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

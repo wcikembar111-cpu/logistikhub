@@ -24,7 +24,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'Satuan & Massal',
       keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf',
       icon: <QrCode size={20} className="text-white" />,
-      iconBg: 'bg-blue-900'
+      iconBg: 'bg-blue-600'
     },
     {
       id: 'ed-checker',
@@ -32,7 +32,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'ED & DOY Calculator',
       keywords: 'expired date ed doy calculator kedaluwarsa tanggal sisa hari exp hitung',
       icon: <Calendar size={20} className="text-white" />,
-      iconBg: 'bg-orange-500'
+      iconBg: 'bg-amber-500'
     },
     {
       id: 'stock-opname',
@@ -40,7 +40,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'LARGO to SAP & BA SO',
       keywords: 'stock opname so suite largo sap ba berita acara selisih audit fisik gudang',
       icon: <Layers size={20} className="text-white" />,
-      iconBg: 'bg-blue-900'
+      iconBg: 'bg-indigo-600'
     },
     {
       id: 'sn-generator',
@@ -48,7 +48,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'Unique Anti-Duplicate',
       keywords: 'generator serial number sn no unique barcode anti duplicate acak urut',
       icon: <Barcode size={20} className="text-white" />,
-      iconBg: 'bg-blue-800'
+      iconBg: 'bg-blue-500'
     },
     {
       id: 'batch-checker',
@@ -64,7 +64,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'Penerimaan Barang Promosi',
       keywords: 'promosi promo penerimaan barang bonus merchandise hadiah receiving logistik',
       icon: <PackageCheck size={20} className="text-white" />,
-      iconBg: 'bg-orange-500'
+      iconBg: 'bg-teal-600'
     },
     {
       id: 'surat-jalan',
@@ -72,7 +72,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'Buat, Cetak & Rekap SJ',
       keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman',
       icon: <FileText size={20} className="text-white" />,
-      iconBg: 'bg-blue-900'
+      iconBg: 'bg-sky-600'
     },
     {
       id: 'retur-inventory',
@@ -80,7 +80,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'Pengajuan & Tracking Retur',
       keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim',
       icon: <Undo2 size={20} className="text-white" />,
-      iconBg: 'bg-rose-600'
+      iconBg: 'bg-rose-500'
     },
     {
       id: 'monitoring-pemusnahan',
@@ -96,7 +96,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       category: 'Spreadsheet GAS 26 Kolom',
       keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan',
       icon: <Database size={20} className="text-white" />,
-      iconBg: 'bg-orange-600'
+      iconBg: 'bg-emerald-600'
     }
   ];
 
@@ -115,7 +115,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
     <div className="mt-8 pt-6 border-t border-slate-200">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-900 flex items-center justify-center border border-blue-200 shadow-2xs">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200 shadow-2xs">
             <Wrench size={16} />
           </div>
           <div>
@@ -151,8 +151,8 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 shadow-2xs rounded-xl px-2.5 py-1.5 font-bold text-[11px] text-blue-900 tracking-wide flex items-center gap-1.5 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-orange-500" />
+          <div className="bg-white border border-slate-200 shadow-2xs rounded-xl px-2.5 py-1.5 font-bold text-[11px] text-slate-700 tracking-wide flex items-center gap-1.5 shrink-0">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
             <span>{filteredTools.length} / {tools.length} Tools</span>
           </div>
         </div>
@@ -172,7 +172,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="px-3.5 py-1.5 rounded-xl bg-blue-900 text-white font-semibold text-xs hover:bg-blue-950 transition-colors shadow-2xs cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
           >
             Reset Pencarian
           </button>
@@ -188,27 +188,27 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
                   onSelectTool(t.id);
                 }}
                 title={`${t.title} - Klik untuk Buka Halaman Tool`}
-                className={`bg-white border p-3 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[112px] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:shadow-xs hover:border-orange-400 cursor-pointer group rounded-xl text-slate-800 ${
+                className={`bg-white border p-3 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[112px] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:shadow-xs hover:border-blue-400 cursor-pointer group rounded-xl text-slate-800 ${
                   isActive 
-                    ? 'border-2 border-blue-900 ring-2 ring-blue-100 shadow-2xs' 
+                    ? 'border-2 border-blue-600 ring-2 ring-blue-100 shadow-2xs' 
                     : 'border-slate-200 shadow-2xs'
                 }`}
               >
                 {/* Active Badge Marker */}
                 {isActive && (
-                  <div className="absolute top-1.5 right-1.5 bg-blue-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shadow-2xs z-20">
+                  <div className="absolute top-1.5 right-1.5 bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shadow-2xs z-20">
                     AKTIF
                   </div>
                 )}
 
-                {/* Main Icon Container - Minimalist Blue / Orange / White */}
+                {/* Main Icon Container - Minimalist Blue / Amber / Emerald / White */}
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.iconBg} text-white shadow-2xs transition-transform duration-200 group-hover:scale-105`}>
                   {t.icon}
                 </div>
 
                 {/* Title Info - Only title, never truncated */}
                 <div className="w-full text-center mt-2.5 px-0.5 pointer-events-none flex items-center justify-center min-h-[32px]">
-                  <h4 className="font-bold text-xs text-slate-900 m-0 tracking-tight leading-snug break-words group-hover:text-blue-900 transition-colors">
+                  <h4 className="font-bold text-xs text-slate-900 m-0 tracking-tight leading-snug break-words group-hover:text-blue-600 transition-colors">
                     {t.title}
                   </h4>
                 </div>

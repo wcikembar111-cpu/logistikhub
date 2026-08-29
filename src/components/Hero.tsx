@@ -1,22 +1,57 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ZoomIn, ExternalLink, Sparkles, Moon, Sun, Sunrise, Sunset, Clock, ShieldCheck } from 'lucide-react';
-import { TodoData } from '../types';
+import { 
+  MapPin, 
+  Bell, 
+  BellRing, 
+  Volume2, 
+  VolumeX, 
+  Mail, 
+  MessageCircle, 
+  X, 
+  ListTodo, 
+  CheckSquare, 
+  ZoomIn, 
+  ExternalLink, 
+  Sparkles, 
+  Moon, 
+  Sun, 
+  Sunrise, 
+  Sunset, 
+  Clock, 
+  ShieldCheck,
+  Users,
+  Lock,
+  LogOut,
+  Database,
+  KeyRound,
+  UserCheck
+} from 'lucide-react';
+import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
 import { PopyMaternityCountdown } from './countdown/PopyMaternityCountdown';
 
 interface HeroProps {
   user?: {
+    id?: string;
     username?: string;
     nama?: string;
     nama_lengkap?: string;
     role?: string;
+    status?: string;
     email?: string;
+    email_google?: string;
+    avatar?: string;
+    permissions?: UserPermissions;
   } | null;
   isAdmin?: boolean;
   isSuperAdmin?: boolean;
   isOperator?: boolean;
   todos?: TodoData[];
   onOpenTodo?: () => void;
+  onOpenLogin?: () => void;
+  onOpenUserManagement?: () => void;
+  onOpenSqlScript?: () => void;
+  onLogout?: () => void;
 }
 
 interface PrayerJadwal {
@@ -34,7 +69,11 @@ export function Hero({
   isSuperAdmin = true,
   isOperator = false,
   todos = [], 
-  onOpenTodo 
+  onOpenTodo,
+  onOpenLogin,
+  onOpenUserManagement,
+  onOpenSqlScript,
+  onLogout
 }: HeroProps) {
   // Dynamic user profile resolution
   const currentUsername = (user?.username || '').toLowerCase();
@@ -396,16 +435,16 @@ export function Hero({
       {/* Modal Jadwal Sholat Lengkap Wilayah Sukabumi */}
       {showPrayerModal && (
         <div 
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/75 backdrop-blur-md p-4 animate-fade-in"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in"
           onClick={() => setShowPrayerModal(false)}
         >
           <div 
-            className="bg-white p-6 sm:p-7 rounded-3xl max-w-lg w-full shadow-2xl border border-emerald-400 relative overflow-hidden animate-scale-up"
+            className="bg-white p-6 sm:p-7 rounded-3xl max-w-lg w-full shadow-2xl border border-emerald-300 relative overflow-hidden animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Background Glow */}
-            <div className="absolute -top-16 -right-16 w-36 h-36 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
             <button 
               onClick={() => setShowPrayerModal(false)}
@@ -417,7 +456,7 @@ export function Hero({
 
             {/* Modal Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
                 <Moon size={24} className="text-emerald-100" />
               </div>
               <div className="min-w-0">
@@ -436,15 +475,15 @@ export function Hero({
 
             {/* Upcoming Prayer Spotlight Card */}
             {nextPrayer && (
-              <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 text-white p-4 rounded-2xl shadow-md mb-4 relative overflow-hidden">
+              <div className="bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 text-white p-4 rounded-2xl shadow-md mb-4 relative overflow-hidden">
                 <div className="absolute right-0 top-0 bottom-0 w-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
                 <div className="relative z-10 flex items-center justify-between gap-3">
                   <div>
-                    <span className="text-[10px] uppercase font-black tracking-widest text-emerald-200 bg-black/20 px-2 py-0.5 rounded-md inline-block mb-1">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-emerald-100 bg-black/15 px-2 py-0.5 rounded-md inline-block mb-1">
                       WAKTU SHOLAT MENDATANG
                     </span>
                     <div className="text-2xl font-black tracking-tight leading-none">
-                      {nextPrayer.name} • {nextPrayer.time} <span className="text-sm font-semibold text-emerald-200">WIB</span>
+                      {nextPrayer.name} • {nextPrayer.time} <span className="text-sm font-semibold text-emerald-100">WIB</span>
                     </div>
                     <div className="text-xs text-emerald-100 font-medium mt-1 flex items-center gap-1">
                       <Clock size={12} />
@@ -467,7 +506,7 @@ export function Hero({
                     key={p.label}
                     className={`p-3 rounded-2xl text-center border transition-all flex flex-col items-center justify-center ${
                       isNext 
-                        ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-300 shadow-md scale-105' 
+                        ? 'bg-emerald-500 text-white border-emerald-400 ring-2 ring-emerald-200 shadow-md scale-105' 
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -478,7 +517,7 @@ export function Hero({
                       {p.time}
                     </span>
                     {isNext && (
-                      <span className="text-[8px] bg-emerald-800/80 text-emerald-100 px-1.5 py-0.2 rounded-full font-black mt-1 uppercase">
+                      <span className="text-[8px] bg-emerald-700/80 text-emerald-100 px-1.5 py-0.2 rounded-full font-black mt-1 uppercase">
                         Mendatang
                       </span>
                     )}
@@ -539,8 +578,8 @@ export function Hero({
 
       {/* Modal Alarm Pengingat Sholat Otomatis */}
       {activeAlarm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 animate-fade-in">
-          <div className="bg-white p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl border border-emerald-400 relative overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl max-w-md w-full text-center shadow-2xl border border-emerald-300 relative overflow-hidden">
             
             <button 
               onClick={handleClosePrayerAlarm}
@@ -549,7 +588,7 @@ export function Hero({
               <X size={18} />
             </button>
 
-            <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
+            <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25 animate-bounce">
               <BellRing size={32} />
             </div>
 
@@ -577,7 +616,7 @@ export function Hero({
               </button>
               <button 
                 onClick={handleClosePrayerAlarm}
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/25 transition-all cursor-pointer"
               >
                 Tutup Pengingat
               </button>
@@ -588,8 +627,8 @@ export function Hero({
 
       {/* Modal Alarm Pengingat TODO */}
       {activeTodoReminder && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 animate-fade-in">
-          <div className="bg-white p-6 sm:p-8 rounded-2xl max-w-lg w-full shadow-2xl border border-orange-400 relative overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl max-w-lg w-full shadow-2xl border border-amber-300 relative overflow-hidden">
             
             <button 
               onClick={() => setActiveTodoReminder(false)}
@@ -598,12 +637,12 @@ export function Hero({
               <X size={18} />
             </button>
 
-            <div className="w-16 h-16 bg-orange-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
+            <div className="w-16 h-16 bg-amber-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/25 animate-bounce">
               <ListTodo size={32} />
             </div>
 
             <div className="text-center mb-4">
-              <span className="text-[11px] font-black tracking-widest text-orange-700 uppercase bg-orange-100 px-3 py-1 rounded-full border border-orange-300 inline-block mb-2">
+              <span className="text-[11px] font-black tracking-widest text-amber-700 uppercase bg-amber-100 px-3 py-1 rounded-full border border-amber-300 inline-block mb-2">
                 PENGINGAT TODO AKTIF
               </span>
 
@@ -623,11 +662,11 @@ export function Hero({
               ) : (
                 pendingTodos.map(todo => (
                   <div key={todo.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2.5">
-                    <CheckSquare size={16} className={`shrink-0 mt-0.5 ${todo.status === 'onproses' ? 'text-blue-900' : 'text-orange-500'}`} />
+                    <CheckSquare size={16} className={`shrink-0 mt-0.5 ${todo.status === 'onproses' ? 'text-blue-600' : 'text-amber-500'}`} />
                     <div className="flex-1 text-xs text-slate-800 font-medium leading-relaxed whitespace-pre-wrap break-words">
                       {todo.task}
                     </div>
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 ${todo.status === 'onproses' ? 'bg-blue-100 text-blue-900 border-blue-300' : 'bg-orange-100 text-orange-700 border-orange-300'}`}>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 ${todo.status === 'onproses' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                       {todo.status === 'onproses' ? 'PROSES' : 'TODO'}
                     </span>
                   </div>
@@ -638,7 +677,7 @@ export function Hero({
             <div className="flex gap-3 justify-center mt-6">
               <button 
                 onClick={() => { playTodoChime(); }}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2 transition-all"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
               >
                 <Volume2 size={16} /> Bunyikan Nada
               </button>
@@ -648,7 +687,7 @@ export function Hero({
                     setActiveTodoReminder(false);
                     onOpenTodo();
                   }}
-                  className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
+                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md shadow-amber-500/25 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <ListTodo size={16} /> Kelola Todos
                 </button>
@@ -661,15 +700,15 @@ export function Hero({
       {/* Modal Perbesar Foto Profil & Detail Kontak */}
       {showPhotoModal && (
         <div 
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/75 backdrop-blur-md p-4 animate-fade-in"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in"
           onClick={() => setShowPhotoModal(false)}
         >
           <div 
-            className="glass-box !bg-white/95 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-blue-400 relative overflow-hidden text-center animate-scale-up"
+            className="bg-white p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-blue-200 relative overflow-hidden text-center animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute -top-16 -right-16 w-36 h-36 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-36 h-36 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
             <button 
               onClick={() => setShowPhotoModal(false)}
@@ -682,7 +721,7 @@ export function Hero({
             {/* Foto / Avatar Perbesar */}
             <div className="relative inline-block mx-auto mb-4 group">
               {isDedeUser ? (
-                <div className="p-1 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-amber-500 shadow-xl">
+                <div className="p-1 rounded-3xl bg-gradient-to-tr from-blue-500 via-indigo-500 to-amber-500 shadow-lg">
                   <img 
                     src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
                     alt={resolvedFullName} 
@@ -690,17 +729,17 @@ export function Hero({
                   />
                 </div>
               ) : (
-                <div className={`w-48 h-48 sm:w-56 sm:h-56 rounded-3xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-4 border-white shadow-xl transition-transform duration-300 hover:scale-105 p-4 text-center`}>
+                <div className={`w-48 h-48 sm:w-56 sm:h-56 rounded-3xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-4 border-white shadow-lg transition-transform duration-300 hover:scale-105 p-4 text-center`}>
                   <span className="text-5xl sm:text-6xl mb-2 drop-shadow-md">{roleBadgeInfo.icon}</span>
                   <span className="text-2xl sm:text-3xl font-black tracking-wider uppercase drop-shadow-sm">
                     {userInitials}
                   </span>
-                  <span className="text-xs font-bold mt-1 text-white/90 bg-black/20 px-2.5 py-0.5 rounded-full">
+                  <span className="text-xs font-bold mt-1 text-white/90 bg-black/15 px-2.5 py-0.5 rounded-full">
                     @{user?.username || currentUsername || 'user'}
                   </span>
                 </div>
               )}
-              <span className="absolute bottom-2 right-2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md flex items-center gap-1 border border-slate-700">
+              <span className="absolute bottom-2 right-2 bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md flex items-center gap-1 border border-slate-700">
                 <ShieldCheck size={12} className="text-emerald-400" /> Terverifikasi
               </span>
             </div>
@@ -722,11 +761,11 @@ export function Hero({
             </div>
 
             {/* Detail Kontak Lengkap */}
-            <div className="space-y-2.5 text-left bg-slate-50/90 p-4 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-700">
+            <div className="space-y-2.5 text-left bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-700">
               {isDedeUser && (
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-emerald-400 transition-colors">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
                       <MessageCircle size={16} />
                     </div>
                     <div>
@@ -747,7 +786,7 @@ export function Hero({
 
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-blue-400 transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200">
                     <Mail size={16} />
                   </div>
                   <div className="min-w-0">
@@ -757,7 +796,7 @@ export function Hero({
                 </div>
                 <a 
                   href={`mailto:${resolvedEmail}`} 
-                  className="px-3 py-1.5 rounded-lg bg-blue-900 hover:bg-blue-950 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
                 >
                   Kirim <ExternalLink size={11} />
                 </a>
@@ -766,7 +805,7 @@ export function Hero({
               {isDedeUser && (
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-400 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 border border-slate-200">
                       <Mail size={16} />
                     </div>
                     <div className="min-w-0">
@@ -776,7 +815,7 @@ export function Hero({
                   </div>
                   <a 
                     href="mailto:dedesuparman333@gmail.com" 
-                    className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
+                    className="px-3 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-700 text-white font-bold text-[11px] transition-all shrink-0 flex items-center gap-1 shadow-2xs"
                   >
                     Kirim <ExternalLink size={11} />
                   </a>
@@ -784,7 +823,7 @@ export function Hero({
               )}
 
               <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
                   <MapPin size={16} />
                 </div>
                 <div>
@@ -794,31 +833,91 @@ export function Hero({
               </div>
             </div>
 
-            <div className="mt-5 flex gap-2">
-              {isDedeUser && (
-                <a 
-                  href="https://wa.me/6281911934000" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+            {/* Detail Permissions List jika ada */}
+            {user?.permissions && (
+              <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Hak Akses Terdaftar (JSONB):</span>
+                  <span className="text-emerald-700 font-bold">Status: {user.status || 'Aktif'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                  <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canInputIncoming ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
+                    <span>• canInputIncoming</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canTally ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
+                    <span>• canTally</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canEditMasterBarang ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
+                    <span>• canEditMaster</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canManageUsers ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
+                    <span>• canManageUsers</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canApproveQC ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
+                    <span>• canApproveQC</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canAccessDatabase ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
+                    <span>• canAccessDatabase</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                {onOpenLogin && (
+                  <button 
+                    onClick={() => {
+                      setShowPhotoModal(false);
+                      onOpenLogin();
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Lock size={14} /> Ganti Akun
+                  </button>
+                )}
+
+                {onOpenUserManagement && (isAdmin || user?.permissions?.canManageUsers) && (
+                  <button 
+                    onClick={() => {
+                      setShowPhotoModal(false);
+                      onOpenUserManagement();
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Users size={14} /> Kelola User
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                {onLogout && (
+                  <button 
+                    onClick={() => {
+                      setShowPhotoModal(false);
+                      onLogout();
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <LogOut size={14} /> Logout
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => setShowPhotoModal(false)}
+                  className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-all cursor-pointer"
                 >
-                  <MessageCircle size={15} /> Hubungi WhatsApp
-                </a>
-              )}
-              <button 
-                onClick={() => setShowPhotoModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs transition-all cursor-pointer"
-              >
-                Tutup
-              </button>
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 shadow-xs rounded-2xl overflow-hidden mb-6">
+      <div className="bg-white border border-slate-200/90 shadow-2xs rounded-2xl overflow-hidden mb-6">
         {/* Top Header Row: Profile Info on Left, Action Buttons on Right */}
-        <div className="p-4 sm:p-5 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 bg-slate-50/80 border-b border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           
           {/* Left: Profile Photo & Greeting & Role */}
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
@@ -842,7 +941,7 @@ export function Hero({
                     </span>
                   </div>
                 )}
-                <div className="absolute inset-0 rounded-2xl bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
+                <div className="absolute inset-0 rounded-2xl bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
                   <span className="bg-slate-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
                     <ZoomIn size={9} /> Detail
                   </span>
@@ -863,13 +962,64 @@ export function Hero({
                   <span>{roleBadgeInfo.icon}</span>
                   <span>{roleBadgeInfo.label}</span>
                 </span>
+
+                {/* Status Aktif Badge */}
+                {user?.status && (
+                  <span className={`text-[9px] sm:text-[10px] font-extrabold py-0.5 px-2 rounded-full border shadow-2xs ${
+                    user.status === 'Aktif' 
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                      : 'bg-rose-50 text-rose-800 border-rose-200'
+                  }`}>
+                    {user.status}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Right: Action Buttons Group (Date Badge, Install App, Popy Countdown) */}
+          {/* Right: Action Buttons Group (Date Badge, Login/User Controls, Install App, Popy Countdown) */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap self-start md:self-center">
-            <div className="font-bold text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-200 px-2.5 py-1 bg-orange-50 rounded-lg shadow-2xs whitespace-nowrap">
+            
+            {/* Login / Switch Account Button */}
+            {onOpenLogin && (
+              <button 
+                type="button"
+                onClick={onOpenLogin}
+                className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Ganti Akun Pengguna / Login"
+              >
+                <Lock size={12} className="text-blue-100" />
+                <span>{user?.username ? `@${user.username}` : 'Masuk'}</span>
+              </button>
+            )}
+
+            {/* Manajemen Pengguna Button (Admin Only) */}
+            {onOpenUserManagement && (isAdmin || user?.permissions?.canManageUsers) && (
+              <button 
+                type="button"
+                onClick={onOpenUserManagement}
+                className="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Kelola Pengguna & Hak Akses (RBAC)"
+              >
+                <Users size={12} className="text-purple-100" />
+                <span>Kelola User</span>
+              </button>
+            )}
+
+            {/* Logout Button */}
+            {onLogout && (
+              <button 
+                type="button"
+                onClick={onLogout}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Keluar / Logout Akun"
+              >
+                <LogOut size={12} className="text-rose-100" />
+                <span>Logout</span>
+              </button>
+            )}
+
+            <div className="font-bold text-[10px] sm:text-[11px] text-slate-700 tracking-wider border border-slate-200 px-2.5 py-1.5 bg-white rounded-xl shadow-2xs whitespace-nowrap">
               {dateStr || 'Memuat...'}
             </div>
 
@@ -886,7 +1036,7 @@ export function Hero({
           
           {/* Big Digital Clock */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="font-black text-blue-950 text-3xl sm:text-4xl tracking-tight leading-none">
+            <div className="font-black text-slate-800 text-3xl sm:text-4xl tracking-tight leading-none">
               {time || '--:--:--'}
             </div>
             <div className="flex flex-col justify-center">
@@ -906,7 +1056,7 @@ export function Hero({
               >
                 <MapPin size={13} className="text-emerald-600 shrink-0" />
                 <span>Jadwal Sholat Sukabumi</span>
-                <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded-md border border-emerald-200 ml-0.5">Detail</span>
+                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded-md border border-emerald-200 ml-0.5">Detail</span>
               </button>
 
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -952,7 +1102,7 @@ export function Hero({
                       key={p.label}
                       className={`flex flex-col items-center justify-center p-2 rounded-xl text-center border transition-all min-w-0 ${
                         isNext 
-                          ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-300 shadow-xs scale-105' 
+                          ? 'bg-emerald-500 text-white border-emerald-400 ring-2 ring-emerald-200 shadow-xs scale-105' 
                           : 'bg-slate-50 text-slate-700 border-slate-200 group-hover:border-emerald-300 hover:!bg-slate-100'
                       }`}
                     >

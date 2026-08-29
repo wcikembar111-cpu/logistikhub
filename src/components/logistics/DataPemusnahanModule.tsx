@@ -1245,7 +1245,7 @@ function handleRequest(e) {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-blue-100/90 m-0 mt-1 font-medium">
-                Pusat data detail barang pemusnahan, integrasi Google Sheet (GAS), dan sinkronisasi database Supabase
+                Pusat data detail barang pemusnahan, integrasi Google Sheet (GAS), dan sinkronisasi database cloud
               </p>
             </div>
           </div>
@@ -1279,10 +1279,10 @@ function handleRequest(e) {
             <button
               onClick={() => setShowSqlModal(true)}
               className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border border-white/15"
-              title="Lihat & Salin SQL Schema Supabase"
+              title="Lihat & Salin Skema Database"
             >
               <Code2 size={15} />
-              <span className="hidden sm:inline">SQL Schema</span>
+              <span className="hidden sm:inline">Skema Database</span>
             </button>
 
             {/* Cloud Sync Button */}
@@ -1290,7 +1290,7 @@ function handleRequest(e) {
               onClick={handleFullSyncToCloud}
               disabled={syncingCloud}
               className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer border border-white/15"
-              title="Sinkronkan seluruh data ke cloud Supabase"
+              title="Sinkronkan seluruh data ke database cloud"
             >
               <RefreshCw size={15} className={syncingCloud ? 'animate-spin text-amber-300' : ''} />
             </button>

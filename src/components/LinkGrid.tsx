@@ -3,6 +3,7 @@ import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRi
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { useMenuOrder } from '../hooks/useSupabase';
+import { PinSecurityModal } from './common/PinSecurityModal';
 
 interface LinkGridProps {
   links: LinkData[];
@@ -31,6 +32,68 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [isReordering, setIsReordering] = useState(false);
+
+  // PIN Security Modal State for Add, Edit, and Delete Actions (PIN: 399339)
+  const [pinModalConfig, setPinModalConfig] = useState<{
+    isOpen: boolean;
+    actionType: 'add' | 'edit' | 'delete' | 'default';
+    title: string;
+    subtitle: string;
+    description?: string;
+    targetName?: string;
+    onSuccess: () => void;
+  }>({
+    isOpen: false,
+    actionType: 'default',
+    title: '',
+    subtitle: '',
+    onSuccess: () => {}
+  });
+
+  const handleRequestAdd = () => {
+    setPinModalConfig({
+      isOpen: true,
+      actionType: 'add',
+      title: 'Otorisasi Tambah Aplikasi',
+      subtitle: 'Masukkan PIN Keamanan Super Admin untuk menambahkan sistem/portal baru.',
+      description: 'PIN Keamanan ( 399339 ) diperlukan untuk menambah menu aplikasi & sistem.',
+      onSuccess: () => {
+        setPinModalConfig(prev => ({ ...prev, isOpen: false }));
+        onAdd();
+      }
+    });
+  };
+
+  const handleRequestEdit = (linkItem: LinkData) => {
+    setPinModalConfig({
+      isOpen: true,
+      actionType: 'edit',
+      title: 'Otorisasi Edit Aplikasi',
+      subtitle: 'Masukkan PIN Keamanan Super Admin untuk mengubah data aplikasi.',
+      targetName: linkItem.title,
+      description: 'PIN Keamanan ( 399339 ) diperlukan untuk mengubah konfigurasi aplikasi ini.',
+      onSuccess: () => {
+        setPinModalConfig(prev => ({ ...prev, isOpen: false }));
+        onEdit(linkItem);
+      }
+    });
+  };
+
+  const handleRequestDelete = (linkItem: LinkData) => {
+    setPinModalConfig({
+      isOpen: true,
+      actionType: 'delete',
+      title: 'Otorisasi Hapus Aplikasi',
+      subtitle: 'Masukkan PIN Keamanan Super Admin untuk menghapus aplikasi.',
+      targetName: linkItem.title,
+      description: 'Tindakan ini akan menghapus aplikasi dari daftar secara permanen.',
+      onSuccess: () => {
+        setPinModalConfig(prev => ({ ...prev, isOpen: false }));
+        onDelete(linkItem.id);
+        showToast('Dihapus', `Aplikasi "${linkItem.title}" berhasil dihapus`, 'info');
+      }
+    });
+  };
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -142,11 +205,11 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
   };
 
   return (
-    <div className="mt-8 pt-6 border-t border-slate-300/60">
+    <div className="mt-8 pt-6 border-t border-slate-200">
       {/* Top Header Row matching ToolsGrid exactly */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-900/10 text-blue-900 flex items-center justify-center border border-blue-900/15 shadow-xs shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200 shadow-2xs shrink-0">
             <LayoutGrid size={19} />
           </div>
           <div>
@@ -183,7 +246,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
           </div>
 
           {/* Counter Badge */}
-          <div className="bg-white border border-slate-200 shadow-2xs rounded-xl px-3 py-1.5 font-bold text-[11px] text-blue-900 tracking-wide flex items-center gap-1.5 shrink-0">
+          <div className="bg-white border border-slate-200 shadow-2xs rounded-xl px-3 py-1.5 font-bold text-[11px] text-slate-700 tracking-wide flex items-center gap-1.5 shrink-0">
             <Sparkles size={13} className="text-amber-500" />
             <span>{filteredLinks.length} / {links.length} Aplikasi</span>
           </div>
@@ -216,9 +279,9 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                   </button>
 
                   <button 
-                    onClick={onAdd} 
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
-                    title="Tambah Aplikasi Baru (Khusus Super Admin)"
+                    onClick={handleRequestAdd} 
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Tambah Aplikasi Baru (Wajib PIN Super Admin)"
                   >
                     <Plus size={14} />
                     <span>Tambah</span>
@@ -243,7 +306,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
               onClick={() => setCategory(cat)} 
               className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 isActive 
-                  ? 'bg-blue-900 text-white shadow-xs' 
+                  ? 'bg-blue-600 text-white shadow-xs' 
                   : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
               }`}
             >
@@ -277,7 +340,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
           <button
             type="button"
             onClick={() => { setSearch(''); setCategory('Semua'); }}
-            className="px-4 py-1.5 rounded-xl bg-blue-900 text-white font-bold text-xs hover:bg-blue-950 transition-colors shadow-xs cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
           >
             Reset Pencarian
           </button>
@@ -310,15 +373,15 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                     e.stopPropagation();
                   }
                 }}
-                className={`bg-white border border-slate-200 shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
-                  isReordering ? 'ring-2 ring-orange-400 bg-orange-50/50 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1 hover:shadow-md hover:border-blue-400 hover:bg-slate-50/70 cursor-pointer'
+                className={`bg-white border border-slate-200/80 shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
+                  isReordering ? 'ring-2 ring-blue-400 bg-blue-50/50 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1 hover:shadow-md hover:border-blue-300 hover:bg-slate-50/70 cursor-pointer'
                 } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
                   isDragOverThis ? '!ring-4 !ring-blue-500 !bg-blue-100/50 scale-105 shadow-lg' : ''
                 }`}
               >
                 {/* Control bar for Reordering */}
                 {isReordering && (
-                  <div className="absolute top-1.5 left-1.5 right-1.5 z-30 flex justify-between items-center pointer-events-auto bg-slate-900 rounded-xl px-1 py-0.5 text-white shadow-md">
+                  <div className="absolute top-1.5 left-1.5 right-1.5 z-30 flex justify-between items-center pointer-events-auto bg-slate-800 rounded-xl px-1 py-0.5 text-white shadow-md">
                     <button 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveLinkPosition(l.id, 'prev'); }}
                       disabled={index === 0}
@@ -343,7 +406,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                 {!isReordering && (
                   <div className="absolute top-2 right-2 z-20 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     {!isSuperAdmin && (
-                      <div className="w-6 h-6 rounded-lg bg-blue-900/10 text-blue-900 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                         <ExternalLink size={12} />
                       </div>
                     )}
@@ -351,9 +414,9 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                     {isSuperAdmin && (
                       <div className="flex gap-1">
                         <button 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(l); }} 
-                          className="p-1 rounded-lg bg-blue-900/10 hover:bg-blue-900 hover:text-white text-blue-900 transition-all cursor-pointer"
-                          title="Edit Aplikasi (Khusus Super Admin)"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRequestEdit(l); }} 
+                          className="p-1 rounded-lg bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 transition-all cursor-pointer"
+                          title="Edit Aplikasi (Wajib PIN Super Admin)"
                         >
                           <Edit2 size={12} />
                         </button>
@@ -361,20 +424,10 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                           onClick={(e) => { 
                             e.preventDefault(); 
                             e.stopPropagation(); 
-                            showConfirm({
-                              title: 'Hapus Aplikasi',
-                              message: `Apakah Anda yakin ingin menghapus "${l.title}"?`,
-                              confirmText: 'Hapus',
-                              cancelText: 'Batal',
-                              type: 'danger',
-                              onConfirm: () => {
-                                onDelete(l.id);
-                                showToast('Dihapus', `Aplikasi "${l.title}" telah dihapus`, 'info');
-                              }
-                            });
+                            handleRequestDelete(l);
                           }} 
-                          className="p-1 rounded-lg bg-red-500/10 hover:bg-red-600 hover:text-white text-red-600 transition-all cursor-pointer"
-                          title="Hapus Aplikasi (Khusus Super Admin)"
+                          className="p-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 transition-all cursor-pointer"
+                          title="Hapus Aplikasi (Wajib PIN Super Admin)"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -402,7 +455,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
 
                 {/* Title Info */}
                 <div className="w-full text-center mt-2 px-0.5 pointer-events-none">
-                  <h4 className="font-bold text-xs text-slate-800 m-0 tracking-tight leading-snug break-words group-hover:text-blue-900 transition-colors line-clamp-2 capitalize">
+                  <h4 className="font-bold text-xs text-slate-800 m-0 tracking-tight leading-snug break-words group-hover:text-blue-600 transition-colors line-clamp-2 capitalize">
                     {l.title}
                   </h4>
                 </div>
@@ -411,6 +464,18 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
           })}
         </div>
       )}
+
+      {/* PIN Security Modal for Add, Edit, Delete (PIN: 399339) */}
+      <PinSecurityModal
+        isOpen={pinModalConfig.isOpen}
+        onClose={() => setPinModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onSuccess={pinModalConfig.onSuccess}
+        title={pinModalConfig.title}
+        subtitle={pinModalConfig.subtitle}
+        description={pinModalConfig.description}
+        targetName={pinModalConfig.targetName}
+        actionType={pinModalConfig.actionType}
+      />
     </div>
   );
 }

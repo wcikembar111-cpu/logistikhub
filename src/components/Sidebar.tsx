@@ -255,13 +255,13 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
         </div>
 
         {/* KPI Summary Cards - Clickable Filters with Toggle Back to All */}
-        <div className="grid grid-cols-4 p-3 border-b border-slate-200 gap-1.5 bg-slate-50/40">
+        <div className="grid grid-cols-4 p-3 border-b border-slate-200 gap-1.5 bg-slate-50/60">
           <div 
             onClick={() => setFilter(prev => prev === 'priority' ? 'all' : 'priority')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'priority' ? 'bg-red-500/20 border-red-500/50 ring-2 ring-red-500 animate-badge-blink' : 'bg-white hover:bg-red-50/50 border-slate-200'}`}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'priority' ? 'bg-red-50 border-red-300 ring-2 ring-red-400' : 'bg-white hover:bg-red-50/50 border-slate-200'}`}
             title="Filter Tugas Prioritas / Kedip (Klik lagi untuk lihat semua)"
           >
-            <div className="text-sm font-black text-red-700 leading-tight flex items-center justify-center gap-1">
+            <div className="text-sm font-black text-red-600 leading-tight flex items-center justify-center gap-1">
               <Zap size={12} className="text-red-600 fill-current animate-bounce" /> {priorityCount}
             </div>
             <div className="font-bold text-[8px] text-red-700 tracking-wider mt-0.5 uppercase">Kedip</div>
@@ -269,7 +269,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
 
           <div 
             onClick={() => setFilter(prev => prev === 'no' ? 'all' : 'no')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'no' ? 'bg-orange-500/15 border-orange-500/40 ring-2 ring-orange-400' : 'bg-white hover:bg-orange-50/50 border-slate-200'}`}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'no' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400' : 'bg-white hover:bg-amber-50/50 border-slate-200'}`}
             title="Filter Tugas Todo (Klik lagi untuk lihat semua)"
           >
             <div className="text-sm font-black text-slate-800 leading-tight">{no}</div>
@@ -278,25 +278,25 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
 
           <div 
             onClick={() => setFilter(prev => prev === 'onproses' ? 'all' : 'onproses')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'onproses' ? 'bg-blue-900/20 border-blue-900/40 ring-2 ring-blue-800' : 'bg-white hover:bg-blue-50/50 border-slate-200'}`}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'onproses' ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400' : 'bg-white hover:bg-blue-50/50 border-slate-200'}`}
             title="Filter Tugas Proses (Klik lagi untuk lihat semua)"
           >
-            <div className="text-sm font-black text-blue-900 leading-tight">{onproses}</div>
-            <div className="font-bold text-[8px] text-blue-900 tracking-wider mt-0.5 uppercase">Proses</div>
+            <div className="text-sm font-black text-blue-600 leading-tight">{onproses}</div>
+            <div className="font-bold text-[8px] text-blue-600 tracking-wider mt-0.5 uppercase">Proses</div>
           </div>
 
           <div 
             onClick={() => setFilter(prev => prev === 'close' ? 'all' : 'close')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'close' ? 'bg-emerald-500/25 border-emerald-500/40 ring-2 ring-emerald-500' : 'bg-white hover:bg-emerald-50/50 border-slate-200'}`}
+            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'close' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400' : 'bg-white hover:bg-emerald-50/50 border-slate-200'}`}
             title="Filter Tugas Selesai / Done (Klik lagi untuk lihat semua)"
           >
-            <div className="text-sm font-black text-emerald-700 leading-tight">{close}</div>
+            <div className="text-sm font-black text-emerald-600 leading-tight">{close}</div>
             <div className="font-bold text-[8px] text-emerald-600 tracking-wider mt-0.5 uppercase">Done</div>
           </div>
         </div>
 
         {/* List Task - Includes Blinking Color Animation */}
-        <div className="flex-1 overflow-auto p-3 sm:p-4 bg-slate-50/20 custom-scrollbar">
+        <div className="flex-1 overflow-auto p-3 sm:p-4 bg-slate-50/30 custom-scrollbar">
           {loading ? (
             <div className="text-center py-8 font-bold text-slate-500 text-xs">Memuat Daftar Tugas...</div>
           ) : filteredTodos.length === 0 ? (
@@ -313,12 +313,12 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               return (
                 <div 
                   key={t.id} 
-                  className={`glass-box p-3.5 mb-3 flex flex-col gap-2.5 transition-all border shadow-2xs relative overflow-hidden ${
+                  className={`p-3.5 mb-3 flex flex-col gap-2.5 transition-all border shadow-2xs relative overflow-hidden rounded-2xl ${
                     isBlinkingActive 
                       ? 'animate-todo-blink' 
                       : (isDone 
-                          ? 'opacity-70 bg-emerald-50/20 border-white/60' 
-                          : 'bg-white/50 hover:bg-white/80 border-white/60'
+                          ? 'opacity-70 bg-slate-50 border-slate-200' 
+                          : 'bg-white hover:bg-slate-50/80 border-slate-200'
                         )
                   }`}
                 >
@@ -331,7 +331,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                     <div className="flex items-center gap-1 shrink-0">
                       <button 
                         onClick={() => handleOpenEditModal(t)}
-                        className="p-1 rounded-lg text-slate-500 hover:text-orange-600 hover:bg-orange-100/60 transition-all cursor-pointer"
+                        className="p-1 rounded-lg text-slate-500 hover:text-orange-600 hover:bg-orange-50 transition-all cursor-pointer"
                         title="Edit / Detail Tugas"
                       >
                         <Edit2 size={13} />
@@ -352,7 +352,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                               }
                             });
                           }}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-100/60 transition-all cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
                           title="Hapus tugas ini (Admin)"
                         >
                           <X size={13} />
@@ -364,8 +364,8 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                   {/* Task Content */}
                   <div 
                     onClick={() => handleOpenEditModal(t)}
-                    className={`font-semibold text-xs leading-relaxed whitespace-pre-wrap break-words cursor-pointer hover:text-orange-700 transition-colors ${
-                      isDone ? 'line-through text-slate-500' : (isBlinkingActive ? 'animate-text-blink font-bold' : 'text-slate-800')
+                    className={`font-semibold text-xs leading-relaxed whitespace-pre-wrap break-words cursor-pointer hover:text-orange-600 transition-colors ${
+                      isDone ? 'line-through text-slate-400' : (isBlinkingActive ? 'animate-text-blink font-bold' : 'text-slate-800')
                     }`}
                     title="Klik untuk lihat / edit tugas"
                   >
@@ -373,7 +373,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                   </div>
 
                   {/* Bottom Bar: Status Choice & Quick Priority Toggle */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 flex-wrap gap-1">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 flex-wrap gap-1">
                     {/* Quick Priority Switcher */}
                     <div className="flex items-center gap-1">
                       <button
@@ -388,21 +388,21 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                             onUpdateTodo(t.id, { priority: nextPriority, is_blinking: isBlink });
                           }
                         }}
-                        className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300 transition-all cursor-pointer flex items-center gap-0.5"
+                        className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
                         title="Klik untuk putar Prioritas (Biasa -> Sedang -> Tinggi -> Mendesak)"
                       >
-                        <Sparkles size={10} className="text-orange-500" />
+                        <Sparkles size={10} className="text-amber-500" />
                         <span>Ganti Prioritas</span>
                       </button>
                     </div>
 
                     {/* 3 Choice Status Selector */}
-                    <div className="flex items-center gap-1 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/60">
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                       <button
                         onClick={() => onUpdateStatus(t.id, 'no')}
                         className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           isTodo 
-                            ? 'bg-orange-500 text-white shadow-2xs scale-105' 
+                            ? 'bg-amber-500 text-white shadow-2xs scale-105' 
                             : 'text-slate-600 hover:bg-slate-200/60'
                         }`}
                         title="Ubah status ke Todo"
@@ -415,7 +415,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                         onClick={() => onUpdateStatus(t.id, 'onproses')}
                         className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           isProses 
-                            ? 'bg-blue-900 text-white shadow-2xs scale-105' 
+                            ? 'bg-blue-600 text-white shadow-2xs scale-105' 
                             : 'text-slate-600 hover:bg-slate-200/60'
                         }`}
                         title="Ubah status ke Proses"
@@ -447,8 +447,8 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
 
       {/* Modal Form Edit/Detail Tugas Public */}
       {editingTodo && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-orange-300 relative overflow-hidden text-left">
+        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 relative overflow-hidden text-left">
             <button 
               onClick={() => setEditingTodo(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
@@ -457,7 +457,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
             </button>
 
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
                 <Edit2 size={20} />
               </div>
               <div>
@@ -474,7 +474,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                   value={editTaskText}
                   onChange={(e) => setEditTaskText(e.target.value)}
                   placeholder="Ketik detail tugas..."
-                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[90px]"
+                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[90px]"
                 />
               </div>
 
@@ -548,7 +548,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               </div>
 
               {/* Blinking Toggle Option */}
-              <div className="p-3 rounded-2xl bg-gradient-to-r from-red-500/10 via-amber-500/10 to-orange-500/10 border border-orange-300 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-red-500 text-white flex items-center justify-center shrink-0 shadow-sm animate-badge-blink">
                     <Zap size={16} />
@@ -583,11 +583,11 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                     onClick={() => setEditTaskStatus('no')}
                     className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                       editTaskStatus === 'no'
-                        ? 'bg-orange-500/10 border-orange-500 text-orange-800 ring-2 ring-orange-300/60 shadow-sm'
+                        ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-200 shadow-sm'
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <Circle size={18} className={editTaskStatus === 'no' ? 'text-orange-600 fill-orange-500' : 'text-slate-400'} />
+                    <Circle size={18} className={editTaskStatus === 'no' ? 'text-amber-600 fill-amber-500' : 'text-slate-400'} />
                     <span className="text-xs font-bold">Todo</span>
                   </button>
 
@@ -596,11 +596,11 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                     onClick={() => setEditTaskStatus('onproses')}
                     className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                       editTaskStatus === 'onproses'
-                        ? 'bg-blue-900/10 border-blue-900 text-blue-950 ring-2 ring-blue-300/60 shadow-sm'
+                        ? 'bg-blue-50 border-blue-600 text-blue-900 ring-2 ring-blue-200 shadow-sm'
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <Clock size={18} className={editTaskStatus === 'onproses' ? 'text-blue-900' : 'text-slate-400'} />
+                    <Clock size={18} className={editTaskStatus === 'onproses' ? 'text-blue-600' : 'text-slate-400'} />
                     <span className="text-xs font-bold">Proses</span>
                   </button>
 
@@ -609,7 +609,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                     onClick={() => setEditTaskStatus('close')}
                     className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                       editTaskStatus === 'close'
-                        ? 'bg-emerald-500/15 border-emerald-600 text-emerald-900 ring-2 ring-emerald-300/60 shadow-sm'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-200 shadow-sm'
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -647,14 +647,14 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                   <button 
                     type="button"
                     onClick={() => setEditingTodo(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                   >
                     Batal
                   </button>
                   <button 
                     type="button"
                     onClick={handleSaveEdit}
-                    className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <Save size={15} /> Simpan
                   </button>
@@ -667,8 +667,8 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
 
       {/* Modal Form Tambah Tugas Baru */}
       {showFormModal && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-orange-300 relative overflow-hidden text-left">
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 relative overflow-hidden text-left">
             <button 
               onClick={() => setShowFormModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
@@ -677,7 +677,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
             </button>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
                 <Plus size={22} />
               </div>
               <div>
@@ -694,7 +694,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
                   placeholder="Ketik tugas di sini... Contoh: Kirim Dokumen Surat Jalan Urgent"
-                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[80px]"
+                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[80px]"
                   autoFocus
                 />
               </div>
@@ -767,7 +767,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               </div>
 
               {/* Blinking Toggle Switch */}
-              <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between">
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap size={16} className="text-red-600 shrink-0 animate-bounce" />
                   <span className="text-xs font-bold text-slate-800">Animasi Kedip Warna</span>
@@ -790,7 +790,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               </div>
 
               {/* Siaran Otomatis Alert Info */}
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-300/80 flex items-center gap-2.5 text-slate-800">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-slate-800">
                 <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 shadow-2xs">
                   <BellRing size={16} className="animate-pulse" />
                 </div>
@@ -805,13 +805,13 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               <div className="flex justify-end gap-2 pt-2">
                 <button 
                   onClick={() => setShowFormModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>
                 <button 
                   onClick={handleAdd}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white text-xs font-black shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
                   <Plus size={16} /> Simpan & Siarkan Tugas
                 </button>
@@ -823,8 +823,8 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
 
       {/* Modal Pengingat Todo Aktif dari Lonceng */}
       {showReminderModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-lg w-full shadow-2xl border border-orange-300 relative overflow-hidden text-left">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 relative overflow-hidden text-left">
             <button 
               onClick={() => setShowReminderModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
@@ -832,12 +832,12 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               <X size={18} />
             </button>
 
-            <div className="w-14 h-14 bg-orange-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg animate-bounce">
+            <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-500/20 animate-bounce">
               <BellRing size={28} />
             </div>
 
             <div className="text-center mb-4">
-              <span className="text-[10px] font-bold tracking-wider text-orange-700 bg-orange-100 px-3 py-1 rounded-full border border-orange-300 inline-block mb-1">
+              <span className="text-[10px] font-bold tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-300 inline-block mb-1">
                 Pengingat Todo Aktif
               </span>
               <h3 className="text-lg font-bold text-slate-800 m-0">
@@ -860,11 +860,11 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                     handleAdd();
                   }
                 }}
-                className="flex-1 text-xs py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
+                className="flex-1 text-xs py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none"
               />
               <button 
                 onClick={handleAdd}
-                className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-md transition-all shrink-0 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all shrink-0 cursor-pointer"
               >
                 Tambah
               </button>
@@ -886,8 +886,8 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                         onClick={() => cycleStatus(t)}
                         className={`mt-0.5 shrink-0 w-5 h-5 rounded-md flex items-center justify-center border font-bold text-[10px] transition-all ${
                           t.status === 'onproses' 
-                            ? 'bg-blue-900 text-white border-blue-900' 
-                            : 'bg-white text-orange-500 border-orange-400 hover:bg-orange-50'
+                            ? 'bg-blue-600 text-white border-blue-600' 
+                            : 'bg-white text-amber-600 border-amber-400 hover:bg-amber-50'
                         }`}
                         title="Klik untuk ubah status"
                       >
@@ -901,7 +901,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
                       </div>
                     </div>
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
-                      t.status === 'onproses' ? 'bg-blue-100 text-blue-900 border-blue-300' : 'bg-orange-100 text-orange-700 border-orange-300'
+                      t.status === 'onproses' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}>
                       {t.status === 'onproses' ? 'Proses' : 'Todo'}
                     </span>
@@ -919,7 +919,7 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
               </button>
               <button 
                 onClick={() => setShowReminderModal(false)}
-                className="px-6 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
               >
                 Selesai
               </button>

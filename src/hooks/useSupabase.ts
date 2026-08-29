@@ -362,27 +362,6 @@ export function useMenuOrder() {
   return { menuOrder, saveMenuOrder };
 }
 
-export function useAuth() {
-  const defaultUser = {
-    username: 'admin',
-    nama: 'Administrator',
-    nama_lengkap: 'Administrator',
-    role: 'superadmin',
-    email: 'admin@kino.co.id'
-  };
-
-  return { 
-    user: defaultUser, 
-    role: 'superadmin',
-    isAdmin: true, 
-    isSuperAdmin: true, 
-    isOperator: false,
-    isFullAccess: true, 
-    displayName: 'Administrator',
-    login: async () => {}, 
-    logout: async () => {} 
-  };
-}
-
+export { useAuthContext as useAuth } from '../context/AuthContext';
 export { useBroadcast } from './useBroadcast';
 

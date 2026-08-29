@@ -418,7 +418,7 @@ export function MonitoringPemusnahanModule() {
         showToast('Tersimpan Lokal', `Data tersimpan di tabel lokal. Server: ${error.message}`, 'warning');
       } else {
         await fetchMonitoringData();
-        showToast('Tersimpan di Cloud', 'Data monitoring pemusnahan berhasil tersimpan di database Supabase!', 'success');
+        showToast('Tersimpan di Cloud', 'Data monitoring pemusnahan berhasil tersimpan di database cloud!', 'success');
       }
 
       setEditingRowId(null);
@@ -497,7 +497,7 @@ export function MonitoringPemusnahanModule() {
         showToast('Tersimpan Lokal', `Data tersimpan di tabel. Server: ${error.message}`, 'warning');
       } else {
         await fetchMonitoringData();
-        showToast('Sukses di Cloud', `Data pengajuan (${id}) tersimpan di database Supabase!`, 'success');
+        showToast('Sukses di Cloud', `Data pengajuan (${id}) tersimpan di database cloud!`, 'success');
       }
 
       setFormModalOpen(false);
@@ -916,8 +916,8 @@ export function MonitoringPemusnahanModule() {
     if (dbSuccess) {
       setUploadResultStatus({
         type: 'success',
-        title: 'Berhasil Masuk ke Database Supabase',
-        message: `${totalRecords} baris data monitoring pemusnahan berhasil tersimpan permanen di cloud database Supabase (${mode === 'replace' ? 'Mode Replace Seluruh Data' : 'Mode Append Tambah Data'}).`,
+        title: 'Berhasil Masuk ke Database Cloud',
+        message: `${totalRecords} baris data monitoring pemusnahan berhasil tersimpan permanen di cloud database (${mode === 'replace' ? 'Mode Replace Seluruh Data' : 'Mode Append Tambah Data'}).`,
         recordsCount: totalRecords,
         dbSynced: true,
         timestamp
@@ -932,7 +932,7 @@ export function MonitoringPemusnahanModule() {
       setUploadResultStatus({
         type: 'warning',
         title: 'Data Masuk Tabel Lokal (Gagal Cloud Sync)',
-        message: `${totalRecords} data berhasil ditampilkan di tabel lokal & browser, namun gagal disinkronkan ke Supabase. Detail kendala: ${dbErrorMsg}`,
+        message: `${totalRecords} data berhasil ditampilkan di tabel lokal & browser, namun gagal disinkronkan ke server database. Detail kendala: ${dbErrorMsg}`,
         recordsCount: totalRecords,
         dbSynced: false,
         timestamp
@@ -1026,8 +1026,8 @@ export function MonitoringPemusnahanModule() {
     if (dbSuccess) {
       setUploadResultStatus({
         type: 'success',
-        title: 'Database Supabase Terupdate',
-        message: `Seluruh ${totalRecords} data di tabel monitoring pemusnahan berhasil tersimpan secara permanen di database Supabase!`,
+        title: 'Database Cloud Terupdate',
+        message: `Seluruh ${totalRecords} data di tabel monitoring pemusnahan berhasil tersimpan secara permanen di cloud database!`,
         recordsCount: totalRecords,
         dbSynced: true,
         timestamp
@@ -1035,14 +1035,14 @@ export function MonitoringPemusnahanModule() {
 
       showToast(
         'Sinkronisasi Sukses',
-        `${totalRecords} data monitoring pemusnahan berhasil tersimpan di database Supabase!`,
+        `${totalRecords} data monitoring pemusnahan berhasil tersimpan di database!`,
         'success'
       );
     } else {
       setUploadResultStatus({
         type: 'warning',
         title: 'Sinkronisasi Database Terkendala',
-        message: `Gagal mengirim ke Supabase: ${dbErrorMsg}. Klik tombol Bantuan SQL untuk memastikan tabel sudah dibuat di database.`,
+        message: `Gagal mengirim ke database: ${dbErrorMsg}. Pastikan konfigurasi tabel database sudah sesuai.`,
         recordsCount: totalRecords,
         dbSynced: false,
         timestamp
@@ -1556,7 +1556,7 @@ export function MonitoringPemusnahanModule() {
           <div className="flex justify-between items-center text-xs font-black text-blue-950">
             <span className="flex items-center gap-2">
               <Server size={16} className="animate-pulse text-blue-700" />
-              <span>{uploadStageText || 'Sedang mengirimkan data ke database Supabase...'}</span>
+              <span>{uploadStageText || 'Sedang mengirimkan data ke database cloud...'}</span>
             </span>
             <span className="font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md text-xs font-black">
               {uploadProgress}%
@@ -2390,7 +2390,7 @@ export function MonitoringPemusnahanModule() {
                   <div className="flex justify-between items-center text-xs font-black text-blue-950">
                     <span className="flex items-center gap-2">
                       <RefreshCw size={15} className="animate-spin text-blue-700 shrink-0" />
-                      <span>{uploadStageText || 'Sedang memproses dan menyimpan data ke database Supabase...'}</span>
+                      <span>{uploadStageText || 'Sedang memproses dan menyimpan data ke database cloud...'}</span>
                     </span>
                     <span className="font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md text-xs font-black">
                       {uploadProgress}%
@@ -2405,7 +2405,7 @@ export function MonitoringPemusnahanModule() {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-blue-800">
                     <span className="flex items-center gap-1.5">
                       <Server size={13} />
-                      Target: Cloud Supabase & Local Table State
+                      Target: Cloud Database & Local Table State
                     </span>
                     <span>Harap tunggu, proses sedang berjalan...</span>
                   </div>

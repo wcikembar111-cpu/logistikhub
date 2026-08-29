@@ -286,23 +286,23 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
         style={{ position: 'fixed', right: '100%', bottom: '100%', width: 0, height: 0, border: 0 }}
       />
 
-      {/* Header bar (Exact Image 2 Design) */}
-      <div className="glass-box p-5 sm:p-6 !rounded-3xl border border-blue-200 shadow-lg mb-6 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white">
+      {/* Header bar */}
+      <div className="p-5 sm:p-6 rounded-3xl border border-blue-100 shadow-md mb-6 bg-blue-600 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0">
-              <QrCode size={26} className="text-amber-400" />
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shrink-0">
+              <QrCode size={26} className="text-amber-300" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-bold m-0 text-white">
                   Hasil Generasi QR Code Massal
                 </h3>
-                <span className="bg-amber-500 text-slate-950 font-extrabold text-xs px-2.5 py-0.5 rounded-full">
+                <span className="bg-amber-400 text-slate-900 font-extrabold text-xs px-2.5 py-0.5 rounded-full">
                   {items.length} Item
                 </span>
               </div>
-              <p className="text-xs text-blue-200 mt-1 m-0">
+              <p className="text-xs text-blue-100 mt-1 m-0">
                 Ukuran QR Code jernih untuk scanner & siap cetak Stiker Thermal Honeywell PM42
               </p>
             </div>
@@ -313,7 +313,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
             {onOpenModal && (
               <button
                 onClick={onOpenModal}
-                className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
                 <QrCode size={15} />
                 <span>Tambah / Edit Batch</span>
@@ -322,7 +322,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
             <button
               onClick={() => setShowPrintModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
               title="Pengaturan Ukuran Label"
             >
               <Sliders size={14} />
@@ -331,7 +331,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
             <button
               onClick={handlePrintAllStickers}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               title="Cetak Stiker Label Honeywell PM42"
             >
               <Printer size={15} />
@@ -341,7 +341,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
             <button
               onClick={handleDownloadZip}
               disabled={isZipping}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
             >
               <Download size={15} />
               <span>{isZipping ? 'Membuat ZIP...' : 'Unduh Semua (ZIP)'}</span>
@@ -350,7 +350,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
             {isAdmin && (
               <button
                 onClick={onClear}
-                className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 hover:text-white border border-red-500/30 transition-all cursor-pointer ml-1"
+                className="p-2 rounded-xl bg-red-500/30 hover:bg-red-500/50 text-white border border-red-400/40 transition-all cursor-pointer ml-1"
                 title="Sembunyikan / Hapus Hasil (Admin)"
               >
                 <Trash2 size={16} />
@@ -361,7 +361,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
         {/* Search bar */}
         {items.length > 3 && (
-          <div className="mt-4 pt-4 border-t border-white/15 flex items-center">
+          <div className="mt-4 pt-4 border-t border-white/20 flex items-center">
             <div className="relative w-full max-w-md">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -369,26 +369,26 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Cari dari ${items.length} QR Code...`}
-                className="w-full bg-slate-800/80 text-white border border-white/20 rounded-xl pl-10 pr-4 py-2 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full bg-white text-slate-800 border border-white/20 rounded-xl pl-10 pr-4 py-2 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
               />
             </div>
           </div>
         )}
       </div>
 
-      {/* Grid of Large Directly Scannable QR Codes (Image 2) */}
+      {/* Grid of Large Directly Scannable QR Codes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 pb-8">
         {filteredItems.map((item, idx) => (
           <div 
             key={item.id} 
-            className="glass-box p-5 !rounded-3xl border border-slate-200/90 shadow-md hover:shadow-xl transition-all duration-200 bg-white/95 flex flex-col items-center justify-between text-center relative group"
+            className="p-5 rounded-3xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 bg-white flex flex-col items-center justify-between text-center relative group"
           >
             <span className="absolute top-3 left-3 bg-slate-100 text-slate-600 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">
               #{idx + 1}
             </span>
 
-            {/* QR Image Container - Big & Crisp */}
-            <div className="w-full flex justify-center mt-3 mb-2 p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner group-hover:border-blue-400 transition-colors">
+            {/* QR Image Container */}
+            <div className="w-full flex justify-center mt-3 mb-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs group-hover:border-blue-400 transition-colors">
               <img 
                 src={item.dataUrl} 
                 alt={item.label} 
@@ -399,13 +399,13 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
             {/* QR Code Text / Label Section */}
             <div className="w-full my-2 space-y-1.5 text-left px-1">
               {item.label && (
-                <div className="font-extrabold text-xs text-slate-800 truncate" title={item.label}>
+                <div className="font-bold text-xs text-slate-800 truncate" title={item.label}>
                   {item.label}
                 </div>
               )}
               
               <div 
-                className="font-mono font-bold text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 break-all leading-relaxed"
+                className="font-mono font-semibold text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 break-all leading-relaxed"
                 title={item.value}
               >
                 {item.value}
@@ -441,7 +441,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
               <button
                 type="button"
                 onClick={() => handleDownloadSingle(item)}
-                className="py-1.5 px-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs ml-auto active:scale-95"
+                className="py-1.5 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs ml-auto active:scale-95"
                 title="Unduh PNG"
               >
                 <Download size={13} />
@@ -454,8 +454,8 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
       {/* HONEYWELL PM42 PRINT OPTION MODAL */}
       {showPrintModal && (
-        <div className="fixed inset-0 z-[230] flex items-center justify-center bg-slate-950/70 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white p-6 rounded-3xl max-w-xl w-full shadow-2xl border border-emerald-300 relative text-left">
+        <div className="fixed inset-0 z-[230] flex items-center justify-center bg-slate-900/40 p-3 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white p-6 rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 relative text-left">
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-2xs">

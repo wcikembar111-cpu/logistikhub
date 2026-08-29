@@ -78,7 +78,7 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
   const filteredIcons = ICON_LIST.filter(i => i.includes(iconSearch.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-[1055] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[1055] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200">
         
         <div className="border-b border-slate-200 px-6 py-4 bg-slate-50 flex justify-between items-center shrink-0">
@@ -88,26 +88,26 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
             </div>
             {link ? 'Edit Link' : 'Create New Link'}
           </h5>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-800 font-black text-xl transition-transform cursor-pointer">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-800 font-bold text-xl transition-colors cursor-pointer">✕</button>
         </div>
         
         <div className="p-6 overflow-y-auto min-h-0 flex-1 custom-scrollbar bg-slate-50/50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="text-[11px] font-bold text-blue-900 uppercase tracking-widest mb-2 block">Application Title</label>
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-widest mb-2 block">Application Title</label>
               <input 
                 type="text" 
                 value={title} onChange={e => setTitle(e.target.value)}
-                className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-2xs placeholder:text-slate-400" 
+                className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all shadow-2xs placeholder:text-slate-400" 
                 placeholder="e.g. Inventory System" 
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-blue-900 uppercase tracking-widest mb-2 block">Target URL</label>
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-widest mb-2 block">Target URL</label>
               <input 
                 type="url" 
                 value={url} onChange={e => setUrl(e.target.value)}
-                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-800 outline-none transition-all shadow-sm placeholder:text-slate-400" 
+                className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all shadow-2xs placeholder:text-slate-400" 
                 placeholder="https://..." 
               />
             </div>
@@ -118,7 +118,7 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
               <label className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-2 block">Category</label>
               <select 
                 value={category} onChange={e => setCategory(e.target.value)}
-                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-sm cursor-pointer"
+                className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-2xs cursor-pointer"
               >
                 <option value="">-- Select Category --</option>
                 {existingCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -128,7 +128,7 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
                 <input 
                   type="text" 
                   value={newCategory} onChange={e => setNewCategory(e.target.value)}
-                  className="w-full mt-4 bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-sm placeholder:text-slate-400" 
+                  className="w-full mt-4 bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition-all shadow-2xs placeholder:text-slate-400" 
                   placeholder="Type new category..." 
                 />
               )}
@@ -138,7 +138,7 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
               <input 
                 type="text" 
                 value={subcategory} onChange={e => setSubcategory(e.target.value)}
-                className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none transition-all shadow-sm placeholder:text-slate-400" 
+                className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none transition-all shadow-2xs placeholder:text-slate-400" 
                 placeholder="e.g. Asset Management" 
               />
             </div>
@@ -147,25 +147,25 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
           <div>
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Select Icon</label>
             
-            <div className="flex items-center gap-3 px-4 py-3 border border-indigo-500/30 rounded-xl bg-indigo-500/10 mb-4 text-indigo-600 shadow-sm">
-              <i className={`${icon} text-2xl drop-shadow-sm`} />
+            <div className="flex items-center gap-3 px-4 py-2.5 border border-indigo-200 rounded-xl bg-indigo-50 mb-4 text-indigo-700 shadow-2xs">
+              <i className={`${icon} text-xl`} />
               <span className="font-bold text-sm tracking-wide">{icon}</span>
             </div>
             
             <input 
               type="text" 
               value={iconSearch} onChange={e => setIconSearch(e.target.value)}
-              className="w-full bg-white/60 text-slate-800 border border-white/80 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-sky-400 outline-none transition-all mb-4 shadow-sm placeholder:text-slate-400" 
+              className="w-full bg-white text-slate-800 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-sky-400 outline-none transition-all mb-4 shadow-2xs placeholder:text-slate-400" 
               placeholder="Search icons..." 
             />
             
-            <div className="bg-white/40 border border-white/60 rounded-2xl h-[180px] overflow-y-auto p-4 grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] gap-3 custom-scrollbar shadow-inner">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl h-[180px] overflow-y-auto p-4 grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] gap-3 custom-scrollbar">
               {filteredIcons.map(i => (
                 <div 
                   key={i} 
                   onClick={() => setIcon(i)}
-                  className={`w-[48px] h-[48px] rounded-xl flex items-center justify-center border cursor-pointer text-[1.4rem] transition-all shadow-sm
-                    ${icon === i ? 'border-orange-500/50 bg-orange-500/20 text-orange-600' : 'border-white/60 bg-white/60 text-slate-600 hover:bg-sky-500/10 hover:text-sky-600 hover:border-sky-500/30 hover:-translate-y-1'}`}
+                  className={`w-[48px] h-[48px] rounded-xl flex items-center justify-center border cursor-pointer text-[1.4rem] transition-all shadow-2xs
+                    ${icon === i ? 'border-orange-500 bg-orange-100 text-orange-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-sky-50 hover:text-sky-600 hover:border-sky-300 hover:-translate-y-0.5'}`}
                   title={i}
                 >
                   <i className={i} />
@@ -175,9 +175,9 @@ export function LinkModal({ link, existingCategories, onClose, onSave }: LinkMod
           </div>
         </div>
         
-        <div className="border-t border-white/40 px-6 py-5 bg-white/40 flex justify-end gap-3 shrink-0">
-          <button onClick={onClose} className="glass-btn !bg-white/60">CANCEL</button>
-          <button onClick={handleSave} disabled={loading} className="glass-btn !bg-blue-900 text-white hover:!bg-blue-800 border-blue-800">
+        <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex justify-end gap-3 shrink-0">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer">CANCEL</button>
+          <button onClick={handleSave} disabled={loading} className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 cursor-pointer">
             {loading ? 'SAVING...' : 'SAVE DATA'}
           </button>
         </div>

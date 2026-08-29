@@ -329,7 +329,7 @@ END $$;`;
 
   return (
     <div 
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div 
@@ -337,21 +337,21 @@ END $$;`;
         onClick={e => e.stopPropagation()}
       >
         {/* Simple Modern Header */}
-        <div className="px-4 py-3 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
+        <div className="px-4 py-3 bg-blue-600 text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-md shrink-0 border border-pink-300">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white shadow-xs shrink-0 border border-white/30">
               <Heart size={16} className="fill-white animate-pulse" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-white tracking-tight leading-none truncate m-0 flex items-center gap-1.5">
                 <span>Pusat Pesan Siaran (Broadcast)</span>
                 {isExternalConfigured && (
-                  <span className="bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  <span className="bg-emerald-500/30 border border-emerald-400/50 text-emerald-100 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                     Dual DB
                   </span>
                 )}
               </h3>
-              <p className="text-[11px] text-pink-200 font-medium m-0 mt-0.5 truncate">
+              <p className="text-[11px] text-blue-100 font-medium m-0 mt-0.5 truncate">
                 Disampaikan oleh Robot Pink Love ke semua layar & database
               </p>
             </div>
@@ -363,8 +363,8 @@ END $$;`;
               onClick={onToggleSound}
               className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                 soundEnabled
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : 'bg-white/5 text-slate-400 border-white/10'
+                  ? 'bg-emerald-500 text-white border-emerald-400'
+                  : 'bg-white/10 text-blue-100 border-white/20'
               }`}
               title={soundEnabled ? 'Suara Robot Aktif' : 'Suara Mute'}
             >
@@ -374,7 +374,7 @@ END $$;`;
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all cursor-pointer"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -388,7 +388,7 @@ END $$;`;
             onClick={() => setActiveTab('compose')}
             className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'compose'
-                ? 'border-blue-900 text-blue-900'
+                ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -401,7 +401,7 @@ END $$;`;
             onClick={() => setActiveTab('history')}
             className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'history'
-                ? 'border-blue-900 text-blue-900'
+                ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -414,7 +414,7 @@ END $$;`;
             onClick={() => setActiveTab('database_sync')}
             className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'database_sync'
-                ? 'border-indigo-900 text-indigo-900'
+                ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -517,7 +517,7 @@ END $$;`;
                   value={senderName}
                   onChange={e => setSenderName(e.target.value)}
                   placeholder="Contoh: Pos 1, Admin Gudang, Dede..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all"
                   required
                 />
                 {/* Saran / Preset Cepat Nama Pengirim */}
@@ -530,8 +530,8 @@ END $$;`;
                         onClick={() => setSenderName(activeUserDisplayName)}
                         className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
                           senderName === activeUserDisplayName
-                            ? 'bg-blue-900 text-white border-blue-900'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                         }`}
                       >
                         {activeUserDisplayName}
@@ -541,8 +541,8 @@ END $$;`;
                         onClick={() => setSenderName(`${activeUserDisplayName} (Pos 1)`)}
                         className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
                           senderName === `${activeUserDisplayName} (Pos 1)`
-                            ? 'bg-blue-900 text-white border-blue-900'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                         }`}
                       >
                         {activeUserDisplayName} (Pos 1)
@@ -554,8 +554,8 @@ END $$;`;
                     onClick={() => setSenderName('Pos Logistik 1')}
                     className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
                       senderName === 'Pos Logistik 1'
-                        ? 'bg-blue-900 text-white border-blue-900'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                     }`}
                   >
                     Pos Logistik 1
@@ -565,8 +565,8 @@ END $$;`;
                     onClick={() => setSenderName('Gudang CKB')}
                     className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
                       senderName === 'Gudang CKB'
-                        ? 'bg-blue-900 text-white border-blue-900'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                     }`}
                   >
                     Gudang CKB
@@ -584,7 +584,7 @@ END $$;`;
                   value={messageText}
                   onChange={e => setMessageText(e.target.value)}
                   placeholder="Tulis pesan yang ingin disiarkan..."
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 outline-none transition-all resize-none"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all resize-none"
                   required
                   autoFocus
                 />
@@ -603,7 +603,7 @@ END $$;`;
                 <button
                   type="submit"
                   disabled={isSending || !messageText.trim()}
-                  className="px-5 py-2 rounded-xl bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Send size={13} />
                   <span>{isSending ? 'Mengirim...' : 'Siarkan Pesan'}</span>
