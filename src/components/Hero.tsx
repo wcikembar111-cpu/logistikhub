@@ -191,7 +191,7 @@ export function Hero({
   // State untuk Reminder Todo
   const [activeTodoReminder, setActiveTodoReminder] = useState<boolean>(false);
 
-  const pendingTodos = todos.filter(t => t.status === 'no' || t.status === 'onproses');
+  const pendingTodos = (todos || []).filter(t => t.status === 'no' || t.status === 'onproses');
 
   // Countdown to next prayer calculation
   const getNextPrayerCountdown = () => {
