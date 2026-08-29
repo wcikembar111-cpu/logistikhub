@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, DragEvent } from 'react';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X, Users, ShieldCheck } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { useMenuOrder } from '../hooks/useSupabase';
@@ -7,12 +7,11 @@ import { useMenuOrder } from '../hooks/useSupabase';
 interface LinkGridProps {
   links: LinkData[];
   loading: boolean;
-  isAdmin: boolean;
+  isAdmin?: boolean;
   isSuperAdmin?: boolean;
   onAdd: () => void;
   onEdit: (link: LinkData) => void;
   onDelete: (id: string) => void;
-  onManageUsers?: () => void;
 }
 
 const NATIVE_ICON_STYLES = [
@@ -26,7 +25,7 @@ const NATIVE_ICON_STYLES = [
   'bg-gradient-to-br from-cyan-400 via-teal-500 to-blue-700 text-white shadow-cyan-500/35 ring-1 ring-cyan-400/30',
 ];
 
-export function LinkGrid({ links, loading, isAdmin, isSuperAdmin = false, onAdd, onEdit, onDelete, onManageUsers }: LinkGridProps) {
+export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, onAdd, onEdit, onDelete }: LinkGridProps) {
   const { showConfirm, showToast } = useNotification();
   const { menuOrder, saveMenuOrder } = useMenuOrder();
   const [search, setSearch] = useState('');
@@ -192,18 +191,6 @@ export function LinkGrid({ links, loading, isAdmin, isSuperAdmin = false, onAdd,
           {/* Admin & Super Admin Actions */}
           {(isAdmin || isSuperAdmin) && (
             <div className="flex items-center gap-1.5 shrink-0">
-              {onManageUsers && (
-                <button
-                  type="button"
-                  onClick={onManageUsers}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-blue-300 hover:text-white font-bold text-xs flex items-center gap-1.5 border border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer"
-                  title="Kelola Akun User & PIN Login"
-                >
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  <span>User & PIN</span>
-                </button>
-              )}
-
               {/* Kelola Daftar Aplikasi & Sistem (Hanya Super Admin) */}
               {isSuperAdmin && (
                 <>

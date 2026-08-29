@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, Unlock, MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ChevronDown, ChevronUp, ZoomIn, ExternalLink, KeyRound, Timer, LogOut, Moon, Sun, Sunrise, Sunset, Clock, Sparkles, Compass, Users, ShieldCheck } from 'lucide-react';
+import { MapPin, Bell, BellRing, Volume2, VolumeX, Mail, MessageCircle, X, ListTodo, CheckSquare, ZoomIn, ExternalLink, Sparkles, Moon, Sun, Sunrise, Sunset, Clock, ShieldCheck } from 'lucide-react';
 import { TodoData } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
-import { TIMEOUT_OPTIONS } from '../utils/pinAuth';
 import { PopyMaternityCountdown } from './countdown/PopyMaternityCountdown';
 
 interface HeroProps {
@@ -13,15 +12,9 @@ interface HeroProps {
     role?: string;
     email?: string;
   } | null;
-  isAdmin: boolean;
+  isAdmin?: boolean;
   isSuperAdmin?: boolean;
   isOperator?: boolean;
-  onLogin?: () => void;
-  onLogout?: () => void;
-  onLockApp?: () => void;
-  onManageUsers?: () => void;
-  sessionTimeoutMinutes?: number;
-  onChangeSessionTimeout?: (minutes: number) => void;
   todos?: TodoData[];
   onOpenTodo?: () => void;
 }
@@ -37,15 +30,9 @@ interface PrayerJadwal {
 
 export function Hero({ 
   user,
-  isAdmin, 
-  isSuperAdmin,
-  isOperator,
-  onLogin, 
-  onLogout, 
-  onLockApp, 
-  onManageUsers,
-  sessionTimeoutMinutes = 15,
-  onChangeSessionTimeout,
+  isAdmin = true, 
+  isSuperAdmin = true,
+  isOperator = false,
   todos = [], 
   onOpenTodo 
 }: HeroProps) {
@@ -83,7 +70,6 @@ export function Hero({
     return `${greet}, ${name.toUpperCase()}!`;
   };
 
-  const [showTimeoutDropdown, setShowTimeoutDropdown] = useState(false);
   const [time, setTime] = useState('');
   const [dateStr, setDateStr] = useState('');
   const [greeting, setGreeting] = useState(() => computeGreeting(greetingUserName));
@@ -881,7 +867,7 @@ export function Hero({
             </div>
           </div>
 
-          {/* Right: Action Buttons Group (Date Badge, Install App, Lock PIN, Session Timeout, Admin Login) */}
+          {/* Right: Action Buttons Group (Date Badge, Install App, Popy Countdown) */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap self-start md:self-center">
             <div className="font-bold text-[10px] sm:text-[11px] text-orange-700 tracking-wider border border-orange-200 px-2.5 py-1 bg-orange-50 rounded-lg shadow-2xs whitespace-nowrap">
               {dateStr || 'Memuat...'}
@@ -889,83 +875,9 @@ export function Hero({
 
             {/* Tombol Install PWA jika belum terinstall */}
             <InstallPwaButton variant="header" />
-            
-            {/* Tombol Kunci / Logout PIN Aplikasi & Pengaturan Durasi Sesi */}
-            {onLockApp && (
-              <div className="relative inline-flex items-center gap-1">
-                <button 
-                  onClick={onLockApp} 
-                  className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-indigo-950 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 hover:border-indigo-600 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
-                  title="Kunci / Logout Aplikasi kembali ke Layar PIN 6 Digit"
-                >
-                  <KeyRound size={12} className="text-indigo-600 group-hover:text-white shrink-0" />
-                  <span>KUNCI / LOGOUT PIN</span>
-                </button>
-
-                {/* Indikator & Dropdown Durasi Auto-Lock Sesi */}
-                {onChangeSessionTimeout && (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowTimeoutDropdown(!showTimeoutDropdown)}
-                      className="px-2 py-1 rounded-lg text-[9px] font-extrabold bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-900 border border-slate-200 flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
-                      title={`Sesi Otomatis Terkunci setelah ${sessionTimeoutMinutes} menit tanpa aktivitas`}
-                    >
-                      <Timer size={10} className="text-amber-600 shrink-0" />
-                      <span>{sessionTimeoutMinutes}m</span>
-                      <ChevronDown size={10} />
-                    </button>
-
-                    {showTimeoutDropdown && (
-                      <div className="absolute top-full right-0 mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 p-2 min-w-[170px] text-left animate-scale-up">
-                        <div className="text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1.5">
-                          Otomatis Kunci Sesi:
-                        </div>
-                        <div className="space-y-0.5">
-                          {TIMEOUT_OPTIONS.map((mins) => (
-                            <button
-                              key={mins}
-                              type="button"
-                              onClick={() => {
-                                onChangeSessionTimeout(mins);
-                                setShowTimeoutDropdown(false);
-                              }}
-                              className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                                sessionTimeoutMinutes === mins
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'hover:bg-indigo-50 text-slate-700'
-                              }`}
-                            >
-                              <span>{mins} Menit Tidak Aktif</span>
-                              {sessionTimeoutMinutes === mins && <span className="text-[10px]">✓</span>}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[9px] text-slate-400 px-1 italic">
-                          Aplikasi terkunci otomatis jika tidak disentuh/digerakkan.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Countdown Cuti Melahirkan Popy */}
             <PopyMaternityCountdown isAdmin={isAdmin} />
-
-            {/* Tombol Manajemen Akun User & PIN */}
-            {onManageUsers && (
-              <button
-                type="button"
-                onClick={onManageUsers}
-                className="py-1 px-2.5 text-[10px] font-bold rounded-lg text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap active:scale-95"
-                title="Kelola Akun User & PIN 6 Digit (Database users)"
-              >
-                <ShieldCheck size={12} className="text-blue-600 shrink-0" />
-                <span>USER & PIN</span>
-              </button>
-            )}
           </div>
         </div>
         

@@ -9,8 +9,7 @@ import {
   PackageCheck, 
   FileText, 
   Undo2,
-  Flame,
-  KeyRound
+  Flame
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
@@ -21,7 +20,6 @@ interface ToolWorkspacePageProps {
   activeTool: MainToolTab;
   onSelectTool: (tool: MainToolTab) => void;
   onBackToHome: () => void;
-  onLockApp?: () => void;
   batchQrItems: QrItem[];
   onSetBatchQrItems: (items: QrItem[]) => void;
 }
@@ -93,7 +91,6 @@ export function ToolWorkspacePage({
   activeTool,
   onSelectTool,
   onBackToHome,
-  onLockApp,
   batchQrItems,
   onSetBatchQrItems
 }: ToolWorkspacePageProps) {
@@ -132,19 +129,8 @@ export function ToolWorkspacePage({
           </div>
         </div>
 
-        {/* Right: Actions (Lock PIN) */}
+        {/* Active Application Info on Right as well if needed */}
         <div className="flex items-center gap-2">
-          {onLockApp && (
-            <button
-              type="button"
-              onClick={onLockApp}
-              className="px-3 py-2 rounded-xl bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-semibold text-xs border border-slate-200 hover:border-orange-300 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Kunci / Logout Aplikasi kembali ke Layar PIN"
-            >
-              <KeyRound size={13} className="text-orange-500" />
-              <span className="hidden sm:inline">Kunci PIN</span>
-            </button>
-          )}
         </div>
       </div>
 
