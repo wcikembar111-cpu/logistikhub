@@ -99,6 +99,8 @@ export function SuratJalanModule() {
   const [tujuanList, setTujuanList] = useState<Tujuan[]>([
     { id: 'tujuan-1', nama: 'PT KINO INDONESIA SUKABUMI', alamat: 'Jl. Raya Cikembar No. 88', kota: 'Sukabumi', up: 'Bpk. Hendra', noTelpon: '08123456789' }
   ]);
+  const [pengirimId, setPengirimId] = useState<number | string | null>(null);
+  const [savingPengirim, setSavingPengirim] = useState<boolean>(false);
   const [pengirim, setPengirim] = useState<Pengirim>({
     nama: 'LOGISTICS WAREHOUSE',
     alamat: 'Jl. Utama Logistics No. 1',
@@ -224,8 +226,15 @@ export function SuratJalanModule() {
       }
 
       // 4. Fetch Pengirim
-      const { data: pengirimData } = await supabase.from('pengirim').select('*').limit(1).single();
+      const { data: pengirimData } = await supabase
+        .from('pengirim')
+        .select('*')
+        .order('id', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
       if (pengirimData) {
+        setPengirimId(pengirimData.id);
         setPengirim({
           nama: pengirimData.nama || 'LOGISTICS WAREHOUSE',
           alamat: pengirimData.alamat || '',
@@ -272,20 +281,107 @@ export function SuratJalanModule() {
     };
   }, []);
 
-  // Generate Nomor SJ Auto Preview
-  const generateNomorSJ = (jenisIdParam?: string, tanggalParam?: string) => {
+  // Generate Nomor SJ Auto Preview (Urut per Jenis & per Tahun, reset di Januari)
+  const generateNomorSJ = (jenisIdParam?: string, tanggalParam?: string, excludeDocId?: string | null) => {
     const jId = jenisIdParam || formState.jenisId;
     const selectedJenis = jenisList.find(j => j.id === jId) || jenisList[0];
-    const kodeJenis = selectedJenis ? selectedJenis.kode : 'CKB';
+    const rawKode = selectedJenis?.kode ? selectedJenis.kode.trim() : '';
+    const isNoKode = !rawKode || rawKode === '-' || rawKode === '—';
+    const kodeJenis = isNoKode ? '' : rawKode;
 
     const tglStr = tanggalParam || formState.tanggal || new Date().toISOString().split('T')[0];
     const d = new Date(tglStr);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = isNaN(d.getFullYear()) ? new Date().getFullYear() : d.getFullYear();
+    const mm = String(isNaN(d.getMonth()) ? (new Date().getMonth() + 1) : (d.getMonth() + 1)).padStart(2, '0');
 
-    const nextUrut = documents.length + 1;
+    // Filter dokumen yang sama Jenis dan sama Tahun
+    const matchingDocs = documents.filter(doc => {
+      if (excludeDocId && doc.id === excludeDocId) return false;
+
+      // Cek apakah jenis sama (by jenisId atau kode di nomorSJ)
+      let isSameJenis = false;
+      if (doc.jenisId && doc.jenisId === jId) {
+        isSameJenis = true;
+      } else if (doc.nomorSJ) {
+        if (isNoKode) {
+          // Format tanpa kode: WH-CKB/YYYY/MM/XXXX (4 segments) atau ada /- /
+          const parts = doc.nomorSJ.split('/');
+          isSameJenis = (parts.length === 4 && parts[0] === 'WH-CKB') || doc.nomorSJ.includes('/-/');
+        } else {
+          isSameJenis = doc.nomorSJ.includes(`/${kodeJenis}/`) || doc.nomorSJ.startsWith(`WH-CKB/${kodeJenis}/`);
+        }
+      }
+
+      if (!isSameJenis) return false;
+
+      // Cek apakah tahun sama
+      let docYear: number | null = null;
+      if (doc.tanggal) {
+        const docDate = new Date(doc.tanggal);
+        if (!isNaN(docDate.getFullYear())) {
+          docYear = docDate.getFullYear();
+        }
+      }
+      if (!docYear && doc.nomorSJ) {
+        const matchYear = doc.nomorSJ.match(/\/(\d{4})\//);
+        if (matchYear && matchYear[1]) {
+          docYear = parseInt(matchYear[1], 10);
+        }
+      }
+
+      return docYear === yyyy;
+    });
+
+    // Jika dalam mode edit dokumen dan jenis + tahunnya sama, pertahankan nomor urut aslinya
+    if (excludeDocId) {
+      const existingDoc = documents.find(d => d.id === excludeDocId);
+      if (existingDoc && existingDoc.nomorSJ) {
+        const parts = existingDoc.nomorSJ.split('/');
+        const origUrut = parts[parts.length - 1];
+
+        let origYear: number | null = null;
+        let origKode = '';
+
+        if (parts.length === 4) {
+          origYear = parseInt(parts[1], 10);
+          origKode = '';
+        } else if (parts.length >= 5) {
+          origKode = parts[1].trim();
+          origYear = parseInt(parts[2], 10);
+          if (origKode === '-' || origKode === '—') origKode = '';
+        }
+
+        const isOrigNoKode = !origKode || origKode === '-';
+
+        if (origYear === yyyy && origUrut) {
+          if (isNoKode && isOrigNoKode) {
+            return `WH-CKB/${yyyy}/${mm}/${origUrut}`;
+          } else if (!isNoKode && origKode.toUpperCase() === kodeJenis.toUpperCase()) {
+            return `WH-CKB/${kodeJenis}/${yyyy}/${mm}/${origUrut}`;
+          }
+        }
+      }
+    }
+
+    // Cari nomor urut maksimum dari dokumen tahun ini untuk jenis ini
+    let maxSequence = 0;
+    matchingDocs.forEach(doc => {
+      if (doc.nomorSJ) {
+        const parts = doc.nomorSJ.split('/');
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart, 10);
+        if (!isNaN(num) && num > maxSequence) {
+          maxSequence = num;
+        }
+      }
+    });
+
+    const nextUrut = Math.max(maxSequence, matchingDocs.length) + 1;
     const urutPadded = String(nextUrut).padStart(4, '0');
 
+    if (isNoKode) {
+      return `WH-CKB/${yyyy}/${mm}/${urutPadded}`;
+    }
     return `WH-CKB/${kodeJenis}/${yyyy}/${mm}/${urutPadded}`;
   };
 
@@ -766,6 +862,83 @@ export function SuratJalanModule() {
     });
   };
 
+  // Pengirim Kop SJ Handler
+  const handleSavePengirim = async () => {
+    if (!pengirim.nama.trim()) {
+      showToast('Form Belum Lengkap', 'Nama Pengirim wajib diisi', 'danger');
+      return;
+    }
+
+    setSavingPengirim(true);
+    try {
+      let currentId = pengirimId;
+      if (!currentId) {
+        const { data: existingRows } = await supabase
+          .from('pengirim')
+          .select('id')
+          .order('id', { ascending: true })
+          .limit(1);
+        if (existingRows && existingRows.length > 0) {
+          currentId = existingRows[0].id;
+          setPengirimId(currentId);
+        }
+      }
+
+      const payload: any = {
+        nama: pengirim.nama.trim(),
+        alamat: pengirim.alamat.trim(),
+        kota_kab: pengirim.kotaKab.trim(),
+        telp: pengirim.telp.trim(),
+        kota_dateline: pengirim.kotaKab.trim()
+      };
+
+      if (currentId) {
+        payload.id = currentId;
+      }
+
+      const { data: upsertData, error: saveErr } = await supabase
+        .from('pengirim')
+        .upsert([payload])
+        .select();
+
+      if (saveErr) {
+        console.error('Save pengirim error:', saveErr);
+        if (currentId) {
+          const { error: updateErr } = await supabase
+            .from('pengirim')
+            .update({
+              nama: pengirim.nama.trim(),
+              alamat: pengirim.alamat.trim(),
+              kota_kab: pengirim.kotaKab.trim(),
+              telp: pengirim.telp.trim(),
+              kota_dateline: pengirim.kotaKab.trim()
+            })
+            .eq('id', currentId);
+
+          if (updateErr) {
+            showToast('Gagal Simpan Database', updateErr.message, 'danger');
+          } else {
+            showToast('Sukses', 'Data Pengirim (Kop SJ) berhasil disimpan ke Database', 'success');
+            fetchAllData();
+          }
+        } else {
+          showToast('Gagal Simpan Database', saveErr.message, 'danger');
+        }
+      } else {
+        if (upsertData && upsertData.length > 0) {
+          setPengirimId(upsertData[0].id);
+        }
+        showToast('Sukses', 'Data Pengirim (Kop SJ) berhasil disimpan ke Database', 'success');
+        fetchAllData();
+      }
+    } catch (e: any) {
+      console.error('Exception in handleSavePengirim:', e);
+      showToast('Tersimpan Lokal', 'Data Kop Pengirim disimpan di penyimpanan lokal', 'info');
+    } finally {
+      setSavingPengirim(false);
+    }
+  };
+
   // Paste Processors
   const processPasteAll = () => {
     if (!pasteTextArea.trim()) {
@@ -1198,7 +1371,9 @@ export function SuratJalanModule() {
                 >
                   <option value="">Semua Jenis SJ</option>
                   {jenisList.map(j => (
-                    <option key={j.id} value={j.id}>{j.nama} ({j.kode})</option>
+                    <option key={j.id} value={j.id}>
+                      {j.nama}{j.kode && j.kode.trim() !== '-' && j.kode.trim() !== '—' ? ` (${j.kode})` : ''}
+                    </option>
                   ))}
                 </select>
 
@@ -1412,13 +1587,15 @@ export function SuratJalanModule() {
                   value={formState.jenisId}
                   onChange={(e) => {
                     const nextJenisId = e.target.value;
-                    const nextNomor = generateNomorSJ(nextJenisId, formState.tanggal);
+                    const nextNomor = generateNomorSJ(nextJenisId, formState.tanggal, editDocId);
                     setFormState(prev => ({ ...prev, jenisId: nextJenisId, nomorSJ: nextNomor }));
                   }}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   {jenisList.map(j => (
-                    <option key={j.id} value={j.id}>{j.nama} ({j.kode})</option>
+                    <option key={j.id} value={j.id}>
+                      {j.nama}{j.kode && j.kode.trim() !== '-' && j.kode.trim() !== '—' ? ` (${j.kode})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1432,7 +1609,7 @@ export function SuratJalanModule() {
                   value={formState.tanggal}
                   onChange={(e) => {
                     const nextTgl = e.target.value;
-                    const nextNomor = generateNomorSJ(formState.jenisId, nextTgl);
+                    const nextNomor = generateNomorSJ(formState.jenisId, nextTgl, editDocId);
                     setFormState(prev => ({ ...prev, tanggal: nextTgl, nomorSJ: nextNomor }));
                   }}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -1919,10 +2096,10 @@ export function SuratJalanModule() {
               <img src={KINO_LOGO_URL} alt="Kino Logo" className="h-10 object-contain" />
               <div className="text-center flex-1">
                 <h1 className="text-xl font-extrabold tracking-wider uppercase m-0 text-slate-900">
-                  {jenisList.find(j => j.id === printDoc.jenisId)?.nama || 'SURAT JALAN'}
+                  SURAT JALAN
                 </h1>
-                <p className="font-mono text-sm font-bold text-blue-600 m-0 mt-0.5">
-                  NO: {printDoc.nomorSJ}
+                <p className="font-mono text-sm font-bold text-slate-900 m-0 mt-0.5">
+                  {printDoc.nomorSJ}
                 </p>
               </div>
               <div className="text-right text-xs font-bold whitespace-nowrap pt-1">
@@ -2302,18 +2479,12 @@ export function SuratJalanModule() {
 
               <button
                 type="button"
-                onClick={async () => {
-                  try {
-                    await supabase.from('pengirim').upsert([{ id: 1, ...pengirim, kota_kab: pengirim.kotaKab }]);
-                    showToast('Sukses', 'Data Kop Pengirim berhasil disimpan', 'success');
-                  } catch (e) {
-                    showToast('Sukses Lokal', 'Data Kop disimpan di lokal', 'info');
-                  }
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 mt-2"
+                disabled={savingPengirim}
+                onClick={handleSavePengirim}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 mt-2 transition-colors"
               >
-                <Save size={14} />
-                <span>Simpan Kop Pengirim</span>
+                <Save size={14} className={savingPengirim ? 'animate-spin' : ''} />
+                <span>{savingPengirim ? 'Menyimpan...' : 'Simpan Kop Pengirim'}</span>
               </button>
             </div>
 

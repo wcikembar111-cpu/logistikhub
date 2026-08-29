@@ -10,7 +10,11 @@ export function isNotificationSupported(): boolean {
 
 export function getNotificationPermission(): NotificationPermission {
   if (!isNotificationSupported()) return 'denied';
-  return Notification.permission;
+  try {
+    return Notification.permission || 'denied';
+  } catch {
+    return 'denied';
+  }
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
