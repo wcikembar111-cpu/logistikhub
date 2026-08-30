@@ -4,7 +4,7 @@ export type LoginFloatingRobotProps = FloatingRobotCompanionProps;
 
 export function LoginFloatingRobot(props: LoginFloatingRobotProps) {
   return (
-    <div className="fixed bottom-4 right-4 z-40">
+    <div className="relative flex flex-col items-center justify-center">
       <FloatingRobotCompanion 
         {...props} 
         mode="login" 
@@ -12,3 +12,4 @@ export function LoginFloatingRobot(props: LoginFloatingRobotProps) {
     </div>
   );
 }
+

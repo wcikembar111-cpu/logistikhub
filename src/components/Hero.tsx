@@ -24,7 +24,8 @@ import {
   LogOut,
   Database,
   KeyRound,
-  UserCheck
+  UserCheck,
+  Wrench
 } from 'lucide-react';
 import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
@@ -48,6 +49,7 @@ interface HeroProps {
   isOperator?: boolean;
   todos?: TodoData[];
   onOpenTodo?: () => void;
+  onOpenSidebar?: () => void;
   onOpenLogin?: () => void;
   onOpenUserManagement?: () => void;
   onOpenSqlScript?: () => void;
@@ -71,6 +73,7 @@ export function Hero({
   isOperator = false,
   todos = [], 
   onOpenTodo,
+  onOpenSidebar,
   onOpenLogin,
   onOpenUserManagement,
   onOpenSqlScript,
@@ -925,42 +928,20 @@ export function Hero({
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
             <div className="relative shrink-0 group">
               {renderAvatarSlot ? (
-                <div className="relative flex items-center justify-center">
-                  {/* Background Profile Photo / Avatar yang ditutupi oleh Robot */}
-                  <div 
-                    onClick={() => setShowPhotoModal(true)}
-                    className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300 opacity-20 filter blur-[1px] group-hover:opacity-40 group-hover:blur-none"
-                    title="Klik pinggir untuk perbesar profil & detail akun"
-                  >
-                    {isDedeUser ? (
-                      <img 
-                        src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
-                        alt={resolvedFullName} 
-                        className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-slate-300 shadow-md"
-                      />
-                    ) : (
-                      <div className={`w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-2 border-slate-300 shadow-md`}>
-                        <span className="text-xl sm:text-2xl">{roleBadgeInfo.icon}</span>
-                        <span className="text-[10px] sm:text-[11px] font-black uppercase mt-0.5">
-                          {userInitials}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Robot Companion tepat di atas / menutupi Avatar */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center">
+                  {/* Robot Companion floating freely without background */}
+                  <div className="w-full h-full flex items-center justify-center">
                     {renderAvatarSlot}
                   </div>
 
-                  {/* Tombol Mini Detail Akun / Zoom di pojok bawah */}
+                  {/* Tombol Mini Detail Akun / Zoom di pojok */}
                   <button 
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowPhotoModal(true);
                     }}
-                    className="absolute -bottom-1 -right-1 z-20 bg-slate-900/90 hover:bg-slate-900 text-white border border-slate-700 rounded-full w-6 h-6 flex items-center justify-center text-[9px] shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                    className="absolute -bottom-1 -right-1 z-20 bg-white/90 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200 rounded-full w-5 h-5 flex items-center justify-center text-[9px] shadow-xs transition-transform hover:scale-110 cursor-pointer"
                     title="Buka Detail Akun & Profil Lengkap"
                   >
                     <ZoomIn size={10} />
@@ -1026,6 +1007,37 @@ export function Hero({
           {/* Right: Action Buttons Group (Date Badge, Login/User Controls, Install App, Popy Countdown) */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap self-start md:self-center">
             
+            {/* Sidebar Tools Kiri Toggle Button */}
+            {onOpenSidebar && (
+              <button 
+                type="button"
+                onClick={onOpenSidebar}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Buka / Tutup Sidebar Kiri (Tools & Utilitas)"
+              >
+                <Wrench size={12} className="text-blue-300" />
+                <span>Tools Sidebar</span>
+              </button>
+            )}
+
+            {/* Public Todo Drawer Toggle Button */}
+            {onOpenTodo && (
+              <button 
+                type="button"
+                onClick={onOpenTodo}
+                className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer relative"
+                title="Buka Panel Public Todo Tim"
+              >
+                <ListTodo size={12} />
+                <span>Public Todo</span>
+                {todos && todos.filter(t => t.status !== 'close').length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[9px] font-black">
+                    {todos.filter(t => t.status !== 'close').length}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Login / Switch Account Button */}
             {onOpenLogin && (
               <button 

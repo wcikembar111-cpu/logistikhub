@@ -9,6 +9,7 @@ import { ToolsGrid } from './components/ToolsGrid';
 import { ToolWorkspacePage } from './components/tools/ToolWorkspacePage';
 import { QrItem } from './components/BatchQrSection';
 import { Sidebar } from './components/Sidebar';
+import { PublicTodoDrawer } from './components/todo/PublicTodoDrawer';
 import { LoginPage } from './components/auth/LoginPage';
 import { LoginModal } from './components/auth/LoginModal';
 import { InactivityWarningModal } from './components/auth/InactivityWarningModal';
@@ -16,7 +17,7 @@ import { UserManagementModal } from './components/auth/UserManagementModal';
 import { SqlScriptModal } from './components/auth/SqlScriptModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LinkData, MainToolTab } from './types';
-import { Warehouse, Loader2 } from 'lucide-react';
+import { Warehouse, Loader2, PanelLeftOpen } from 'lucide-react';
 
 import { BroadcastModal } from './components/broadcast/BroadcastModal';
 import { LinkModal } from './components/LinkModal';
@@ -73,6 +74,10 @@ export default function App() {
   const [batchQrItems, setBatchQrItems] = useState<QrItem[]>([]);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
 
+  // Modern Navigation & Drawer States
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(false);
+
   const existingCategories = useMemo(() => {
     const cats = new Set<string>();
     links.forEach(l => {
@@ -104,8 +109,6 @@ export default function App() {
     setReplyRecipient(senderName);
     setShowBroadcastModal(true);
   };
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // 1. Loading state saat inisialisasi sesi otentikasi dari LocalStorage/Database
   if (authLoading) {
@@ -152,9 +155,41 @@ export default function App() {
   // 3. Tampilan Halaman Utama (Main Dashboard & Workspace) setelah berhasil Login
   return (
     <>
-      <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-slate-50 text-slate-800 selection:bg-blue-600 selection:text-white">
-        <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${currentView === 'home' && isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
+      <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-slate-50 text-slate-800 selection:bg-blue-600 selection:text-white relative">
+        
+        {/* Modern Left Sidebar (Tools & Utilitas + Navigasi Utama) */}
+        <Sidebar 
+          activeTool={activeWorkspaceTool}
+          onSelectTool={(tool) => {
+            setActiveWorkspaceTool(tool);
+            setCurrentView('tool-workspace');
+          }}
+          currentView={currentView}
+          onNavigateHome={() => setCurrentView('home')}
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+          currentUser={user}
+          isAdmin={isAdmin}
+        />
+
+        {/* Main Content Area (Bergeser mulus saat Sidebar Kiri terbuka) */}
+        <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-200 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:ml-[270px] xl:ml-[280px]' : 'lg:ml-0'}`}>
           
+          {/* Floating Reopen Button if Sidebar is Closed */}
+          {!isSidebarOpen && (
+            <div className="mb-3">
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-bold shadow-2xs border border-slate-200 flex items-center gap-2 transition-all cursor-pointer hover:shadow-xs"
+                title="Buka Sidebar Navigasi & Tools"
+              >
+                <PanelLeftOpen size={15} className="text-blue-600" />
+                <span>Buka Sidebar Tools</span>
+              </button>
+            </div>
+          )}
+
           {/* VIEW 1: HALAMAN UTAMA (Main Dashboard) */}
           {currentView === 'home' ? (
             <ErrorBoundary fallbackTitle="Gagal Menampilkan Dashboard Utama">
@@ -165,7 +200,8 @@ export default function App() {
                 isSuperAdmin={isAdmin}
                 isOperator={!isAdmin}
                 todos={todos}
-                onOpenTodo={() => setIsSidebarOpen(true)}
+                onOpenTodo={() => setIsTodoDrawerOpen(true)}
+                onOpenSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 onOpenLogin={() => setShowLoginModal(true)}
                 onOpenUserManagement={() => setShowUserManagementModal(true)}
                 onLogout={() => logout('manual')}
@@ -185,6 +221,7 @@ export default function App() {
                 }
               />
 
+              {/* 2. Daftar Aplikasi & Sistem (Menu Grid Tetap di Halaman Utama) */}
               <LinkGrid 
                 links={links} 
                 loading={linksLoading}
@@ -194,14 +231,6 @@ export default function App() {
                 onEdit={handleOpenEditLink}
                 onDelete={(id) => {
                   deleteLink(id);
-                }}
-              />
-
-              <ToolsGrid 
-                activeTool={activeWorkspaceTool}
-                onSelectTool={(tool) => {
-                  setActiveWorkspaceTool(tool);
-                  setCurrentView('tool-workspace');
                 }}
               />
             </ErrorBoundary>
@@ -222,23 +251,21 @@ export default function App() {
           )}
         </div>
 
-        {/* Sidebar Public Todo - Hanya di Halaman Utama */}
-        {currentView === 'home' && (
-          <Sidebar 
-            todos={todos}
-            loading={todosLoading}
-            isAdmin={isAdmin}
-            currentUser={user}
-            isOpen={isSidebarOpen}
-            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-            onAddTodo={addTodo}
-            onUpdateStatus={updateTodoStatus}
-            onUpdateTodo={updateTodo}
-            onDeleteTodo={deleteTodo}
-            onDeleteCompletedTodos={deleteCompletedTodos}
-            onRefresh={() => {}} 
-          />
-        )}
+        {/* Public Todo Drawer (Slide-over di Kanan - Terpisah Bersih dari Sidebar Kiri) */}
+        <PublicTodoDrawer 
+          isOpen={isTodoDrawerOpen}
+          onClose={() => setIsTodoDrawerOpen(false)}
+          todos={todos}
+          loading={todosLoading}
+          isAdmin={isAdmin}
+          currentUser={user}
+          onAddTodo={addTodo}
+          onUpdateStatus={updateTodoStatus}
+          onUpdateTodo={updateTodo}
+          onDeleteTodo={deleteTodo}
+          onDeleteCompletedTodos={deleteCompletedTodos}
+          onRefresh={() => {}} 
+        />
       </div>
 
       {/* Robot Popups & Broadcast Notifiers - Hanya Tampil di Halaman Utama */}
@@ -258,8 +285,7 @@ export default function App() {
             onClose={dismissIncomingTodo}
             onOpenTodo={() => {
               dismissIncomingTodo();
-              setCurrentView('home');
-              setIsSidebarOpen(true);
+              setIsTodoDrawerOpen(true);
             }}
             soundEnabled={broadcastSoundEnabled}
           />

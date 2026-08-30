@@ -1,950 +1,492 @@
-import { useState } from 'react';
-import { ListTodo, X, Plus, RefreshCw, Trash2, BellRing, Volume2, ChevronLeft, Edit2, CheckCircle2, Clock, Circle, Save, Flame, Zap, AlertCircle, Sparkles } from 'lucide-react';
-import { TodoData, TodoPriority } from '../types';
-import { useNotification } from '../context/NotificationContext';
+import React, { useState, useMemo } from 'react';
+import { 
+  Wrench,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  QrCode,
+  Calendar,
+  Layers,
+  Barcode,
+  ArrowRightLeft,
+  PackageCheck,
+  FileText,
+  Undo2,
+  Flame,
+  Database,
+  CheckCircle2,
+  Sparkles,
+  ExternalLink,
+  ShieldCheck,
+  User,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronDown
+} from 'lucide-react';
+import { MainToolTab } from '../types';
 
-interface SidebarProps {
-  todos: TodoData[];
-  loading: boolean;
-  isAdmin: boolean;
-  currentUser?: { email?: string; username?: string; nama?: string; nama_lengkap?: string; role?: string } | null;
-  isOpen: boolean;
-  onToggle: () => void;
-  onAddTodo: (task: string, priority?: TodoPriority, isBlinking?: boolean, senderName?: string) => void;
-  onUpdateStatus: (id: string, status: TodoData['status']) => void;
-  onUpdateTodo?: (id: string, updates: Partial<Omit<TodoData, 'id'>>) => void;
-  onDeleteTodo: (id: string) => void;
-  onDeleteCompletedTodos?: () => void;
-  onRefresh: () => void;
+export interface ToolItemDef {
+  id: MainToolTab;
+  title: string;
+  category: string;
+  group: 'barcode' | 'audit' | 'doc' | 'disposal';
+  desc: string;
+  keywords: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  badge?: string;
+  badgeColor?: string;
 }
 
-const STATUS_CYCLE: TodoData['status'][] = ['no', 'onproses', 'close'];
+export const TOOLS_LIST: ToolItemDef[] = [
+  {
+    id: 'qr-generator',
+    title: 'Generator QR Code',
+    category: 'Satuan & Massal Honeywell',
+    group: 'barcode',
+    desc: 'Pembuat label QR code satuan & massal Honeywell, export PNG & PDF',
+    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell',
+    icon: <QrCode size={17} className="text-white" />,
+    iconBg: 'bg-blue-600',
+    badge: 'Populer',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
+  },
+  {
+    id: 'sn-generator',
+    title: 'Generator Serial No',
+    category: 'Unique Anti-Duplicate',
+    group: 'barcode',
+    desc: 'Pembuat nomor seri unik anti duplikasi dengan format barcode kustom',
+    keywords: 'generator serial number sn no unique barcode anti duplicate acak urut',
+    icon: <Barcode size={17} className="text-white" />,
+    iconBg: 'bg-sky-600'
+  },
+  {
+    id: 'ed-checker',
+    title: 'Cek Expired Date',
+    category: 'ED & DOY Calculator',
+    group: 'audit',
+    desc: 'Kalkulator tanggal kedaluwarsa, Day of Year (DOY), dan sisa masa simpan',
+    keywords: 'expired date ed doy calculator kedaluwarsa tanggal sisa hari exp hitung shelf life',
+    icon: <Calendar size={17} className="text-white" />,
+    iconBg: 'bg-amber-500',
+    badge: 'Kalkulator',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200'
+  },
+  {
+    id: 'stock-opname',
+    title: 'Stock Opname Suite',
+    category: 'LARGO to SAP & BA SO',
+    group: 'audit',
+    desc: 'Rekonsiliasi data fisik vs sistem LARGO ke SAP dan pembuatan Berita Acara',
+    keywords: 'stock opname so suite largo sap ba berita acara selisih audit fisik gudang rekonsiliasi',
+    icon: <Layers size={17} className="text-white" />,
+    iconBg: 'bg-indigo-600',
+    badge: 'Audit',
+    badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+  },
+  {
+    id: 'batch-checker',
+    title: 'Batch Checker',
+    category: 'LARGO vs SAP Compare',
+    group: 'audit',
+    desc: 'Cek perbandingan nomor batch dan kuantitas antara LARGO dengan SAP',
+    keywords: 'batch checker largo vs sap compare cek selisih perbandingan data rekonsiliasi',
+    icon: <ArrowRightLeft size={17} className="text-white" />,
+    iconBg: 'bg-orange-500'
+  },
+  {
+    id: 'promosi',
+    title: 'Penerimaan Promosi',
+    category: 'Penerimaan Barang Promosi',
+    group: 'doc',
+    desc: 'Manajemen pencatatan & penerimaan barang promosi dan merchandise',
+    keywords: 'promosi promo penerimaan barang bonus merchandise hadiah receiving logistik',
+    icon: <PackageCheck size={17} className="text-white" />,
+    iconBg: 'bg-teal-600'
+  },
+  {
+    id: 'surat-jalan',
+    title: 'Surat Jalan',
+    category: 'Buat, Cetak & Rekap SJ',
+    group: 'doc',
+    desc: 'Pembuatan surat jalan ekspedisi, cetak otomatis, dan rekap pengiriman',
+    keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman',
+    icon: <FileText size={17} className="text-white" />,
+    iconBg: 'bg-blue-700',
+    badge: 'Logistik',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
+  },
+  {
+    id: 'retur-inventory',
+    title: 'Retur Inventory',
+    category: 'Pengajuan & Tracking Retur',
+    group: 'doc',
+    desc: 'Sistem pengajuan retur barang near ED, rusak kemasan, COGS & tracking',
+    keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim',
+    icon: <Undo2 size={17} className="text-white" />,
+    iconBg: 'bg-rose-500',
+    badge: 'Retur',
+    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200'
+  },
+  {
+    id: 'monitoring-pemusnahan',
+    title: 'Monitoring Pemusnahan',
+    category: 'WH-CKB 27 Kolom Data',
+    group: 'disposal',
+    desc: 'Pipeline monitoring barang afkir/pemusnahan WH-CKB Z87 BAP & migo',
+    keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir',
+    icon: <Flame size={17} className="text-white" />,
+    iconBg: 'bg-amber-600',
+    badge: 'Disposal',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200'
+  },
+  {
+    id: 'data-pemusnahan',
+    title: 'Data Pemusnahan',
+    category: 'Spreadsheet GAS 26 Kolom',
+    group: 'disposal',
+    desc: 'Integrasi Google Apps Script 26 kolom penarikan data pemusnahan real-time',
+    keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan',
+    icon: <Database size={17} className="text-white" />,
+    iconBg: 'bg-emerald-600',
+    badge: 'GAS Live',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  }
+];
 
-export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle, onAddTodo, onUpdateStatus, onUpdateTodo, onDeleteTodo, onDeleteCompletedTodos, onRefresh }: SidebarProps) {
-  const { showConfirm, showToast } = useNotification();
-  // Filter tab: 'all' | 'priority' | 'no' | 'onproses' | 'close'
-  const [filter, setFilter] = useState<'all' | 'priority' | 'no' | 'onproses' | 'close'>('no');
-  const [newTask, setNewTask] = useState('');
-  const [newPriority, setNewPriority] = useState<TodoPriority>('rendah');
-  const [newIsBlinking, setNewIsBlinking] = useState(false);
+const GROUP_LABELS: Record<string, string> = {
+  barcode: 'QR & Barcode',
+  audit: 'Audit & Inventori',
+  doc: 'Dokumen & Distribusi',
+  disposal: 'Pemusnahan Barang'
+};
 
-  const [reminderActive, setReminderActive] = useState(false);
-  const [showReminderModal, setShowReminderModal] = useState(false);
-  const [showFormModal, setShowFormModal] = useState(false);
+interface SidebarProps {
+  activeTool?: MainToolTab | null;
+  onSelectTool?: (tool: MainToolTab) => void;
+  currentView?: 'home' | 'tool-workspace';
+  onNavigateHome?: () => void;
+  isOpen: boolean;
+  onToggle: () => void;
+  currentUser?: { email?: string; username?: string; nama?: string; nama_lengkap?: string; role?: string } | null;
+  isAdmin?: boolean;
+}
 
-  // Modal untuk Edit/View Detail Tugas
-  const [editingTodo, setEditingTodo] = useState<TodoData | null>(null);
-  const [editTaskText, setEditTaskText] = useState('');
-  const [editTaskStatus, setEditTaskStatus] = useState<TodoData['status']>('no');
-  const [editTaskPriority, setEditTaskPriority] = useState<TodoPriority>('rendah');
-  const [editTaskBlinking, setEditTaskBlinking] = useState(false);
+export function Sidebar({
+  activeTool,
+  onSelectTool,
+  currentView = 'home',
+  onNavigateHome,
+  isOpen,
+  onToggle,
+  currentUser,
+  isAdmin = false
+}: SidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState<'all' | 'barcode' | 'audit' | 'doc' | 'disposal'>('all');
+  const [isToolsExpanded, setIsToolsExpanded] = useState(true);
 
-  const safeTodos = todos || [];
-  const filteredTodos = safeTodos.filter(t => {
-    if (filter === 'priority') return t.priority === 'mendesak' || t.priority === 'tinggi' || t.is_blinking;
-    if (filter === 'all') return true;
-    return t.status === filter;
-  }).sort((a, b) => {
-    // Blinking or Urgent priority items sorted to top
-    const aWeight = (a.is_blinking || a.priority === 'mendesak') ? 3 : (a.priority === 'tinggi' ? 2 : (a.priority === 'sedang' ? 1 : 0));
-    const bWeight = (b.is_blinking || b.priority === 'mendesak') ? 3 : (b.priority === 'tinggi' ? 2 : (b.priority === 'sedang' ? 1 : 0));
-    return bWeight - aWeight;
-  });
-  
-  const no = safeTodos.filter(t => t.status === 'no').length;
-  const onproses = safeTodos.filter(t => t.status === 'onproses').length;
-  const close = safeTodos.filter(t => t.status === 'close').length;
-  const priorityCount = safeTodos.filter(t => (t.priority === 'mendesak' || t.priority === 'tinggi' || t.is_blinking) && t.status !== 'close').length;
-  const pendingCount = no + onproses;
-
-  const playChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      
-      const notes = [659.25, 880.00, 1174.66];
-      notes.forEach((freq, index) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = freq;
-        
-        const startTime = ctx.currentTime + index * 0.2;
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.3, startTime + 0.04);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(startTime);
-        osc.stop(startTime + 0.55);
-      });
-    } catch (e) {
-      console.error("Gagal memutar audio todo chime:", e);
-    }
-  };
-
-  const handleTestReminder = () => {
-    playChime();
-    setReminderActive(true);
-    setShowReminderModal(true);
-    setTimeout(() => setReminderActive(false), 3000);
-  };
-
-  const handleAdd = () => {
-    if (!newTask.trim()) {
-      showToast('Perhatian', 'Silakan ketik isi tugas terlebih dahulu', 'warning');
-      return;
-    }
-    const userSenderName = currentUser?.nama_lengkap || currentUser?.nama || (currentUser?.username ? (currentUser.username.toUpperCase() === 'ADMIN' ? 'Administrator' : currentUser.username) : '') || localStorage.getItem('broadcast_sender_name') || (isAdmin ? 'Admin' : 'Pengguna Public Todo');
-    onAddTodo(newTask.trim(), newPriority, newIsBlinking || newPriority === 'mendesak', userSenderName);
-    showToast('Tersimpan & Disiarkan', 'Tugas baru berhasil disimpan dan disiarkan ke seluruh perangkat!', 'success');
-    setNewTask('');
-    setNewPriority('rendah');
-    setNewIsBlinking(false);
-    setShowFormModal(false);
-  };
-
-  const cycleStatus = (todo: TodoData) => {
-    const idx = STATUS_CYCLE.indexOf(todo.status);
-    const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-    onUpdateStatus(todo.id, next);
-  };
-
-  const handleOpenEditModal = (todo: TodoData) => {
-    setEditingTodo(todo);
-    setEditTaskText(todo.task);
-    setEditTaskStatus(todo.status);
-    setEditTaskPriority(todo.priority || 'rendah');
-    setEditTaskBlinking(!!todo.is_blinking);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingTodo) return;
-    if (!editTaskText.trim()) {
-      showToast('Perhatian', 'Isi tugas tidak boleh kosong', 'warning');
-      return;
-    }
-    if (onUpdateTodo) {
-      onUpdateTodo(editingTodo.id, { 
-        task: editTaskText.trim(), 
-        status: editTaskStatus,
-        priority: editTaskPriority,
-        is_blinking: editTaskBlinking || editTaskPriority === 'mendesak'
-      });
-    } else {
-      onUpdateStatus(editingTodo.id, editTaskStatus);
-    }
-    showToast('Tersimpan', 'Tugas berhasil diperbarui', 'success');
-    setEditingTodo(null);
-  };
-
-  const renderPriorityBadge = (priority?: TodoPriority, isBlinking?: boolean) => {
-    const isMendesak = priority === 'mendesak' || isBlinking;
-    if (isMendesak) {
+  // Filter tools based on search and category
+  const filteredTools = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return TOOLS_LIST.filter(item => {
+      const matchGroup = selectedGroup === 'all' || item.group === selectedGroup;
+      if (!matchGroup) return false;
+      if (!q) return true;
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase border border-red-500 animate-badge-blink cursor-pointer shadow-sm">
-          <Zap size={11} className="fill-current animate-bounce shrink-0" />
-          <span>KEDIP MENDESAK</span>
-        </span>
+        item.title.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.desc.toLowerCase().includes(q) ||
+        item.keywords.toLowerCase().includes(q)
       );
+    });
+  }, [searchQuery, selectedGroup]);
+
+  const handleToolClick = (toolId: MainToolTab) => {
+    if (onSelectTool) {
+      onSelectTool(toolId);
     }
-    if (priority === 'tinggi') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase bg-amber-500 text-white border border-amber-600 shadow-2xs">
-          <Flame size={11} className="fill-current shrink-0" />
-          <span>PRIORITAS TINGGI</span>
-        </span>
-      );
+    // On mobile screens, auto-close sidebar on item selection
+    if (window.innerWidth < 1024) {
+      onToggle();
     }
-    if (priority === 'sedang') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase bg-blue-600 text-white border border-blue-700 shadow-2xs">
-          <AlertCircle size={11} className="shrink-0" />
-          <span>PRIORITAS SEDANG</span>
-        </span>
-      );
+  };
+
+  const handleHomeClick = () => {
+    if (onNavigateHome) {
+      onNavigateHome();
     }
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wider uppercase bg-slate-200/90 text-slate-600 border border-slate-300">
-        <span>BIASA</span>
-      </span>
-    );
+    if (window.innerWidth < 1024) {
+      onToggle();
+    }
   };
 
   return (
     <>
+      {/* Mobile Backdrop (Lightweight & Subtle) */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-slate-950/60 z-[85] lg:hidden transition-opacity duration-200 cursor-pointer"
+          className="fixed inset-0 bg-slate-900/20 z-[85] lg:hidden transition-opacity duration-200 cursor-pointer backdrop-blur-xs"
           onClick={onToggle}
-          title="Klik untuk menutup Todo sidebar"
+          title="Klik untuk menutup Sidebar Navigasi"
         />
       )}
-      <div 
-        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[380px] lg:w-[360px] xl:w-[380px] bg-white border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out z-[90] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+
+      {/* Main Left Sidebar (Tanpa Background Berat / Ultra Lightweight & Responsif) */}
+      <aside 
+        className={`fixed top-0 left-0 bottom-0 w-[270px] sm:w-[280px] lg:w-[270px] xl:w-[280px] bg-slate-50/90 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-slate-800 border-r border-slate-200/80 flex flex-col transition-transform duration-200 ease-in-out z-[90] ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
-        {/* Top Header with Embedded Tambah Tugas & Actions */}
-        <div className="flex justify-between items-center p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50/90 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-600 flex items-center justify-center border border-orange-500/30 shadow-xs shrink-0">
-              <ListTodo size={17} />
-            </div> 
+        {/* Brand Header */}
+        <div className="p-3.5 sm:p-4 border-b border-slate-200/70 flex items-center justify-between gap-2.5 shrink-0">
+          <div 
+            onClick={handleHomeClick}
+            className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
+            title="Kembali ke Beranda Dashboard"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+              <Wrench size={16} />
+            </div>
             <div className="min-w-0">
-              <h5 className="m-0 font-bold text-slate-800 text-sm leading-tight truncate">
-                Public Todo
-              </h5>
-              <div className="text-[10px] text-slate-400 font-semibold">
-                {pendingCount} Pending
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-xs font-black text-slate-900 tracking-wide truncate leading-tight m-0 uppercase">
+                  LOGISTIK PORTAL
+                </h2>
               </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Tambah Tugas Baru Button in Header */}
-            <button 
-              onClick={() => setShowFormModal(true)} 
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
-              title="Tambah Tugas Baru"
-            >
-              <Plus size={15} />
-              <span>Tambah</span>
-            </button>
-
-            {/* Refresh Button */}
-            <button 
-              onClick={onRefresh} 
-              className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition-all cursor-pointer" 
-              title="Refresh Todo"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin text-blue-900' : ''} />
-            </button>
-
-            {/* Delete Completed Tasks Button (Khusus Admin) */}
-            {isAdmin && close > 0 && onDeleteCompletedTodos && (
-              <button 
-                onClick={() => {
-                  showConfirm({
-                    title: 'Hapus Tugas Selesai (Admin)',
-                    message: `Hapus masal ${close} tugas yang sudah berstatus Done/Selesai?`,
-                    confirmText: 'Hapus Selesai',
-                    cancelText: 'Batal',
-                    type: 'danger',
-                    onConfirm: async () => {
-                      await onDeleteCompletedTodos();
-                      showToast('Selesai', 'Tugas selesai berhasil dibersihkan', 'info');
-                    }
-                  });
-                }}
-                title="Khusus Admin: Hapus masal semua tugas yang sudah selesai (Done)"
-                className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all cursor-pointer"
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
-
-            {/* Close Sidebar Button */}
-            <button 
-              onClick={onToggle} 
-              className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-600 hover:text-slate-900 border border-slate-200 shadow-2xs transition-all cursor-pointer"
-              title="Tutup Sidebar"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* KPI Summary Cards - Clickable Filters with Toggle Back to All */}
-        <div className="grid grid-cols-4 p-3 border-b border-slate-200 gap-1.5 bg-slate-50/60">
-          <div 
-            onClick={() => setFilter(prev => prev === 'priority' ? 'all' : 'priority')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'priority' ? 'bg-red-50 border-red-300 ring-2 ring-red-400' : 'bg-white hover:bg-red-50/50 border-slate-200'}`}
-            title="Filter Tugas Prioritas / Kedip (Klik lagi untuk lihat semua)"
-          >
-            <div className="text-sm font-black text-red-600 leading-tight flex items-center justify-center gap-1">
-              <Zap size={12} className="text-red-600 fill-current animate-bounce" /> {priorityCount}
-            </div>
-            <div className="font-bold text-[8px] text-red-700 tracking-wider mt-0.5 uppercase">Kedip</div>
-          </div>
-
-          <div 
-            onClick={() => setFilter(prev => prev === 'no' ? 'all' : 'no')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'no' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400' : 'bg-white hover:bg-amber-50/50 border-slate-200'}`}
-            title="Filter Tugas Todo (Klik lagi untuk lihat semua)"
-          >
-            <div className="text-sm font-black text-slate-800 leading-tight">{no}</div>
-            <div className="font-bold text-[8px] text-slate-600 tracking-wider mt-0.5 uppercase">Todo</div>
-          </div>
-
-          <div 
-            onClick={() => setFilter(prev => prev === 'onproses' ? 'all' : 'onproses')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'onproses' ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400' : 'bg-white hover:bg-blue-50/50 border-slate-200'}`}
-            title="Filter Tugas Proses (Klik lagi untuk lihat semua)"
-          >
-            <div className="text-sm font-black text-blue-600 leading-tight">{onproses}</div>
-            <div className="font-bold text-[8px] text-blue-600 tracking-wider mt-0.5 uppercase">Proses</div>
-          </div>
-
-          <div 
-            onClick={() => setFilter(prev => prev === 'close' ? 'all' : 'close')}
-            className={`rounded-xl border shadow-2xs p-2 text-center cursor-pointer transition-all ${filter === 'close' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400' : 'bg-white hover:bg-emerald-50/50 border-slate-200'}`}
-            title="Filter Tugas Selesai / Done (Klik lagi untuk lihat semua)"
-          >
-            <div className="text-sm font-black text-emerald-600 leading-tight">{close}</div>
-            <div className="font-bold text-[8px] text-emerald-600 tracking-wider mt-0.5 uppercase">Done</div>
-          </div>
-        </div>
-
-        {/* List Task - Includes Blinking Color Animation */}
-        <div className="flex-1 overflow-auto p-3 sm:p-4 bg-slate-50/30 custom-scrollbar">
-          {loading ? (
-            <div className="text-center py-8 font-bold text-slate-500 text-xs">Memuat Daftar Tugas...</div>
-          ) : filteredTodos.length === 0 ? (
-            <div className="text-center py-8 font-medium text-slate-500 text-xs">
-              {filter === 'priority' ? 'Tidak ada tugas berprioritas tinggi / kedip.' : (filter === 'no' ? 'Tidak ada tugas Todo.' : (filter === 'onproses' ? 'Tidak ada tugas Proses.' : (filter === 'close' ? 'Tidak ada tugas Done.' : 'Belum ada tugas.')))}
-            </div>
-          ) : (
-            filteredTodos.map(t => {
-              const isDone = t.status === 'close';
-              const isProses = t.status === 'onproses';
-              const isTodo = t.status === 'no';
-              const isBlinkingActive = (t.priority === 'mendesak' || t.is_blinking) && !isDone;
-
-              return (
-                <div 
-                  key={t.id} 
-                  className={`p-3.5 mb-3 flex flex-col gap-2.5 transition-all border shadow-2xs relative overflow-hidden rounded-2xl ${
-                    isBlinkingActive 
-                      ? 'animate-todo-blink' 
-                      : (isDone 
-                          ? 'opacity-70 bg-slate-50 border-slate-200' 
-                          : 'bg-white hover:bg-slate-50/80 border-slate-200'
-                        )
-                  }`}
-                >
-                  {/* Top Bar Card: Priority Badge & Actions */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div onClick={() => handleOpenEditModal(t)} className="cursor-pointer">
-                      {renderPriorityBadge(t.priority, t.is_blinking)}
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button 
-                        onClick={() => handleOpenEditModal(t)}
-                        className="p-1 rounded-lg text-slate-500 hover:text-orange-600 hover:bg-orange-50 transition-all cursor-pointer"
-                        title="Edit / Detail Tugas"
-                      >
-                        <Edit2 size={13} />
-                      </button>
-
-                      {isAdmin && (
-                        <button 
-                          onClick={() => {
-                            showConfirm({
-                              title: 'Hapus Tugas (Admin)',
-                              message: 'Apakah Anda yakin ingin menghapus tugas ini?',
-                              confirmText: 'Hapus',
-                              cancelText: 'Batal',
-                              type: 'danger',
-                              onConfirm: () => {
-                                onDeleteTodo(t.id);
-                                showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
-                              }
-                            });
-                          }}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
-                          title="Hapus tugas ini (Admin)"
-                        >
-                          <X size={13} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Task Content */}
-                  <div 
-                    onClick={() => handleOpenEditModal(t)}
-                    className={`font-semibold text-xs leading-relaxed whitespace-pre-wrap break-words cursor-pointer hover:text-orange-600 transition-colors ${
-                      isDone ? 'line-through text-slate-400' : (isBlinkingActive ? 'animate-text-blink font-bold' : 'text-slate-800')
-                    }`}
-                    title="Klik untuk lihat / edit tugas"
-                  >
-                    {t.task}
-                  </div>
-
-                  {/* Bottom Bar: Status Choice & Quick Priority Toggle */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 flex-wrap gap-1">
-                    {/* Quick Priority Switcher */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextPriority: TodoPriority = 
-                            t.priority === 'rendah' ? 'sedang' :
-                            t.priority === 'sedang' ? 'tinggi' :
-                            t.priority === 'tinggi' ? 'mendesak' : 'rendah';
-                          const isBlink = nextPriority === 'mendesak';
-                          if (onUpdateTodo) {
-                            onUpdateTodo(t.id, { priority: nextPriority, is_blinking: isBlink });
-                          }
-                        }}
-                        className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
-                        title="Klik untuk putar Prioritas (Biasa -> Sedang -> Tinggi -> Mendesak)"
-                      >
-                        <Sparkles size={10} className="text-amber-500" />
-                        <span>Ganti Prioritas</span>
-                      </button>
-                    </div>
-
-                    {/* 3 Choice Status Selector */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                      <button
-                        onClick={() => onUpdateStatus(t.id, 'no')}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          isTodo 
-                            ? 'bg-amber-500 text-white shadow-2xs scale-105' 
-                            : 'text-slate-600 hover:bg-slate-200/60'
-                        }`}
-                        title="Ubah status ke Todo"
-                      >
-                        <Circle size={10} className={isTodo ? 'fill-white' : ''} />
-                        <span>Todo</span>
-                      </button>
-
-                      <button
-                        onClick={() => onUpdateStatus(t.id, 'onproses')}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          isProses 
-                            ? 'bg-blue-600 text-white shadow-2xs scale-105' 
-                            : 'text-slate-600 hover:bg-slate-200/60'
-                        }`}
-                        title="Ubah status ke Proses"
-                      >
-                        <Clock size={10} />
-                        <span>Proses</span>
-                      </button>
-
-                      <button
-                        onClick={() => onUpdateStatus(t.id, 'close')}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          isDone 
-                            ? 'bg-emerald-600 text-white shadow-2xs scale-105' 
-                            : 'text-slate-600 hover:bg-slate-200/60'
-                        }`}
-                        title="Ubah status ke Done (Selesai)"
-                      >
-                        <CheckCircle2 size={10} />
-                        <span>Done</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Modal Form Edit/Detail Tugas Public */}
-      {editingTodo && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 relative overflow-hidden text-left">
-            <button 
-              onClick={() => setEditingTodo(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                <Edit2 size={20} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800 m-0">Detail & Edit Tugas</h3>
-                <p className="text-xs text-slate-500 m-0">Publik dapat mengedit isi, prioritas, dan status tugas</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Isi / Deskripsi Tugas:</label>
-                <textarea 
-                  rows={4}
-                  value={editTaskText}
-                  onChange={(e) => setEditTaskText(e.target.value)}
-                  placeholder="Ketik detail tugas..."
-                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[90px]"
-                />
-              </div>
-
-              {/* Priority Selector */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Tingkat Prioritas Tugas:</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditTaskPriority('rendah');
-                      setEditTaskBlinking(false);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskPriority === 'rendah'
-                        ? 'bg-slate-800 text-white border-slate-900 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="text-xs font-bold">Biasa</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditTaskPriority('sedang');
-                      setEditTaskBlinking(false);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskPriority === 'sedang'
-                        ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <AlertCircle size={14} />
-                    <span className="text-xs font-bold">Sedang</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditTaskPriority('tinggi');
-                      setEditTaskBlinking(false);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskPriority === 'tinggi'
-                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Flame size={14} />
-                    <span className="text-xs font-bold">Tinggi</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditTaskPriority('mendesak');
-                      setEditTaskBlinking(true);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskPriority === 'mendesak'
-                        ? 'bg-red-600 text-white border-red-700 shadow-sm animate-badge-blink'
-                        : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                    }`}
-                  >
-                    <Zap size={14} className="fill-current" />
-                    <span className="text-[10px] font-black uppercase">Mendesak</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Blinking Toggle Option */}
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-red-500 text-white flex items-center justify-center shrink-0 shadow-sm animate-badge-blink">
-                    <Zap size={16} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-800">Animasi Kedip-Kedip Warna</div>
-                    <div className="text-[10px] text-slate-500">Tandai todo dengan warna berkedip terang</div>
-                  </div>
-                </div>
-
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={editTaskBlinking} 
-                    onChange={(e) => {
-                      setEditTaskBlinking(e.target.checked);
-                      if (e.target.checked && editTaskPriority === 'rendah') {
-                        setEditTaskPriority('mendesak');
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Status Tugas:</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditTaskStatus('no')}
-                    className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskStatus === 'no'
-                        ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-200 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Circle size={18} className={editTaskStatus === 'no' ? 'text-amber-600 fill-amber-500' : 'text-slate-400'} />
-                    <span className="text-xs font-bold">Todo</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditTaskStatus('onproses')}
-                    className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskStatus === 'onproses'
-                        ? 'bg-blue-50 border-blue-600 text-blue-900 ring-2 ring-blue-200 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Clock size={18} className={editTaskStatus === 'onproses' ? 'text-blue-600' : 'text-slate-400'} />
-                    <span className="text-xs font-bold">Proses</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditTaskStatus('close')}
-                    className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      editTaskStatus === 'close'
-                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-200 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <CheckCircle2 size={18} className={editTaskStatus === 'close' ? 'text-emerald-600' : 'text-slate-400'} />
-                    <span className="text-xs font-bold">Done</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className={`flex items-center ${isAdmin ? 'justify-between' : 'justify-end'} gap-2 pt-3 border-t border-slate-200`}>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      showConfirm({
-                        title: 'Hapus Tugas (Admin)',
-                        message: 'Apakah Anda yakin ingin menghapus tugas ini?',
-                        confirmText: 'Hapus',
-                        cancelText: 'Batal',
-                        type: 'danger',
-                        onConfirm: () => {
-                          onDeleteTodo(editingTodo.id);
-                          setEditingTodo(null);
-                          showToast('Dihapus', 'Tugas berhasil dihapus', 'info');
-                        }
-                      });
-                    }}
-                    className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border border-red-200"
-                  >
-                    <Trash2 size={14} /> Hapus
-                  </button>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => setEditingTodo(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={handleSaveEdit}
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Save size={15} /> Simpan
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Form Tambah Tugas Baru */}
-      {showFormModal && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 relative overflow-hidden text-left">
-            <button 
-              onClick={() => setShowFormModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                <Plus size={22} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800 m-0">Tambah Tugas Baru</h3>
-                <p className="text-xs text-slate-500 m-0">Ketik rincian tugas & atur tanda prioritas kedip</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Tugas / Catatan:</label>
-                <textarea 
-                  rows={3}
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  placeholder="Ketik tugas di sini... Contoh: Kirim Dokumen Surat Jalan Urgent"
-                  className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-blue-600 outline-none transition-all shadow-inner placeholder:text-slate-400 resize-y min-h-[80px]"
-                  autoFocus
-                />
-              </div>
-
-              {/* Priority Selection Pills */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Tanda Prioritas:</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewPriority('rendah');
-                      setNewIsBlinking(false);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
-                      newPriority === 'rendah'
-                        ? 'bg-slate-800 text-white border-slate-900'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="text-[11px] font-bold">Biasa</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewPriority('sedang');
-                      setNewIsBlinking(false);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
-                      newPriority === 'sedang'
-                        ? 'bg-blue-600 text-white border-blue-700'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="text-[11px] font-bold">Sedang</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewPriority('tinggi');
-                      setNewIsBlinking(false);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
-                      newPriority === 'tinggi'
-                        ? 'bg-amber-500 text-white border-amber-600'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="text-[11px] font-bold">Tinggi</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewPriority('mendesak');
-                      setNewIsBlinking(true);
-                    }}
-                    className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
-                      newPriority === 'mendesak'
-                        ? 'bg-red-600 text-white border-red-700 animate-badge-blink'
-                        : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                    }`}
-                  >
-                    <Zap size={13} className="fill-current" />
-                    <span className="text-[10px] font-black uppercase">Kedip</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Blinking Toggle Switch */}
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Zap size={16} className="text-red-600 shrink-0 animate-bounce" />
-                  <span className="text-xs font-bold text-slate-800">Animasi Kedip Warna</span>
-                </div>
-
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={newIsBlinking} 
-                    onChange={(e) => {
-                      setNewIsBlinking(e.target.checked);
-                      if (e.target.checked && newPriority === 'rendah') {
-                        setNewPriority('mendesak');
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-10 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
-                </label>
-              </div>
-
-              {/* Siaran Otomatis Alert Info */}
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-slate-800">
-                <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 shadow-2xs">
-                  <BellRing size={16} className="animate-pulse" />
-                </div>
-                <div className="min-w-0 text-xs">
-                  <div className="font-extrabold text-amber-900 leading-tight">Siaran Otomatis Realtime</div>
-                  <div className="text-[11px] text-amber-800 font-medium">
-                    Saat disimpan, tugas langsung muncul sebagai <strong>popup siaran di semua perangkat</strong>.
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button 
-                  onClick={() => setShowFormModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button 
-                  onClick={handleAdd}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                >
-                  <Plus size={16} /> Simpan & Siarkan Tugas
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Pengingat Todo Aktif dari Lonceng */}
-      {showReminderModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 relative overflow-hidden text-left">
-            <button 
-              onClick={() => setShowReminderModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-500/20 animate-bounce">
-              <BellRing size={28} />
-            </div>
-
-            <div className="text-center mb-4">
-              <span className="text-[10px] font-bold tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-300 inline-block mb-1">
-                Pengingat Todo Aktif
-              </span>
-              <h3 className="text-lg font-bold text-slate-800 m-0">
-                {pendingCount > 0 ? `Ada ${pendingCount} Tugas Pending` : 'Semua Tugas Selesai'}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 m-0">
-                Bunyi pengingat aktif. Tambah tugas baru atau lihat daftar tugas Anda:
+              <p className="text-[10px] text-slate-500 font-medium truncate m-0">
+                WH-CKB &bull; Tools & Utilitas
               </p>
             </div>
+          </div>
 
-            {/* Quick Form Tambah Task */}
-            <div className="flex gap-2 mb-4">
-              <input 
-                type="text" 
-                placeholder="+ Tambah tugas pengingat cepat..." 
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAdd();
-                  }
-                }}
-                className="flex-1 text-xs py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none"
-              />
-              <button 
-                onClick={handleAdd}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all shrink-0 cursor-pointer"
-              >
-                Tambah
-              </button>
-            </div>
+          {/* Toggle / Close Button */}
+          <button 
+            type="button"
+            onClick={onToggle}
+            className="w-7 h-7 rounded-lg bg-white/80 hover:bg-white text-slate-500 hover:text-slate-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs"
+            title="Tutup / Sembunyikan Sidebar Kiri"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        </div>
 
-            {/* List Tugas Pending */}
-            <div className="max-h-52 overflow-y-auto my-3 space-y-2 pr-1 custom-scrollbar">
-              {todos.filter(t => t.status !== 'close').length === 0 ? (
-                <div className="text-center py-6 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-xl border border-emerald-200">
-                  🎉 Tidak ada tugas pending saat ini.
-                </div>
-              ) : (
-                todos.filter(t => t.status !== 'close').map(t => (
-                  <div key={t.id} className={`p-3 rounded-xl flex items-center justify-between gap-2 border ${
-                    t.is_blinking || t.priority === 'mendesak' ? 'animate-todo-blink' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                      <button 
-                        onClick={() => cycleStatus(t)}
-                        className={`mt-0.5 shrink-0 w-5 h-5 rounded-md flex items-center justify-center border font-bold text-[10px] transition-all ${
-                          t.status === 'onproses' 
-                            ? 'bg-blue-600 text-white border-blue-600' 
-                            : 'bg-white text-amber-600 border-amber-400 hover:bg-amber-50'
-                        }`}
-                        title="Klik untuk ubah status"
-                      >
-                        {t.status === 'onproses' ? 'P' : 'T'}
-                      </button>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs text-slate-800 font-medium leading-relaxed break-words">
-                          {t.task}
-                        </span>
-                        <div>{renderPriorityBadge(t.priority, t.is_blinking)}</div>
-                      </div>
-                    </div>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
-                      t.status === 'onproses' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-                    }`}>
-                      {t.status === 'onproses' ? 'Proses' : 'Todo'}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+        {/* Search Input Box */}
+        <div className="p-3 border-b border-slate-200/60">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari tool & modul..."
+              className="w-full pl-8 pr-7 py-1.5 text-xs font-medium text-slate-800 bg-white/90 border border-slate-200/90 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
 
-            <div className="flex gap-2.5 justify-center mt-5">
-              <button 
-                onClick={playChime}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Volume2 size={15} /> Bunyikan Nada
-              </button>
-              <button 
-                onClick={() => setShowReminderModal(false)}
-                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
-              >
-                Selesai
-              </button>
-            </div>
+          {/* Quick Group Category Filter Chips */}
+          <div className="flex items-center gap-1 overflow-x-auto pt-2 pb-0.5 no-scrollbar text-[10px] font-bold">
+            <button
+              onClick={() => setSelectedGroup('all')}
+              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
+                selectedGroup === 'all'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              Semua
+            </button>
+            <button
+              onClick={() => setSelectedGroup('barcode')}
+              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
+                selectedGroup === 'barcode'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              QR/Barcode
+            </button>
+            <button
+              onClick={() => setSelectedGroup('audit')}
+              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
+                selectedGroup === 'audit'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              Audit/ED
+            </button>
+            <button
+              onClick={() => setSelectedGroup('doc')}
+              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
+                selectedGroup === 'doc'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              Dokumen
+            </button>
+            <button
+              onClick={() => setSelectedGroup('disposal')}
+              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
+                selectedGroup === 'disposal'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              Pemusnahan
+            </button>
           </div>
         </div>
-      )}
 
-      <div 
-        className={`fixed top-3 sm:top-4 right-0 z-[95] transition-all duration-300 ${isOpen ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0'}`}
-      >
-        <button 
-          onClick={onToggle}
-          className="bg-orange-600 hover:bg-orange-700 text-white rounded-l-xl rounded-r-none border-r-0 px-2.5 py-1.5 flex items-center gap-1.5 shadow-lg transition-all hover:pl-3 cursor-pointer group"
-          title="Buka Public Todo"
-        >
-          <ChevronLeft size={15} className="transition-transform group-hover:-translate-x-0.5" />
-          <ListTodo size={15} />
-          <span className="text-xs font-bold pr-1">Todo</span>
-          {priorityCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" title={`${priorityCount} Tugas Kedip`} />
-          )}
-        </button>
-      </div>
+        {/* Navigation Content (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-2.5 space-y-3 custom-scrollbar">
+          {/* 1. Main Navigation Section */}
+          <div className="space-y-1">
+            <div className="px-2 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+              Navigasi Utama
+            </div>
+
+            <button
+              onClick={handleHomeClick}
+              className={`w-full p-2 rounded-xl text-left flex items-center justify-between gap-2 transition-all cursor-pointer border ${
+                currentView === 'home'
+                  ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
+                  : 'bg-white/60 hover:bg-white text-slate-700 hover:text-slate-900 border-transparent hover:border-slate-200 font-semibold shadow-2xs'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                  currentView === 'home' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  <LayoutGrid size={14} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs truncate">Daftar Aplikasi & Sistem</div>
+                  <div className={`text-[9px] truncate ${currentView === 'home' ? 'text-blue-100' : 'text-slate-400'}`}>
+                    Menu Grid Utama
+                  </div>
+                </div>
+              </div>
+
+              {currentView === 'home' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
+              )}
+            </button>
+          </div>
+
+          {/* 2. Tools & Utilitas Section */}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center justify-between px-2">
+              <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+                Tools & Utilitas ({filteredTools.length})
+              </span>
+              <button
+                onClick={() => setIsToolsExpanded(!isToolsExpanded)}
+                className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
+                title={isToolsExpanded ? 'Perkecil grup' : 'Bentangkan grup'}
+              >
+                <ChevronDown size={13} className={`transition-transform duration-200 ${isToolsExpanded ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+            </div>
+
+            {isToolsExpanded && (
+              <div className="space-y-1">
+                {filteredTools.length === 0 ? (
+                  <div className="text-center py-5 px-3 bg-white/60 rounded-xl border border-slate-200/70">
+                    <Search size={16} className="mx-auto text-slate-400 mb-1" />
+                    <p className="text-xs font-bold text-slate-600 m-0">Tool tidak ditemukan</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Coba cari kata kunci lainnya</p>
+                  </div>
+                ) : (
+                  filteredTools.map((tool) => {
+                    const isActive = currentView === 'tool-workspace' && activeTool === tool.id;
+
+                    return (
+                      <button
+                        key={tool.id}
+                        onClick={() => handleToolClick(tool.id)}
+                        className={`w-full p-2 rounded-xl text-left flex items-center justify-between gap-2 transition-all cursor-pointer group border ${
+                          isActive
+                            ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
+                            : 'bg-white/60 hover:bg-white text-slate-700 hover:text-slate-900 border-transparent hover:border-slate-200 shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-6 h-6 rounded-lg ${tool.iconBg} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
+                            {tool.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs truncate font-semibold">
+                              {tool.title}
+                            </div>
+                            <div className={`text-[9px] truncate ${isActive ? 'text-blue-100' : 'text-slate-400'}`}>
+                              {tool.category}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Badge / Status */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isActive ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          ) : tool.badge ? (
+                            <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border ${
+                              tool.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                              {tool.badge}
+                            </span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar Footer: User Status & System Info */}
+        <div className="p-2.5 border-t border-slate-200/70 bg-white/40 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 shadow-2xs">
+                {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-800 truncate">
+                  {currentUser?.nama_lengkap || currentUser?.nama || currentUser?.username || 'Operator Logistik'}
+                </div>
+                <div className="text-[9px] text-slate-500 flex items-center gap-1 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>{isAdmin ? 'Superadmin' : 'Operator Aktif'}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={onToggle}
+              className="p-1 rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+              title="Perkecil / Tutup Sidebar Kiri"
+            >
+              <PanelLeftClose size={13} />
+            </button>
+          </div>
+        </div>
+      </aside>
     </>
   );
 }

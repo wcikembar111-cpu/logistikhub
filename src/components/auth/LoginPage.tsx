@@ -233,8 +233,32 @@ export function LoginPage({
             </div>
           </div>
 
-          {/* Right Column: Professional Login Form Card */}
-          <div className="lg:col-span-6 flex justify-center">
+          {/* Right Column: Professional Login Form Card with Robot Companion on Top */}
+          <div className="lg:col-span-6 flex flex-col items-center justify-center">
+            
+            {/* Robot Companion tepat di atas form login */}
+            <div className="flex flex-col items-center mb-3.5 z-20">
+              <div className="flex flex-col items-center">
+                {/* Speech Bubble / Badge Sambutan Robot di atas form */}
+                <div className="mb-2 px-3 py-1 bg-white/90 backdrop-blur-xs border border-indigo-200/80 rounded-full shadow-2xs flex items-center gap-2 text-xs text-slate-700 font-medium hover:border-indigo-400 transition-colors">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Robot Komunikator CKB
+                  </span>
+                  <span className="text-slate-400 text-[11px]">&bull; Siaran Cepat</span>
+                </div>
+
+                {/* Robot Avatar Component */}
+                <LoginFloatingRobot 
+                  onSendBroadcast={sendBroadcast}
+                  latestBroadcast={messages[0] || null}
+                  recentMessages={messages}
+                  soundEnabled={soundEnabled}
+                  onToggleSound={toggleSound}
+                />
+              </div>
+            </div>
+
             <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden relative transition-all">
               
               {/* Card Header */}
@@ -367,15 +391,6 @@ export function LoginPage({
           </div>
         </div>
       </main>
-
-      {/* Floating Robot Pengirim Pesan Siaran & Suara Bel on Login Page */}
-      <LoginFloatingRobot 
-        onSendBroadcast={sendBroadcast}
-        latestBroadcast={messages[0] || null}
-        recentMessages={messages}
-        soundEnabled={soundEnabled}
-        onToggleSound={toggleSound}
-      />
 
       {/* Incoming broadcast notification dialog on Login Page if someone sends a message */}
       <FloatingRobotBroadcast
