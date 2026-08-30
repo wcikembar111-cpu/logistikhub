@@ -1,20 +1,19 @@
-import React, { lazy, Suspense } from 'react';
-import { LazyFallback } from './common/LazyFallback';
+import { ErrorBoundary } from './common/ErrorBoundary';
 import { QrItem } from './BatchQrSection';
 import { MainToolTab, LogisticsTab } from '../types';
 
-export type { MainToolTab, LogisticsTab };
+import { QrGeneratorHoneywellModule } from './logistics/QrGeneratorHoneywellModule';
+import { EdCheckerModule } from './logistics/EdCheckerModule';
+import { StockOpnameModule } from './logistics/StockOpnameModule';
+import { SnGeneratorModule } from './logistics/SnGeneratorModule';
+import { BatchCheckerModule } from './logistics/BatchCheckerModule';
+import { PromosiModule } from './logistics/PromosiModule';
+import { SuratJalanModule } from './logistics/SuratJalanModule';
+import { ReturInventoryModule } from './logistics/ReturInventoryModule';
+import { MonitoringPemusnahanModule } from './logistics/MonitoringPemusnahanModule';
+import { DataPemusnahanModule } from './logistics/DataPemusnahanModule';
 
-const QrGeneratorHoneywellModule = lazy(() => import('./logistics/QrGeneratorHoneywellModule').then(m => ({ default: m.QrGeneratorHoneywellModule })));
-const EdCheckerModule = lazy(() => import('./logistics/EdCheckerModule').then(m => ({ default: m.EdCheckerModule })));
-const StockOpnameModule = lazy(() => import('./logistics/StockOpnameModule').then(m => ({ default: m.StockOpnameModule })));
-const SnGeneratorModule = lazy(() => import('./logistics/SnGeneratorModule').then(m => ({ default: m.SnGeneratorModule })));
-const BatchCheckerModule = lazy(() => import('./logistics/BatchCheckerModule').then(m => ({ default: m.BatchCheckerModule })));
-const PromosiModule = lazy(() => import('./logistics/PromosiModule').then(m => ({ default: m.PromosiModule })));
-const SuratJalanModule = lazy(() => import('./logistics/SuratJalanModule').then(m => ({ default: m.SuratJalanModule })));
-const ReturInventoryModule = lazy(() => import('./logistics/ReturInventoryModule').then(m => ({ default: m.ReturInventoryModule })));
-const MonitoringPemusnahanModule = lazy(() => import('./logistics/MonitoringPemusnahanModule').then(m => ({ default: m.MonitoringPemusnahanModule })));
-const DataPemusnahanModule = lazy(() => import('./logistics/DataPemusnahanModule').then(m => ({ default: m.DataPemusnahanModule })));
+export type { MainToolTab, LogisticsTab };
 
 interface EmbeddedToolsWorkspaceProps {
   activeTool: MainToolTab;
@@ -30,9 +29,13 @@ export function EmbeddedToolsWorkspace({
   return (
     <div id="main-page-tool-workspace" className="w-full scroll-mt-6 animate-fade-in">
       <div className="bg-white border border-slate-200 shadow-xs rounded-2xl p-4 sm:p-6">
-        {/* ACTIVE TOOL MODULE RENDERING */}
+        {/* ACTIVE TOOL MODULE RENDERING WITH ERROR BOUNDARY */}
         <div className="w-full">
-          <Suspense fallback={<LazyFallback title="Memuat lembar kerja modul..." />}>
+          <ErrorBoundary 
+            key={activeTool} 
+            fallbackTitle="Gagal Membuka Menu Modul"
+            fallbackMessage="Terjadi kendala saat memuat data modul ini. Silakan klik tombol di bawah untuk mencoba kembali."
+          >
             {activeTool === 'qr-generator' && (
               <QrGeneratorHoneywellModule onExportBatchItems={onSetBatchItems} />
             )}
@@ -45,7 +48,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'retur-inventory' && <ReturInventoryModule />}
             {activeTool === 'monitoring-pemusnahan' && <MonitoringPemusnahanModule />}
             {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}
-          </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
     </div>

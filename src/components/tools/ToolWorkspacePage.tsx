@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { 
   Home, 
   QrCode, 
@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
-import { LazyFallback } from '../common/LazyFallback';
 import { MainToolTab } from '../../types';
 
 interface ToolWorkspacePageProps {
@@ -135,14 +134,12 @@ export function ToolWorkspacePage({
       </div>
 
       {/* Main Workspace Container - Purely focused on the single selected tool */}
-      <Suspense fallback={<LazyFallback title="Menyiapkan Lembar Kerja..." minHeight="min-h-[400px]" />}>
-        <EmbeddedToolsWorkspace
-          activeTool={activeTool}
-          onSelectTool={onSelectTool}
-          onCloseWorkspace={onBackToHome}
-          onSetBatchItems={onSetBatchQrItems}
-        />
-      </Suspense>
+      <EmbeddedToolsWorkspace
+        activeTool={activeTool}
+        onSelectTool={onSelectTool}
+        onCloseWorkspace={onBackToHome}
+        onSetBatchItems={onSetBatchQrItems}
+      />
     </div>
   );
 }

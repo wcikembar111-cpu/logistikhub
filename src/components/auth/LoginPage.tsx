@@ -19,14 +19,43 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
 import { usePwa } from '../../context/PwaContext';
+import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
+import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
+import { BroadcastMessage, BroadcastCategory } from '../../types';
 
 interface LoginPageProps {
   onOpenSqlScript?: () => void;
+  broadcastMessages?: BroadcastMessage[];
+  incomingBroadcast?: BroadcastMessage | null;
+  broadcastSoundEnabled?: boolean;
+  onToggleBroadcastSound?: () => void;
+  onSendBroadcast?: (data: {
+    sender_name: string;
+    message: string;
+    category?: BroadcastCategory;
+    device_info?: string;
+  }) => Promise<any>;
+  onDismissIncomingBroadcast?: () => void;
 }
 
-export function LoginPage({ onOpenSqlScript: _onOpenSqlScript }: LoginPageProps) {
+export function LoginPage({ 
+  onOpenSqlScript: _onOpenSqlScript,
+  broadcastMessages = [],
+  incomingBroadcast = null,
+  broadcastSoundEnabled = true,
+  onToggleBroadcastSound = () => {},
+  onSendBroadcast = async () => {},
+  onDismissIncomingBroadcast = () => {}
+}: LoginPageProps) {
   const { login } = useAuth();
-  const { isInstallable, installPwa } = usePwa();
+  const { canInstall, promptInstall } = usePwa();
+
+  const messages = broadcastMessages;
+  const incoming = incomingBroadcast;
+  const soundEnabled = broadcastSoundEnabled;
+  const toggleSound = onToggleBroadcastSound;
+  const sendBroadcast = onSendBroadcast;
+  const dismissIncoming = onDismissIncomingBroadcast;
 
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
@@ -140,9 +169,9 @@ export function LoginPage({ onOpenSqlScript: _onOpenSqlScript }: LoginPageProps)
         </div>
 
         {/* Action button if PWA installable */}
-        {isInstallable && (
+        {canInstall && (
           <button
-            onClick={installPwa}
+            onClick={promptInstall}
             className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl transition-all cursor-pointer shadow-2xs"
           >
             <Smartphone size={14} />
@@ -338,6 +367,22 @@ export function LoginPage({ onOpenSqlScript: _onOpenSqlScript }: LoginPageProps)
           </div>
         </div>
       </main>
+
+      {/* Floating Robot Pengirim Pesan Siaran & Suara Bel on Login Page */}
+      <LoginFloatingRobot 
+        onSendBroadcast={sendBroadcast}
+        latestBroadcast={messages[0] || null}
+        recentMessages={messages}
+        soundEnabled={soundEnabled}
+        onToggleSound={toggleSound}
+      />
+
+      {/* Incoming broadcast notification dialog on Login Page if someone sends a message */}
+      <FloatingRobotBroadcast
+        broadcast={incoming}
+        onClose={dismissIncoming}
+        soundEnabled={soundEnabled}
+      />
 
       {/* Footer */}
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-slate-500 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">

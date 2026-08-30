@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X, Trash2, HelpCircle, Bell } from 'lucide-react';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'danger';
 
 export interface ToastMessage {
   id: string;
@@ -163,7 +163,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {/* Floating Toasts */}
       <div className="fixed top-5 right-5 z-[99999] flex flex-col gap-2.5 max-w-sm w-full px-4 pointer-events-none">
         {toasts.map(toast => {
-          const isError = toast.type === 'error';
+          const isError = toast.type === 'error' || toast.type === 'danger';
           const isSuccess = toast.type === 'success';
           const isWarning = toast.type === 'warning';
 
@@ -209,7 +209,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           <div className="max-w-md w-full p-6 sm:p-7 rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-md ${
-                alertDialog.type === 'error'
+                alertDialog.type === 'error' || alertDialog.type === 'danger'
                   ? 'bg-red-50 text-red-600 border border-red-200'
                   : alertDialog.type === 'success'
                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
@@ -218,7 +218,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                   : 'bg-blue-50 text-blue-900 border border-blue-200'
               }`}
             >
-              {alertDialog.type === 'error' && <AlertTriangle size={28} />}
+              {(alertDialog.type === 'error' || alertDialog.type === 'danger') && <AlertTriangle size={28} />}
               {alertDialog.type === 'success' && <CheckCircle2 size={28} />}
               {alertDialog.type === 'warning' && <AlertTriangle size={28} />}
               {(!alertDialog.type || alertDialog.type === 'info') && <Bell size={28} />}

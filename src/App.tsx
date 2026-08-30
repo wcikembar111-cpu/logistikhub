@@ -1,6 +1,6 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo } from 'react';
 import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
-import { BroadcastBar } from './components/broadcast/BroadcastBar';
+import { FloatingRobotCompanion } from './components/broadcast/FloatingRobotCompanion';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
 import { FloatingTodoBroadcast } from './components/todo/FloatingTodoBroadcast';
 import { Hero } from './components/Hero';
@@ -14,12 +14,12 @@ import { LoginModal } from './components/auth/LoginModal';
 import { InactivityWarningModal } from './components/auth/InactivityWarningModal';
 import { UserManagementModal } from './components/auth/UserManagementModal';
 import { SqlScriptModal } from './components/auth/SqlScriptModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LinkData, MainToolTab } from './types';
 import { Warehouse, Loader2 } from 'lucide-react';
 
-// Lazy Loaded Modals for Ultra-Fast Initial Page Load
-const BroadcastModal = lazy(() => import('./components/broadcast/BroadcastModal').then(m => ({ default: m.BroadcastModal })));
-const LinkModal = lazy(() => import('./components/LinkModal').then(m => ({ default: m.LinkModal })));
+import { BroadcastModal } from './components/broadcast/BroadcastModal';
+import { LinkModal } from './components/LinkModal';
 
 export default function App() {
   // Page View Routing State: 'home' (Halaman Utama) or 'tool-workspace' (Halaman Khusus Tools & Utilitas)
@@ -132,7 +132,15 @@ export default function App() {
   if (!user) {
     return (
       <>
-        <LoginPage onOpenSqlScript={() => setShowSqlScriptModal(true)} />
+        <LoginPage 
+          onOpenSqlScript={() => setShowSqlScriptModal(true)}
+          broadcastMessages={broadcastMessages}
+          incomingBroadcast={incomingBroadcast}
+          broadcastSoundEnabled={broadcastSoundEnabled}
+          onToggleBroadcastSound={toggleBroadcastSound}
+          onSendBroadcast={sendBroadcast}
+          onDismissIncomingBroadcast={dismissIncomingBroadcast}
+        />
         <SqlScriptModal 
           isOpen={showSqlScriptModal}
           onClose={() => setShowSqlScriptModal(false)}
@@ -147,26 +155,10 @@ export default function App() {
       <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-slate-50 text-slate-800 selection:bg-blue-600 selection:text-white">
         <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-400 no-scrollbar min-w-0 ${currentView === 'home' && isSidebarOpen ? 'lg:mr-[360px] xl:mr-[380px]' : ''}`}>
           
-          {/* Tombol & Bar Siaran Antar-Perangkat (Broadcast) - Hanya di Halaman Utama */}
-          {currentView === 'home' && (
-            <BroadcastBar 
-              onOpenBroadcastModal={() => {
-                setReplyRecipient('');
-                setShowBroadcastModal(true);
-              }}
-              latestBroadcast={broadcastMessages[0] || null}
-              messageCount={broadcastMessages.length}
-              soundEnabled={broadcastSoundEnabled}
-              onToggleSound={toggleBroadcastSound}
-              notificationPermission={notificationPermission}
-              onRequestNotificationPermission={requestNotificationPermission}
-              isNotificationSupported={isNotificationSupported}
-            />
-          )}
-          
           {/* VIEW 1: HALAMAN UTAMA (Main Dashboard) */}
           {currentView === 'home' ? (
-            <>
+            <ErrorBoundary fallbackTitle="Gagal Menampilkan Dashboard Utama">
+              {/* 1. Header Utama: Profil Pengguna & Ucapan Selamat */}
               <Hero 
                 user={user}
                 isAdmin={isAdmin} 
@@ -177,6 +169,20 @@ export default function App() {
                 onOpenLogin={() => setShowLoginModal(true)}
                 onOpenUserManagement={() => setShowUserManagementModal(true)}
                 onLogout={() => logout('manual')}
+                renderAvatarSlot={
+                  <FloatingRobotCompanion 
+                    onSendBroadcast={sendBroadcast}
+                    latestBroadcast={broadcastMessages[0] || null}
+                    recentMessages={broadcastMessages}
+                    soundEnabled={broadcastSoundEnabled}
+                    onToggleSound={toggleBroadcastSound}
+                    currentUser={user}
+                    isAdmin={isAdmin}
+                    onDeleteMessage={deleteBroadcastMessage}
+                    isSidebarOpen={isSidebarOpen}
+                    mode="profile-avatar"
+                  />
+                }
               />
 
               <LinkGrid 
@@ -198,16 +204,21 @@ export default function App() {
                   setCurrentView('tool-workspace');
                 }}
               />
-            </>
+            </ErrorBoundary>
           ) : (
             /* VIEW 2: HALAMAN KHUSUS TOOLS & UTILITAS (Dedicated Workspace Page) */
-            <ToolWorkspacePage
-              activeTool={activeWorkspaceTool}
-              onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
-              onBackToHome={() => setCurrentView('home')}
-              batchQrItems={batchQrItems}
-              onSetBatchQrItems={setBatchQrItems}
-            />
+            <ErrorBoundary 
+              fallbackTitle="Gagal Membuka Workspace Modul" 
+              onReset={() => setCurrentView('home')}
+            >
+              <ToolWorkspacePage
+                activeTool={activeWorkspaceTool}
+                onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
+                onBackToHome={() => setCurrentView('home')}
+                batchQrItems={batchQrItems}
+                onSetBatchQrItems={setBatchQrItems}
+              />
+            </ErrorBoundary>
           )}
         </div>
 
@@ -230,46 +241,53 @@ export default function App() {
         )}
       </div>
 
-      {/* Robot Melayang Pembawa Pesan Siaran */}
-      <FloatingRobotBroadcast
-        broadcast={incomingBroadcast}
-        onClose={dismissIncomingBroadcast}
-        onReply={handleReplyBroadcast}
-        soundEnabled={broadcastSoundEnabled}
-      />
+      {/* Robot Popups & Broadcast Notifiers - Hanya Tampil di Halaman Utama */}
+      {currentView === 'home' && (
+        <>
+          {/* Robot Melayang Pembawa Pesan Siaran Masuk */}
+          <FloatingRobotBroadcast
+            broadcast={incomingBroadcast}
+            onClose={dismissIncomingBroadcast}
+            onReply={handleReplyBroadcast}
+            soundEnabled={broadcastSoundEnabled}
+          />
 
-      {/* Siaran Popup Tugas Baru Public Todo ke Semua Perangkat */}
-      <FloatingTodoBroadcast
-        incomingTodo={incomingNewTodo}
-        onClose={dismissIncomingTodo}
-        onOpenTodo={() => {
-          dismissIncomingTodo();
-          setCurrentView('home');
-          setIsSidebarOpen(true);
-        }}
-        soundEnabled={broadcastSoundEnabled}
-      />
+          {/* Siaran Popup Tugas Baru Public Todo ke Semua Perangkat */}
+          <FloatingTodoBroadcast
+            incomingTodo={incomingNewTodo}
+            onClose={dismissIncomingTodo}
+            onOpenTodo={() => {
+              dismissIncomingTodo();
+              setCurrentView('home');
+              setIsSidebarOpen(true);
+            }}
+            soundEnabled={broadcastSoundEnabled}
+          />
+        </>
+      )}
 
       {/* Auth Modals & Inactivity Warning */}
-      <LoginModal 
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
+      <ErrorBoundary fallbackTitle="Gagal Membuka Modal Autentikasi">
+        <LoginModal 
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+        />
 
-      <UserManagementModal
-        isOpen={showUserManagementModal}
-        onClose={() => setShowUserManagementModal(false)}
-      />
+        <UserManagementModal
+          isOpen={showUserManagementModal}
+          onClose={() => setShowUserManagementModal(false)}
+        />
 
-      <SqlScriptModal 
-        isOpen={showSqlScriptModal}
-        onClose={() => setShowSqlScriptModal(false)}
-      />
+        <SqlScriptModal 
+          isOpen={showSqlScriptModal}
+          onClose={() => setShowSqlScriptModal(false)}
+        />
 
-      <InactivityWarningModal />
+        <InactivityWarningModal />
+      </ErrorBoundary>
 
-      {/* Lazy Modals Suspense Container */}
-      <Suspense fallback={null}>
+      {/* Modals Container */}
+      <ErrorBoundary fallbackTitle="Gagal Membuka Modal Interaktif">
         {showBroadcastModal && (
           <BroadcastModal
             isOpen={showBroadcastModal}
@@ -303,7 +321,7 @@ export default function App() {
             onSave={handleSaveLink}
           />
         )}
-      </Suspense>
+      </ErrorBoundary>
     </>
   );
 }

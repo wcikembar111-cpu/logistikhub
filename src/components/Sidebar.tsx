@@ -39,7 +39,8 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
   const [editTaskPriority, setEditTaskPriority] = useState<TodoPriority>('rendah');
   const [editTaskBlinking, setEditTaskBlinking] = useState(false);
 
-  const filteredTodos = todos.filter(t => {
+  const safeTodos = todos || [];
+  const filteredTodos = safeTodos.filter(t => {
     if (filter === 'priority') return t.priority === 'mendesak' || t.priority === 'tinggi' || t.is_blinking;
     if (filter === 'all') return true;
     return t.status === filter;
@@ -50,10 +51,10 @@ export function Sidebar({ todos, loading, isAdmin, currentUser, isOpen, onToggle
     return bWeight - aWeight;
   });
   
-  const no = todos.filter(t => t.status === 'no').length;
-  const onproses = todos.filter(t => t.status === 'onproses').length;
-  const close = todos.filter(t => t.status === 'close').length;
-  const priorityCount = todos.filter(t => (t.priority === 'mendesak' || t.priority === 'tinggi' || t.is_blinking) && t.status !== 'close').length;
+  const no = safeTodos.filter(t => t.status === 'no').length;
+  const onproses = safeTodos.filter(t => t.status === 'onproses').length;
+  const close = safeTodos.filter(t => t.status === 'close').length;
+  const priorityCount = safeTodos.filter(t => (t.priority === 'mendesak' || t.priority === 'tinggi' || t.is_blinking) && t.status !== 'close').length;
   const pendingCount = no + onproses;
 
   const playChime = () => {

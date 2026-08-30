@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import XLSX from 'xlsx-js-style';
+import * as XLSXStyle from 'xlsx-js-style';
+
+const XLSX: any = (XLSXStyle as any).default || XLSXStyle;
 import { 
   Layers, 
   FileSpreadsheet, 
@@ -246,7 +248,7 @@ export function StockOpnameModule() {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+        const json = (XLSX.utils.sheet_to_json(sheet, { defval: '' }) || []) as Record<string, any>[];
 
         if (!json.length) {
           showToast('File Kosong', 'Tidak ditemukan data di dalam sheet pertama.', 'warning');
@@ -687,7 +689,7 @@ export function StockOpnameModule() {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+        const json = (XLSX.utils.sheet_to_json(ws, { defval: '' }) || []) as Record<string, any>[];
 
         if (!json.length) {
           showToast('File SAP Kosong', 'Tidak ada data di sheet pertama file SAP.', 'warning');
@@ -757,7 +759,7 @@ export function StockOpnameModule() {
 
         wb.SheetNames.forEach(sheetName => {
           const ws = wb.Sheets[sheetName];
-          const aoa = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: '' });
+          const aoa = (XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) || []) as any[][];
           if (!aoa.length) return;
 
           let headerRowIdx = -1;

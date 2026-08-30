@@ -62,8 +62,8 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
   const [formUsername, setFormUsername] = useState('');
   const [formNama, setFormNama] = useState('');
   const [formPin, setFormPin] = useState('');
-  const [formRole, setFormRole] = useState<UserRole>('Pelaksana');
-  const [formStatus, setFormStatus] = useState<UserStatus>('Aktif');
+  const [formRole, setFormRole] = useState<'Admin' | 'Pelaksana'>('Pelaksana');
+  const [formStatus, setFormStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
   const [formAvatar, setFormAvatar] = useState('');
   const [formEmailGoogle, setFormEmailGoogle] = useState('');
   const [formPermissions, setFormPermissions] = useState<UserPermissions>(DEFAULT_PELAKSANA_PERMISSIONS);
@@ -188,7 +188,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
     setFormPermissions(userItem.permissions || (userItem.role === 'Admin' ? DEFAULT_ADMIN_PERMISSIONS : DEFAULT_PELAKSANA_PERMISSIONS));
   };
 
-  const handleRoleChange = (newRole: UserRole) => {
+  const handleRoleChange = (newRole: 'Admin' | 'Pelaksana') => {
     setFormRole(newRole);
     if (newRole === 'Admin') {
       setFormPermissions(DEFAULT_ADMIN_PERMISSIONS);
@@ -306,8 +306,9 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
     showConfirm({
       title: 'Hapus Pengguna',
       message: `Apakah Anda yakin ingin menghapus akun pengguna "@${userItem.username}" (${userItem.nama})? Tindakan ini tidak dapat dibatalkan.`,
-      confirmLabel: 'Hapus Akun',
-      cancelLabel: 'Batal',
+      confirmText: 'Hapus Akun',
+      cancelText: 'Batal',
+      type: 'danger',
       onConfirm: async () => {
         try {
           const { error } = await supabase
@@ -630,7 +631,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   </label>
                   <select 
                     value={formRole}
-                    onChange={e => handleRoleChange(e.target.value as UserRole)}
+                    onChange={e => handleRoleChange(e.target.value as 'Admin' | 'Pelaksana')}
                     className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 outline-none"
                   >
                     <option value="Pelaksana">Pelaksana (Akses Terbatas)</option>
@@ -644,7 +645,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   </label>
                   <select 
                     value={formStatus}
-                    onChange={e => setFormStatus(e.target.value as UserStatus)}
+                    onChange={e => setFormStatus(e.target.value as 'Aktif' | 'Nonaktif')}
                     className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 outline-none"
                   >
                     <option value="Aktif">Aktif (Dapat Login)</option>

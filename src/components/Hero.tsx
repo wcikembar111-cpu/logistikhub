@@ -52,6 +52,7 @@ interface HeroProps {
   onOpenUserManagement?: () => void;
   onOpenSqlScript?: () => void;
   onLogout?: () => void;
+  renderAvatarSlot?: React.ReactNode;
 }
 
 interface PrayerJadwal {
@@ -73,7 +74,8 @@ export function Hero({
   onOpenLogin,
   onOpenUserManagement,
   onOpenSqlScript,
-  onLogout
+  onLogout,
+  renderAvatarSlot
 }: HeroProps) {
   // Dynamic user profile resolution
   const currentUsername = (user?.username || '').toLowerCase();
@@ -922,34 +924,78 @@ export function Hero({
           {/* Left: Profile Photo & Greeting & Role */}
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
             <div className="relative shrink-0 group">
-              <div 
-                onClick={() => setShowPhotoModal(true)}
-                className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300"
-                title="Klik untuk perbesar profil & lihat detail akun"
-              >
-                {isDedeUser ? (
-                  <img 
-                    src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
-                    alt={resolvedFullName} 
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105`}>
-                    <span className="text-xl sm:text-2xl drop-shadow-xs">{roleBadgeInfo.icon}</span>
-                    <span className="text-[10px] sm:text-[11px] font-black tracking-wider uppercase mt-0.5 opacity-90">
-                      {userInitials}
+              {renderAvatarSlot ? (
+                <div className="relative flex items-center justify-center">
+                  {/* Background Profile Photo / Avatar yang ditutupi oleh Robot */}
+                  <div 
+                    onClick={() => setShowPhotoModal(true)}
+                    className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300 opacity-20 filter blur-[1px] group-hover:opacity-40 group-hover:blur-none"
+                    title="Klik pinggir untuk perbesar profil & detail akun"
+                  >
+                    {isDedeUser ? (
+                      <img 
+                        src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
+                        alt={resolvedFullName} 
+                        className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-slate-300 shadow-md"
+                      />
+                    ) : (
+                      <div className={`w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-2 border-slate-300 shadow-md`}>
+                        <span className="text-xl sm:text-2xl">{roleBadgeInfo.icon}</span>
+                        <span className="text-[10px] sm:text-[11px] font-black uppercase mt-0.5">
+                          {userInitials}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Robot Companion tepat di atas / menutupi Avatar */}
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    {renderAvatarSlot}
+                  </div>
+
+                  {/* Tombol Mini Detail Akun / Zoom di pojok bawah */}
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPhotoModal(true);
+                    }}
+                    className="absolute -bottom-1 -right-1 z-20 bg-slate-900/90 hover:bg-slate-900 text-white border border-slate-700 rounded-full w-6 h-6 flex items-center justify-center text-[9px] shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                    title="Buka Detail Akun & Profil Lengkap"
+                  >
+                    <ZoomIn size={10} />
+                  </button>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => setShowPhotoModal(true)}
+                  className="relative cursor-pointer overflow-hidden rounded-2xl p-0.5 transition-all duration-300"
+                  title="Klik untuk perbesar profil & lihat detail akun"
+                >
+                  {isDedeUser ? (
+                    <img 
+                      src="https://res.cloudinary.com/dedtb3vnj/image/upload/v1785128112/dedesuparman_eelegb.jpg" 
+                      alt={resolvedFullName} 
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr ${roleBadgeInfo.gradient} text-white flex flex-col items-center justify-center border-2 border-white shadow-md transition-all duration-300 group-hover:scale-105`}>
+                      <span className="text-xl sm:text-2xl drop-shadow-xs">{roleBadgeInfo.icon}</span>
+                      <span className="text-[10px] sm:text-[11px] font-black tracking-wider uppercase mt-0.5 opacity-90">
+                        {userInitials}
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 rounded-2xl bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
+                    <span className="bg-slate-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                      <ZoomIn size={9} /> Detail
                     </span>
                   </div>
-                )}
-                <div className="absolute inset-0 rounded-2xl bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center">
-                  <span className="bg-slate-900 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                    <ZoomIn size={9} /> Detail
+                  <span className="absolute -bottom-1 -right-1 bg-white border border-slate-200 rounded-full w-6 h-6 flex items-center justify-center text-[10px] shadow-xs">
+                    {roleBadgeInfo.icon}
                   </span>
                 </div>
-                <span className="absolute -bottom-1 -right-1 bg-white border border-slate-200 rounded-full w-6 h-6 flex items-center justify-center text-[10px] shadow-xs">
-                  {roleBadgeInfo.icon}
-                </span>
-              </div>
+              )}
             </div>
 
             <div className="min-w-0">

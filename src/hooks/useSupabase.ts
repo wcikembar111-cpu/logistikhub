@@ -26,15 +26,20 @@ export function useLinks() {
 
   useEffect(() => {
     fetchLinks();
+    const uniqueChannelName = `links_realtime_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const channel = supabase
-      .channel('links_realtime')
+      .channel(uniqueChannelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'links' }, () => {
         fetchLinks();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        console.warn('Error removing links channel:', e);
+      }
     };
   }, []);
 
@@ -132,7 +137,8 @@ export function useTodos() {
     fetchTodos();
 
     // Listen to real-time WebSockets broadcast channel and DB postgres_changes
-    const channel = (supabase.channel('todos_realtime_broadcast_room') as any)
+    const uniqueChannelName = `todos_realtime_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const channel = (supabase.channel(uniqueChannelName) as any)
       .on('broadcast', { event: 'new_todo_broadcast' }, (payload: any) => {
         const item = payload.payload;
         if (!item) return;
@@ -175,7 +181,11 @@ export function useTodos() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        console.warn('Error removing todos channel:', e);
+      }
     };
   }, [fetchTodos, triggerTodoPopupAlert]);
 

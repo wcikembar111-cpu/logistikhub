@@ -171,33 +171,47 @@ export function useBroadcast() {
     }
   }, []);
 
+  // Channel references to safely reuse and clean up
+  const primaryChannelRef = useRef<any>(null);
+  const externalChannelRef = useRef<any>(null);
+
   // Listen to both Primary & External Supabase Broadcast Channels (WebSockets) & Postgres Realtime DB
   useEffect(() => {
     fetchMessages();
 
+    // Unique channel identifier per hook lifecycle to avoid colliding with already subscribed channels
+    const uniqueChannelName = `broadcast_intercom_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
     // --- 1. Primary Supabase Channel Subscriptions ---
-    const primaryChannel = (supabase.channel('broadcast_intercom_room') as any)
-      .on('broadcast', { event: 'new_broadcast' }, (payload: any) => {
-        handleIncomingBroadcast(payload.payload, 'primary');
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_messages' }, (payload: any) => {
-        const newItem = payload.new as BroadcastMessage;
-        if (newItem) {
-          handleIncomingBroadcast(newItem, 'primary');
-        }
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'broadcast_messages' }, (payload: any) => {
-        if (payload.old && payload.old.id) {
-          setMessages(prev => prev.filter(m => m.id !== payload.old.id));
-        } else {
-          fetchMessages();
-        }
-      })
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          setSyncStatus(prev => ({ ...prev, isPrimaryConnected: true }));
-        }
-      });
+    let primaryChannel: any = null;
+    try {
+      primaryChannel = (supabase.channel(uniqueChannelName) as any)
+        .on('broadcast', { event: 'new_broadcast' }, (payload: any) => {
+          handleIncomingBroadcast(payload.payload, 'primary');
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_messages' }, (payload: any) => {
+          const newItem = payload.new as BroadcastMessage;
+          if (newItem) {
+            handleIncomingBroadcast(newItem, 'primary');
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'broadcast_messages' }, (payload: any) => {
+          if (payload.old && payload.old.id) {
+            setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+          } else {
+            fetchMessages();
+          }
+        })
+        .subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            setSyncStatus(prev => ({ ...prev, isPrimaryConnected: true }));
+          }
+        });
+
+      primaryChannelRef.current = primaryChannel;
+    } catch (err) {
+      console.error('Failed to initialize primary realtime channel:', err);
+    }
 
     // --- 2. External Supabase Channel Subscriptions (Cross-App Broadcast) ---
     let externalChannel: any = null;
@@ -206,7 +220,8 @@ export function useBroadcast() {
 
     if (extClient && currentExtConfig.enabled && currentExtConfig.syncTarget !== 'primary') {
       try {
-        externalChannel = (extClient.channel('broadcast_intercom_room') as any)
+        const uniqueExtChannelName = `broadcast_ext_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        externalChannel = (extClient.channel(uniqueExtChannelName) as any)
           .on('broadcast', { event: 'new_broadcast' }, (payload: any) => {
             handleIncomingBroadcast(payload.payload, 'external');
           })
@@ -239,16 +254,30 @@ export function useBroadcast() {
               }));
             }
           });
+
+        externalChannelRef.current = externalChannel;
       } catch (err) {
         console.error('Failed to subscribe to external Supabase channel:', err);
       }
     }
 
     return () => {
-      supabase.removeChannel(primaryChannel);
-      if (externalChannel && extClient) {
-        extClient.removeChannel(externalChannel);
+      if (primaryChannel) {
+        try {
+          supabase.removeChannel(primaryChannel);
+        } catch (e) {
+          console.warn('Error removing primary channel:', e);
+        }
       }
+      primaryChannelRef.current = null;
+      if (externalChannel && extClient) {
+        try {
+          extClient.removeChannel(externalChannel);
+        } catch (e) {
+          console.warn('Error removing external channel:', e);
+        }
+      }
+      externalChannelRef.current = null;
     };
   }, [fetchMessages, handleIncomingBroadcast, externalConfig.enabled, externalConfig.url, externalConfig.anonKey, externalConfig.syncTarget]);
 
@@ -290,12 +319,13 @@ export function useBroadcast() {
     // 2. Broadcast to Primary Database & WebSocket Room
     if (shouldSendPrimary) {
       try {
-        const channel = supabase.channel('broadcast_intercom_room');
-        channel.send({
-          type: 'broadcast',
-          event: 'new_broadcast',
-          payload: broadcastItem
-        }).catch(e => console.warn('Primary websocket send note:', e));
+        if (primaryChannelRef.current) {
+          primaryChannelRef.current.send({
+            type: 'broadcast',
+            event: 'new_broadcast',
+            payload: broadcastItem
+          }).catch((e: any) => console.warn('Primary websocket send note:', e));
+        }
 
         const { error } = await supabase.from('broadcast_messages').insert([
           {
@@ -321,12 +351,13 @@ export function useBroadcast() {
     // 3. Broadcast to External Database & WebSocket Room (Aplikasi Lain)
     if (shouldSendExternal && extClient) {
       try {
-        const extChannel = extClient.channel('broadcast_intercom_room');
-        extChannel.send({
-          type: 'broadcast',
-          event: 'new_broadcast',
-          payload: broadcastItem
-        }).catch(e => console.warn('External websocket send note:', e));
+        if (externalChannelRef.current) {
+          externalChannelRef.current.send({
+            type: 'broadcast',
+            event: 'new_broadcast',
+            payload: broadcastItem
+          }).catch((e: any) => console.warn('External websocket send note:', e));
+        }
 
         const { error } = await extClient.from('broadcast_messages').insert([
           {
