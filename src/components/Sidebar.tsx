@@ -186,24 +186,17 @@ export function Sidebar({
   isAdmin = false
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<'all' | 'barcode' | 'audit' | 'doc' | 'disposal'>('all');
   const [isToolsExpanded, setIsToolsExpanded] = useState(true);
 
-  // Filter tools based on search and category
+  // Filter tools based on search query
   const filteredTools = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return TOOLS_LIST.filter(item => {
-      const matchGroup = selectedGroup === 'all' || item.group === selectedGroup;
-      if (!matchGroup) return false;
-      if (!q) return true;
-      return (
-        item.title.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q) ||
-        item.desc.toLowerCase().includes(q) ||
-        item.keywords.toLowerCase().includes(q)
-      );
-    });
-  }, [searchQuery, selectedGroup]);
+    if (!q) return TOOLS_LIST;
+    return TOOLS_LIST.filter(item =>
+      item.title.toLowerCase().includes(q) ||
+      item.keywords.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
 
   const handleToolClick = (toolId: MainToolTab) => {
     if (onSelectTool) {
@@ -235,9 +228,9 @@ export function Sidebar({
         />
       )}
 
-      {/* Main Left Sidebar (Tanpa Background Berat / Ultra Lightweight & Responsif) */}
+      {/* Main Left Sidebar */}
       <aside 
-        className={`fixed top-0 left-0 bottom-0 w-[270px] sm:w-[280px] lg:w-[270px] xl:w-[280px] bg-slate-50/90 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-slate-800 border-r border-slate-200/80 flex flex-col transition-transform duration-200 ease-in-out z-[90] ${
+        className={`fixed top-0 left-0 bottom-0 w-[260px] sm:w-[270px] bg-slate-50/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-slate-800 border-r border-slate-200/80 flex flex-col transition-transform duration-200 ease-in-out z-[90] ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -275,15 +268,15 @@ export function Sidebar({
         </div>
 
         {/* Search Input Box */}
-        <div className="p-3 border-b border-slate-200/60">
+        <div className="p-2.5 border-b border-slate-200/60">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari tool & modul..."
-              className="w-full pl-8 pr-7 py-1.5 text-xs font-medium text-slate-800 bg-white/90 border border-slate-200/90 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-2xs"
+              placeholder="Cari menu..."
+              className="w-full pl-8 pr-7 py-1.5 text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-2xs"
             />
             {searchQuery && (
               <button
@@ -295,64 +288,10 @@ export function Sidebar({
               </button>
             )}
           </div>
-
-          {/* Quick Group Category Filter Chips */}
-          <div className="flex items-center gap-1 overflow-x-auto pt-2 pb-0.5 no-scrollbar text-[10px] font-bold">
-            <button
-              onClick={() => setSelectedGroup('all')}
-              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
-                selectedGroup === 'all'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
-              }`}
-            >
-              Semua
-            </button>
-            <button
-              onClick={() => setSelectedGroup('barcode')}
-              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
-                selectedGroup === 'barcode'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
-              }`}
-            >
-              QR/Barcode
-            </button>
-            <button
-              onClick={() => setSelectedGroup('audit')}
-              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
-                selectedGroup === 'audit'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
-              }`}
-            >
-              Audit/ED
-            </button>
-            <button
-              onClick={() => setSelectedGroup('doc')}
-              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
-                selectedGroup === 'doc'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
-              }`}
-            >
-              Dokumen
-            </button>
-            <button
-              onClick={() => setSelectedGroup('disposal')}
-              className={`px-2 py-0.5 rounded-lg border whitespace-nowrap transition-all cursor-pointer ${
-                selectedGroup === 'disposal'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                  : 'bg-white/70 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-white'
-              }`}
-            >
-              Pemusnahan
-            </button>
-          </div>
         </div>
 
         {/* Navigation Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-3 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 space-y-2.5 custom-scrollbar">
           {/* 1. Main Navigation Section */}
           <div className="space-y-1">
             <div className="px-2 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -361,24 +300,21 @@ export function Sidebar({
 
             <button
               onClick={handleHomeClick}
-              className={`w-full p-2 rounded-xl text-left flex items-center justify-between gap-2 transition-all cursor-pointer border ${
+              className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer border ${
                 currentView === 'home'
                   ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
-                  : 'bg-white/60 hover:bg-white text-slate-700 hover:text-slate-900 border-transparent hover:border-slate-200 font-semibold shadow-2xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200/70 font-semibold shadow-2xs'
               }`}
             >
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
                   currentView === 'home' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                 }`}>
                   <LayoutGrid size={14} />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-xs truncate">Daftar Aplikasi & Sistem</div>
-                  <div className={`text-[9px] truncate ${currentView === 'home' ? 'text-blue-100' : 'text-slate-400'}`}>
-                    Menu Grid Utama
-                  </div>
-                </div>
+                <span className="text-xs truncate font-semibold">
+                  Daftar Aplikasi & Sistem
+                </span>
               </div>
 
               {currentView === 'home' && (
@@ -405,9 +341,9 @@ export function Sidebar({
             {isToolsExpanded && (
               <div className="space-y-1">
                 {filteredTools.length === 0 ? (
-                  <div className="text-center py-5 px-3 bg-white/60 rounded-xl border border-slate-200/70">
+                  <div className="text-center py-5 px-3 bg-white rounded-xl border border-slate-200/70">
                     <Search size={16} className="mx-auto text-slate-400 mb-1" />
-                    <p className="text-xs font-bold text-slate-600 m-0">Tool tidak ditemukan</p>
+                    <p className="text-xs font-bold text-slate-600 m-0">Menu tidak ditemukan</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">Coba cari kata kunci lainnya</p>
                   </div>
                 ) : (
@@ -418,38 +354,24 @@ export function Sidebar({
                       <button
                         key={tool.id}
                         onClick={() => handleToolClick(tool.id)}
-                        className={`w-full p-2 rounded-xl text-left flex items-center justify-between gap-2 transition-all cursor-pointer group border ${
+                        className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group border ${
                           isActive
                             ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
-                            : 'bg-white/60 hover:bg-white text-slate-700 hover:text-slate-900 border-transparent hover:border-slate-200 shadow-2xs'
+                            : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200/70 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`w-6 h-6 rounded-lg ${tool.iconBg} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
                             {tool.icon}
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-xs truncate font-semibold">
-                              {tool.title}
-                            </div>
-                            <div className={`text-[9px] truncate ${isActive ? 'text-blue-100' : 'text-slate-400'}`}>
-                              {tool.category}
-                            </div>
-                          </div>
+                          <span className="text-xs font-semibold truncate">
+                            {tool.title}
+                          </span>
                         </div>
 
-                        {/* Right Badge / Status */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          {isActive ? (
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                          ) : tool.badge ? (
-                            <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border ${
-                              tool.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}>
-                              {tool.badge}
-                            </span>
-                          ) : null}
-                        </div>
+                        {isActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
+                        )}
                       </button>
                     );
                   })
