@@ -40,6 +40,9 @@ export function useBroadcast() {
   });
 
   const soundEnabledRef = useRef(soundEnabled);
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
     localStorage.setItem('broadcast_sound_enabled', String(soundEnabled));
@@ -144,13 +147,34 @@ export function useBroadcast() {
 
     // Sort combined messages by created_at descending
     allMessages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    // Check for new incoming messages during background polling
+    if (!isInitialLoadRef.current && allMessages.length > 0) {
+      const latest = allMessages[0];
+      const now = Date.now();
+      const messageTime = new Date(latest.created_at).getTime();
+      // If message arrived in the last 90 seconds and hasn't been shown in this tab yet
+      if (!seenMessageIdsRef.current.has(latest.id) && (now - messageTime < 90000)) {
+        seenMessageIdsRef.current.add(latest.id);
+        handleIncomingBroadcast(latest, latest.origin || 'primary');
+      }
+    }
+
+    // Populate seen IDs
+    allMessages.forEach(m => seenMessageIdsRef.current.add(m.id));
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+    }
+
     setMessages(allMessages);
     setLoading(false);
   }, []);
 
   // Handle incoming broadcast from any connected client / database
-  const handleIncomingBroadcast = useCallback((item: BroadcastMessage & { sessionId?: string }, source: 'primary' | 'external') => {
+  const handleIncomingBroadcast = useCallback((item: BroadcastMessage & { sessionId?: string }, source: 'primary' | 'external' | 'dual' = 'primary') => {
     if (!item || !item.id) return;
+
+    seenMessageIdsRef.current.add(item.id);
 
     setMessages(prev => {
       if (prev.some(m => m.id === item.id)) return prev;
@@ -179,13 +203,15 @@ export function useBroadcast() {
   useEffect(() => {
     fetchMessages();
 
-    // Unique channel identifier per hook lifecycle to avoid colliding with already subscribed channels
-    const uniqueChannelName = `broadcast_intercom_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // Constant shared channel topic name so all browser tabs and applications can receive broadcasts
+    const SHARED_BROADCAST_CHANNEL = 'broadcast_intercom_room';
 
     // --- 1. Primary Supabase Channel Subscriptions ---
     let primaryChannel: any = null;
     try {
-      primaryChannel = (supabase.channel(uniqueChannelName) as any)
+      primaryChannel = (supabase.channel(SHARED_BROADCAST_CHANNEL, {
+        config: { broadcast: { self: false } }
+      }) as any)
         .on('broadcast', { event: 'new_broadcast' }, (payload: any) => {
           handleIncomingBroadcast(payload.payload, 'primary');
         })
@@ -220,8 +246,9 @@ export function useBroadcast() {
 
     if (extClient && currentExtConfig.enabled && currentExtConfig.syncTarget !== 'primary') {
       try {
-        const uniqueExtChannelName = `broadcast_ext_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        externalChannel = (extClient.channel(uniqueExtChannelName) as any)
+        externalChannel = (extClient.channel(SHARED_BROADCAST_CHANNEL, {
+          config: { broadcast: { self: false } }
+        }) as any)
           .on('broadcast', { event: 'new_broadcast' }, (payload: any) => {
             handleIncomingBroadcast(payload.payload, 'external');
           })
@@ -261,7 +288,22 @@ export function useBroadcast() {
       }
     }
 
+    // Resilience layer: periodic background polling (every 8s) & window focus refresh
+    const pollInterval = setInterval(() => {
+      fetchMessages();
+    }, 8000);
+
+    const handleWindowFocus = () => {
+      fetchMessages();
+    };
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('visibilitychange', handleWindowFocus);
+
     return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('visibilitychange', handleWindowFocus);
+
       if (primaryChannel) {
         try {
           supabase.removeChannel(primaryChannel);

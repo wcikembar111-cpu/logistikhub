@@ -408,21 +408,24 @@ export function BroadcastModal({
             <span>Riwayat ({messages.length})</span>
           </button>
 
-          {isExternalConfigured && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('database_sync')}
-              className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'database_sync'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Globe size={13} />
-              <span>Database Lain</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('database_sync')}
+            className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'database_sync'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+            title="Sinkronisasi Pesan Siaran 2 Aplikasi / Database Eksternal"
+          >
+            <Globe size={13} />
+            <span>Database Lain</span>
+            {isExternalConfigured ? (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Tersambung" />
+            ) : (
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-semibold">Setup</span>
+            )}
+          </button>
         </div>
 
         {/* Modal Body: SIMPLE FORM (Pengirim, Kepada, Isi Pesan, Riwayat) */}

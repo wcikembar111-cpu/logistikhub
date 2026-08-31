@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabase';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, getExternalSupabaseClient, getBroadcastExternalConfig } from '../supabase';
 import { LinkData, TodoData, TodoPriority, AdminUser, parseTodoTask, formatTodoTask } from '../types';
 import { playBroadcastSound } from '../utils/broadcastSound';
 import { triggerSystemBroadcastNotification } from '../utils/systemNotification';
@@ -79,16 +79,63 @@ export function useLinks() {
   return { links, loading, addLink, updateLink, deleteLink };
 }
 
+// Constant shared channel topic for all devices and apps
+const SHARED_TODOS_CHANNEL = 'todos_realtime_broadcast_room';
+
+// Helper to broadcast todo events to primary and external connected apps
+async function broadcastTodoRealtime(payload: any) {
+  try {
+    const channel = supabase.channel(SHARED_TODOS_CHANNEL);
+    await channel.send({
+      type: 'broadcast',
+      event: 'todo_broadcast',
+      payload
+    });
+  } catch (e) {
+    console.warn('Primary todos realtime broadcast note:', e);
+  }
+
+  try {
+    const extClient = getExternalSupabaseClient();
+    const currentConfig = getBroadcastExternalConfig();
+    if (extClient && currentConfig.enabled && currentConfig.syncTarget !== 'primary') {
+      const extChannel = extClient.channel(SHARED_TODOS_CHANNEL);
+      await extChannel.send({
+        type: 'broadcast',
+        event: 'todo_broadcast',
+        payload
+      });
+    }
+  } catch (e) {
+    console.warn('External todos realtime broadcast note:', e);
+  }
+}
+
 export function useTodos() {
   const [todos, setTodos] = useState<TodoData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [incomingNewTodo, setIncomingNewTodo] = useState<(TodoData & { created_at?: string; sender_name?: string; sessionId?: string }) | null>(null);
+  const [incomingNewTodo, setIncomingNewTodo] = useState<(TodoData & { created_at?: string; sender_name?: string; sessionId?: string; action?: 'created' | 'updated' | 'status_changed' | 'deleted' }) | null>(null);
+
+  const lastAlertedActionRef = useRef<{ id: string; action: string; timestamp: number } | null>(null);
 
   const dismissIncomingTodo = useCallback(() => {
     setIncomingNewTodo(null);
   }, []);
 
-  const triggerTodoPopupAlert = useCallback((item: TodoData & { created_at?: string; sender_name?: string; sessionId?: string }, isOwnSession = false) => {
+  const triggerTodoPopupAlert = useCallback((item: TodoData & { created_at?: string; sender_name?: string; sessionId?: string; action?: 'created' | 'updated' | 'status_changed' | 'deleted' }, isOwnSession = false) => {
+    // Avoid double-firing identical alert in a tight 2s window
+    const now = Date.now();
+    const action = item.action || 'created';
+    if (
+      lastAlertedActionRef.current &&
+      lastAlertedActionRef.current.id === item.id &&
+      lastAlertedActionRef.current.action === action &&
+      now - lastAlertedActionRef.current.timestamp < 2000
+    ) {
+      return;
+    }
+    lastAlertedActionRef.current = { id: item.id || '', action, timestamp: now };
+
     setIncomingNewTodo(item);
     
     // Play alert chime
@@ -99,10 +146,18 @@ export function useTodos() {
 
     // Trigger system notification for other devices or background tabs
     if (!isOwnSession) {
+      const statusLabel = item.status === 'close' ? 'DONE / SELESAI' : item.status === 'onproses' ? 'ON PROSES' : 'TODO';
+      const notifMsg = 
+        action === 'status_changed'
+          ? `Status Tugas Diperbarui: "${item.task}" → ${statusLabel}`
+          : action === 'updated'
+          ? `Tugas Diperbarui: "${item.task}"`
+          : `Tugas Baru: "${item.task}"`;
+
       triggerSystemBroadcastNotification({
         id: item.id || Date.now().toString(),
         sender_name: item.sender_name || `Public Todo (${(item.priority || 'BIASA').toUpperCase()})`,
-        message: `Tugas Baru: "${item.task}"`,
+        message: notifMsg,
         category: isUrgent ? 'urgent' : isHigh ? 'warning' : 'announcement',
         created_at: item.created_at || new Date().toISOString()
       }, () => {
@@ -136,14 +191,24 @@ export function useTodos() {
   useEffect(() => {
     fetchTodos();
 
-    // Listen to real-time WebSockets broadcast channel and DB postgres_changes
-    const uniqueChannelName = `todos_realtime_${SESSION_CLIENT_ID}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const channel = (supabase.channel(uniqueChannelName) as any)
-      .on('broadcast', { event: 'new_todo_broadcast' }, (payload: any) => {
+    // 1. Primary Supabase Channel Subscriptions for Todos
+    const channel = (supabase.channel(SHARED_TODOS_CHANNEL, {
+      config: { broadcast: { self: false } }
+    }) as any)
+      .on('broadcast', { event: 'todo_broadcast' }, (payload: any) => {
         const item = payload.payload;
         if (!item) return;
 
         // Trigger popup across all other devices/tabs
+        if (item.sessionId !== SESSION_CLIENT_ID) {
+          triggerTodoPopupAlert(item, false);
+          fetchTodos();
+        }
+      })
+      .on('broadcast', { event: 'new_todo_broadcast' }, (payload: any) => {
+        const item = payload.payload;
+        if (!item) return;
+
         if (item.sessionId !== SESSION_CLIENT_ID) {
           triggerTodoPopupAlert(item, false);
           fetchTodos();
@@ -160,19 +225,29 @@ export function useTodos() {
             is_blinking: parsed.isBlinking,
             status: newRow.status,
             created_at: newRow.created_at || new Date().toISOString(),
-            sender_name: 'Pengguna Public Todo'
+            sender_name: 'Pengguna Public Todo',
+            action: 'created' as const
           };
-
-          // If incoming popup not yet displayed
-          setIncomingNewTodo(prev => {
-            if (prev && prev.id === item.id) return prev;
-            // Only trigger sound/popup if from different action
-            return prev;
-          });
+          triggerTodoPopupAlert(item, false);
         }
         fetchTodos();
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'todos' }, () => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'todos' }, (payload: any) => {
+        const updatedRow = payload.new;
+        if (updatedRow) {
+          const parsed = parseTodoTask(updatedRow.task, updatedRow.priority, updatedRow.is_blinking);
+          const item = {
+            id: updatedRow.id,
+            task: parsed.cleanTask,
+            priority: parsed.priority,
+            is_blinking: parsed.isBlinking,
+            status: updatedRow.status,
+            created_at: updatedRow.created_at || new Date().toISOString(),
+            sender_name: 'Pengguna Public Todo',
+            action: 'status_changed' as const
+          };
+          triggerTodoPopupAlert(item, false);
+        }
         fetchTodos();
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'todos' }, () => {
@@ -180,11 +255,50 @@ export function useTodos() {
       })
       .subscribe();
 
+    // 2. External Supabase Channel Subscription (if configured for cross-app sync)
+    let extChannel: any = null;
+    const extClient = getExternalSupabaseClient();
+    const currentExtConfig = getBroadcastExternalConfig();
+    if (extClient && currentExtConfig.enabled && currentExtConfig.syncTarget !== 'primary') {
+      try {
+        extChannel = (extClient.channel(SHARED_TODOS_CHANNEL, {
+          config: { broadcast: { self: false } }
+        }) as any)
+          .on('broadcast', { event: 'todo_broadcast' }, (payload: any) => {
+            const item = payload.payload;
+            if (!item) return;
+            if (item.sessionId !== SESSION_CLIENT_ID) {
+              triggerTodoPopupAlert(item, false);
+              fetchTodos();
+            }
+          })
+          .subscribe();
+      } catch (e) {
+        console.warn('External todo channel setup note:', e);
+      }
+    }
+
+    // Periodic sync & visibility catch-up
+    const interval = setInterval(fetchTodos, 10000);
+    const handleFocus = () => fetchTodos();
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('visibilitychange', handleFocus);
+
     return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('visibilitychange', handleFocus);
       try {
         supabase.removeChannel(channel);
       } catch (e) {
-        console.warn('Error removing todos channel:', e);
+        console.warn('Error removing primary todos channel:', e);
+      }
+      if (extChannel && extClient) {
+        try {
+          extClient.removeChannel(extChannel);
+        } catch (e) {
+          console.warn('Error removing external todos channel:', e);
+        }
       }
     };
   }, [fetchTodos, triggerTodoPopupAlert]);
@@ -202,23 +316,15 @@ export function useTodos() {
       is_blinking: isBlinking, 
       created_at: createdAt,
       sender_name: senderName || 'Public Todo',
-      sessionId: SESSION_CLIENT_ID
+      sessionId: SESSION_CLIENT_ID,
+      action: 'created' as const
     };
     
     // 1. Optimistic local update
     setTodos(prev => [newTodoPayload, ...prev]);
 
     // 2. Broadcast immediately over WebSockets channel to all connected devices in realtime
-    try {
-      const channel = supabase.channel('todos_realtime_broadcast_room');
-      await channel.send({
-        type: 'broadcast',
-        event: 'new_todo_broadcast',
-        payload: newTodoPayload
-      });
-    } catch (err) {
-      console.warn('Realtime todo broadcast channel note:', err);
-    }
+    await broadcastTodoRealtime(newTodoPayload);
 
     // 3. Save to Supabase DB
     const { error } = await supabase.from('todos').insert([{ task: formattedTask, status: 'no' }]);
@@ -239,6 +345,21 @@ export function useTodos() {
     if (formattedTask) {
       updatePayload.task = formattedTask;
     }
+
+    // Broadcast status change immediately to all users & all devices
+    const updateEventPayload = {
+      id,
+      task: existing ? existing.task : 'Tugas',
+      priority: existing ? existing.priority : 'rendah',
+      is_blinking: existing ? existing.is_blinking : false,
+      status,
+      previousStatus: existing ? existing.status : undefined,
+      created_at: new Date().toISOString(),
+      sender_name: 'Pengguna Public Todo',
+      sessionId: SESSION_CLIENT_ID,
+      action: 'status_changed' as const
+    };
+    await broadcastTodoRealtime(updateEventPayload);
 
     const { error } = await supabase.from('todos').update(updatePayload).eq('id', id);
     if (error) {
@@ -268,6 +389,20 @@ export function useTodos() {
       status: newStatus 
     } : t));
 
+    // Broadcast edit immediately to all users & all devices
+    const editEventPayload = {
+      id,
+      task: newCleanTask,
+      priority: newPriority,
+      is_blinking: newBlinking,
+      status: newStatus,
+      created_at: new Date().toISOString(),
+      sender_name: 'Pengguna Public Todo',
+      sessionId: SESSION_CLIENT_ID,
+      action: (updates.status !== undefined && updates.status !== existing.status) ? ('status_changed' as const) : ('updated' as const)
+    };
+    await broadcastTodoRealtime(editEventPayload);
+
     const { error } = await supabase.from('todos').update({
       task: formattedTask,
       status: newStatus
@@ -282,7 +417,17 @@ export function useTodos() {
   };
 
   const deleteTodo = async (id: string) => {
+    const existing = todos.find(t => t.id === id);
     setTodos(prev => prev.filter(t => t.id !== id));
+
+    // Broadcast deletion
+    await broadcastTodoRealtime({
+      id,
+      task: existing ? existing.task : '',
+      action: 'deleted' as const,
+      sessionId: SESSION_CLIENT_ID
+    });
+
     const { error } = await supabase.from('todos').delete().eq('id', id);
     if (error) {
       alert(`Gagal menghapus tugas. Pesan: ${error.message}.`);

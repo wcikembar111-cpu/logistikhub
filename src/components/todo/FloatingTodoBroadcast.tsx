@@ -9,6 +9,9 @@ export interface IncomingTodoPayload extends Partial<TodoData> {
   is_blinking?: boolean;
   created_at?: string;
   sender_name?: string;
+  action?: 'created' | 'updated' | 'status_changed' | 'deleted';
+  previousStatus?: TodoData['status'];
+  newStatus?: TodoData['status'];
 }
 
 interface FloatingTodoBroadcastProps {
@@ -46,6 +49,7 @@ export function FloatingTodoBroadcast({
 
   if (!incomingTodo) return null;
 
+  const action = incomingTodo.action || 'created';
   const priority = incomingTodo.priority || 'rendah';
   const isBlinking = !!incomingTodo.is_blinking || priority === 'mendesak';
   const isUrgent = priority === 'mendesak' || isBlinking;
@@ -60,6 +64,21 @@ export function FloatingTodoBroadcast({
     const soundCat = isUrgent ? 'urgent' : isHigh ? 'warning' : 'announcement';
     playBroadcastSound(soundCat);
   };
+
+  // Header Title & Action Text based on action
+  const actionTitle = 
+    action === 'status_changed' 
+      ? 'STATUS TUGAS DIPERBARUI' 
+      : action === 'updated' 
+      ? 'TUGAS TELAH DIEDIT' 
+      : 'SIARAN TUGAS BARU';
+
+  const statusLabel = 
+    incomingTodo.status === 'close' 
+      ? 'DONE / SELESAI' 
+      : incomingTodo.status === 'onproses' 
+      ? 'ON PROSES' 
+      : 'TODO';
 
   return (
     <div
@@ -93,6 +112,8 @@ export function FloatingTodoBroadcast({
           >
             {isUrgent ? (
               <Zap size={32} className="text-white fill-white animate-pulse" />
+            ) : action === 'status_changed' ? (
+              <CheckCircle size={32} className="text-white animate-pulse" />
             ) : (
               <ListTodo size={32} className="text-white animate-pulse" />
             )}
@@ -129,7 +150,7 @@ export function FloatingTodoBroadcast({
               </div>
               <div className="min-w-0">
                 <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white m-0 truncate flex items-center gap-1.5">
-                  <span>SIARAN TUGAS BARU</span>
+                  <span>{actionTitle}</span>
                   <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/20 font-bold uppercase">
                     Public Todo
                   </span>
@@ -164,9 +185,9 @@ export function FloatingTodoBroadcast({
 
           {/* Content Body */}
           <div className="p-4 sm:p-6 space-y-3.5 bg-gradient-to-b from-orange-50/30 via-slate-50/20 to-white">
-            {/* Priority Status Pill */}
+            {/* Priority Status Pill & Status Badges */}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tingkat:</span>
                 {isUrgent ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-red-600 text-white border border-red-700 shadow-md animate-badge-blink">
@@ -188,6 +209,19 @@ export function FloatingTodoBroadcast({
                     <span>TUGAS BIASA</span>
                   </span>
                 )}
+
+                {/* Status Badge */}
+                {incomingTodo.status && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    incomingTodo.status === 'close'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : incomingTodo.status === 'onproses'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}>
+                    <span>Status: {statusLabel}</span>
+                  </span>
+                )}
               </div>
 
               {incomingTodo.sender_name && (
@@ -200,7 +234,7 @@ export function FloatingTodoBroadcast({
             {/* Task Content Speech Bubble */}
             <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-orange-200/80 shadow-sm relative">
               <div className="text-[10px] font-black uppercase tracking-wider text-orange-600 mb-1">
-                Rincian Tugas:
+                {action === 'status_changed' ? 'Tugas yang diubah statusnya:' : 'Rincian Tugas:'}
               </div>
               <div className="text-sm sm:text-base font-extrabold text-slate-900 leading-relaxed whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
                 "{incomingTodo.task}"
