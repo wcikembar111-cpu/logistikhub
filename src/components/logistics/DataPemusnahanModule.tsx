@@ -422,8 +422,9 @@ function parseItemFromRow(row: Record<string, any> | any[], idx: number): DataPe
   const qtyAwal = getNum(['Qty Awal', 'qty_awal', 'QtyAwal', 'First Qty', 'Qty Awal (Pcs)'], 6, 0);
   const qtyAkhir = getNum(['Qty Akhir', 'qty_akhir', 'QtyAkhir', 'Last Qty', 'Qty', 'Qty (Pcs)'], 7, 0);
   const uom = getVal(['UOM', 'uom', 'Satuan', 'Unit'], 8, 'PCS');
-  const qtyConvert = getNum(['Qty Convert', 'qty_convert', 'QtyConvert', 'Qty Ctn', 'Carton'], 9, 0);
-  const uomConvert = getVal(['UOM Convert', 'uom_convert', 'UOMConvert', 'Satuan Convert'], 10, '-');
+  const qtyConvert = getNum(['Qty Convert', 'qty_convert', 'QtyConvert', 'Qty Ctn', 'Carton', 'Car'], 9, 0);
+  let rawUomConvert = getVal(['UOM Convert', 'uom_convert', 'UOMConvert', 'Satuan Convert', 'UOM Ctn', 'Satuan Ctn'], 10, 'Car');
+  const uomConvert = (!rawUomConvert || rawUomConvert === '-' || rawUomConvert.toUpperCase() === 'PCS') ? 'Car' : rawUomConvert;
   const lpnSn = getVal(['LPN / SN', 'lpn_sn', 'LPN', 'SN', 'LPN/SN', 'Pallet'], 11, '-');
   const batch = getVal(['Batch', 'batch', 'Kode Batch', 'Lot', 'Batch Number'], 12, '-');
   const vendorBatch = getVal(['Vendor Batch', 'vendor_batch', 'VendorBatch', 'Batch Vendor'], 13, batch);
@@ -501,7 +502,6 @@ export function DataPemusnahanModule() {
   const [showPullGasModal, setShowPullGasModal] = useState(false);
   const [showItemFormModal, setShowItemFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showSqlModal, setShowSqlModal] = useState(false);
 
   // Form states
   const [editingItem, setEditingItem] = useState<DataPemusnahanItem | null>(null);
@@ -584,8 +584,12 @@ export function DataPemusnahanModule() {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          setItems(data as DataPemusnahanItem[]);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          const normalized = (data as DataPemusnahanItem[]).map(item => ({
+            ...item,
+            uom_convert: (!item.uom_convert || item.uom_convert === '-' || item.uom_convert.toUpperCase() === 'PCS') ? 'Car' : item.uom_convert
+          }));
+          setItems(normalized);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
           setLoading(false);
           return;
         }
@@ -597,7 +601,11 @@ export function DataPemusnahanModule() {
         try {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setItems(parsed);
+            const normalized = (parsed as DataPemusnahanItem[]).map(item => ({
+              ...item,
+              uom_convert: (!item.uom_convert || item.uom_convert === '-' || item.uom_convert.toUpperCase() === 'PCS') ? 'Car' : item.uom_convert
+            }));
+            setItems(normalized);
             setLoading(false);
             return;
           }
@@ -656,7 +664,7 @@ export function DataPemusnahanModule() {
         .upsert(items, { onConflict: 'id' });
 
       if (error) {
-        showToast('Info Database', `Tabel belum ada atau akses terbatas: ${error.message}. Klik "SQL Schema" untuk melihat panduan setup.`, 'warning');
+        showToast('Info Database', `Tabel belum ada atau akses terbatas: ${error.message}.`, 'warning');
       } else {
         showToast('Sinkronisasi Sukses', `${items.length} baris data berhasil disinkronkan ke tabel Supabase.`, 'success');
       }
@@ -848,40 +856,42 @@ export function DataPemusnahanModule() {
     }
 
     const exportRows = filteredItems.map((item, idx) => ({
-      'No': idx + 1,
-      'Tujuan / Pengajuan': item.tujuan,
-      'Nama Barang': item.nama_barang,
-      'Qty Akhir': item.qty_akhir,
-      'UOM': item.uom,
-      'Batch': item.batch,
-      'Expired Date': item.expired_date,
-      'LPN / SN': item.lpn_sn,
-      'Status': item.status,
-      'Item Code': item.item_code,
-      'ID Pemusnahan': item.id_pemusnahan,
-      'Kategori': item.kategori,
-      'Lokasi': item.lokasi,
-      'Tipe Lokasi': item.tipe_lokasi,
-      'Qty Awal': item.qty_awal,
-      'Qty Convert': item.qty_convert,
-      'UOM Convert': item.uom_convert,
-      'Vendor Batch': item.vendor_batch,
-      'SLOC': item.sloc,
-      'Kode Tujuan': item.kode_tujuan,
-      'Status QC': item.status_qc,
-      'User Tally': item.user_tally,
-      'Shelf Life': item.shelf_life,
-      'Sumber': item.sumber,
-      'User Input': item.user_input,
-      'Tanggal Update': item.tanggal_update,
-      'Catatan / Note': item.catatan
+      id: item.id || `PMS-${idx + 1}`,
+      id_pemusnahan: item.id_pemusnahan || '-',
+      item_code: item.item_code || '-',
+      nama_barang: item.nama_barang || '-',
+      kategori: item.kategori || '-',
+      lokasi: item.lokasi || '-',
+      tipe_lokasi: item.tipe_lokasi || '-',
+      qty_awal: Number(item.qty_awal) || 0,
+      qty_akhir: Number(item.qty_akhir) || 0,
+      uom: item.uom || 'PCS',
+      qty_convert: Number(item.qty_convert) || 0,
+      uom_convert: (!item.uom_convert || item.uom_convert === '-' || item.uom_convert.toUpperCase() === 'PCS') ? 'Car' : item.uom_convert,
+      lpn_sn: item.lpn_sn || '-',
+      batch: item.batch || '-',
+      vendor_batch: item.vendor_batch || '-',
+      sloc: item.sloc || '8A03',
+      expired_date: item.expired_date || '-',
+      kode_tujuan: item.kode_tujuan || '-',
+      status_qc: item.status_qc || '-',
+      user_tally: item.user_tally || '-',
+      shelf_life: item.shelf_life || '-',
+      sumber: item.sumber || '-',
+      tujuan: item.tujuan || '-',
+      user_input: item.user_input || '-',
+      tanggal_update: item.tanggal_update || '-',
+      status: item.status || '-',
+      catatan: item.catatan || '-',
+      created_at: item.created_at || new Date().toISOString(),
+      updated_at: item.updated_at || new Date().toISOString()
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Data Pemusnahan');
     XLSX.writeFile(wb, `Data_Pemusnahan_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast('Export Berhasil', `File Excel berisi ${filteredItems.length} baris telah diunduh.`, 'success');
+    showToast('Export Berhasil', `File Excel berisi ${filteredItems.length} baris telah diunduh dengan urutan kolom database.`, 'success');
   };
 
   // Open Form for Add / Edit
@@ -936,7 +946,11 @@ export function DataPemusnahanModule() {
 
     if (editingItem) {
       // Update
-      const updatedList = items.map(i => i.id === editingItem.id ? { ...i, ...formData } as DataPemusnahanItem : i);
+      const updatedList = items.map(i => i.id === editingItem.id ? {
+        ...i,
+        ...formData,
+        uom_convert: (!formData.uom_convert || formData.uom_convert === '-' || formData.uom_convert.toUpperCase() === 'PCS') ? 'Car' : formData.uom_convert
+      } as DataPemusnahanItem : i);
       await persistItems(updatedList, true);
       showToast('Tersimpan', 'Data pemusnahan berhasil diperbarui', 'success');
     } else {
@@ -953,7 +967,7 @@ export function DataPemusnahanModule() {
         qty_akhir: Number(formData.qty_akhir) || 0,
         uom: formData.uom || 'PCS',
         qty_convert: Number(formData.qty_convert) || 0,
-        uom_convert: formData.uom_convert || '-',
+        uom_convert: (!formData.uom_convert || formData.uom_convert === '-' || formData.uom_convert.toUpperCase() === 'PCS') ? 'Car' : formData.uom_convert,
         lpn_sn: formData.lpn_sn || '-',
         batch: formData.batch || '-',
         vendor_batch: formData.vendor_batch || formData.batch || '-',
@@ -1101,69 +1115,6 @@ export function DataPemusnahanModule() {
     }
   };
 
-  // SQL Script for Copy
-  const SQL_SCRIPT = `-- =========================================================
--- SKEMA TABEL SUPABASE: public.data_pemusnahan (26 KOLOM)
--- =========================================================
-
-CREATE TABLE IF NOT EXISTS public.data_pemusnahan (
-    id VARCHAR(100) PRIMARY KEY,
-    id_pemusnahan VARCHAR(100) NOT NULL,
-    item_code VARCHAR(100) NOT NULL,
-    nama_barang VARCHAR(255) NOT NULL,
-    kategori VARCHAR(100) DEFAULT '-',
-    lokasi VARCHAR(100) DEFAULT '-',
-    tipe_lokasi VARCHAR(100) DEFAULT '-',
-    qty_awal NUMERIC(15,2) DEFAULT 0,
-    qty_akhir NUMERIC(15,2) DEFAULT 0,
-    uom VARCHAR(50) DEFAULT 'PCS',
-    qty_convert NUMERIC(15,2) DEFAULT 0,
-    uom_convert VARCHAR(50) DEFAULT '-',
-    lpn_sn VARCHAR(100) DEFAULT '-',
-    batch VARCHAR(100) DEFAULT '-',
-    vendor_batch VARCHAR(100) DEFAULT '-',
-    sloc VARCHAR(50) DEFAULT '8A03',
-    expired_date VARCHAR(100) DEFAULT '-',
-    kode_tujuan VARCHAR(100) DEFAULT '-',
-    status_qc VARCHAR(100) DEFAULT '-',
-    user_tally VARCHAR(100) DEFAULT '-',
-    shelf_life VARCHAR(100) DEFAULT '-',
-    sumber VARCHAR(100) DEFAULT '-',
-    tujuan VARCHAR(150) DEFAULT '-',
-    user_input VARCHAR(150) DEFAULT '-',
-    tanggal_update VARCHAR(100) DEFAULT '-',
-    status VARCHAR(100) DEFAULT '-',
-    catatan TEXT DEFAULT '-',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Index performa query & pencarian
-CREATE INDEX IF NOT EXISTS idx_data_pms_id_pms ON public.data_pemusnahan(id_pemusnahan);
-CREATE INDEX IF NOT EXISTS idx_data_pms_item_code ON public.data_pemusnahan(item_code);
-CREATE INDEX IF NOT EXISTS idx_data_pms_batch ON public.data_pemusnahan(batch);
-CREATE INDEX IF NOT EXISTS idx_data_pms_sloc ON public.data_pemusnahan(sloc);
-CREATE INDEX IF NOT EXISTS idx_data_pms_tujuan ON public.data_pemusnahan(tujuan);
-
--- Akses RLS & Izin Anonim
-ALTER TABLE public.data_pemusnahan DISABLE ROW LEVEL SECURITY;
-GRANT ALL ON TABLE public.data_pemusnahan TO anon, authenticated;
-
--- Realtime publication
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables 
-    WHERE pubname = 'supabase_realtime' 
-    AND schemaname = 'public' 
-    AND tablename = 'data_pemusnahan'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.data_pemusnahan;
-  END IF;
-EXCEPTION WHEN OTHERS THEN
-  NULL;
-END $$;`;
-
   const GAS_CODE_SAMPLE = `// GOOGLE APPS SCRIPT (GAS) WEB APP UNTUK SHEET "Pemusnahan"
 function doGet(e) {
   return handleRequest(e);
@@ -1225,26 +1176,26 @@ function handleRequest(e) {
 
   return (
     <div className="space-y-5">
-      {/* 1. TOP HEADER & HERO SECTION */}
-      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white rounded-2xl p-4 sm:p-6 shadow-sm border border-blue-800/80">
+      {/* 1. TOP HEADER & METRICS SECTION (Clean White / No Background Fill) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shrink-0 ring-4 ring-white/10">
-              <Flame size={26} />
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shadow-2xs shrink-0">
+              <Flame size={24} />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-black text-white m-0 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight">
                   Data Pemusnahan
                 </h2>
-                <span className="bg-amber-500/30 text-amber-200 text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider border border-amber-400/40">
+                <span className="bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-0.5 rounded-lg border border-amber-200">
                   26 Kolom Spreadsheet
                 </span>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-400/30 flex items-center gap-1">
-                  <Database size={10} /> GAS Webhook Ready
+                <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
+                  <Database size={11} /> GAS Webhook Ready
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-blue-100/90 m-0 mt-1 font-medium">
+              <p className="text-xs sm:text-sm text-slate-500 m-0 mt-0.5 font-medium">
                 Pusat data detail barang pemusnahan, integrasi Google Sheet (GAS), dan sinkronisasi database cloud
               </p>
             </div>
@@ -1258,80 +1209,70 @@ function handleRequest(e) {
                 setGasActiveTab('api');
                 setShowPullGasModal(true);
               }}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               title="Tarik data otomatis dari Google Apps Script / Spreadsheet"
             >
-              <Download size={15} />
+              <Download size={14} />
               <span>Tarik Data Spreadsheet</span>
             </button>
 
             {/* Tambah Manual Button */}
             <button
               onClick={handleOpenAddModal}
-              className="px-3.5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 border border-white/20"
+              className="px-3.5 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               title="Tambah baris pemusnahan baru"
             >
-              <Plus size={15} />
+              <Plus size={14} />
               <span>Tambah Item</span>
-            </button>
-
-            {/* SQL Script View Button */}
-            <button
-              onClick={() => setShowSqlModal(true)}
-              className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border border-white/15"
-              title="Lihat & Salin Skema Database"
-            >
-              <Code2 size={15} />
-              <span className="hidden sm:inline">Skema Database</span>
             </button>
 
             {/* Cloud Sync Button */}
             <button
               onClick={handleFullSyncToCloud}
               disabled={syncingCloud}
-              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer border border-white/15"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer border border-slate-200"
               title="Sinkronkan seluruh data ke database cloud"
             >
-              <RefreshCw size={15} className={syncingCloud ? 'animate-spin text-amber-300' : ''} />
+              <RefreshCw size={15} className={syncingCloud ? 'animate-spin text-amber-500' : ''} />
             </button>
           </div>
         </div>
 
         {/* 2. KPI METRICS BAR */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-4 border-t border-white/15">
-          <div className="bg-white/10 rounded-xl p-3 backdrop-blur-xs border border-white/10">
-            <div className="text-[11px] text-blue-200 font-semibold flex items-center gap-1">
-              <TableIcon size={12} /> Total Baris Item
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-4 border-t border-slate-100">
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-200/80">
+            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+              <TableIcon size={12} className="text-slate-400" /> Total Baris Item
             </div>
-            <div className="text-xl sm:text-2xl font-black text-white mt-0.5">
+            <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
               {filteredItems.length.toLocaleString('id-ID')}
             </div>
           </div>
 
-          <div className="bg-white/10 rounded-xl p-3 backdrop-blur-xs border border-white/10">
-            <div className="text-[11px] text-blue-200 font-semibold flex items-center gap-1">
-              <Box size={12} /> Total Qty Akhir
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-200/80">
+            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+              <Box size={12} className="text-amber-500" /> Total Qty Akhir
             </div>
-            <div className="text-xl sm:text-2xl font-black text-amber-300 mt-0.5">
-              {totalQtyAkhir.toLocaleString('id-ID')} <span className="text-xs font-bold text-white/80">Pcs</span>
+            <div className="text-xl sm:text-2xl font-bold text-amber-600 mt-0.5">
+              {totalQtyAkhir.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">Pcs</span>
             </div>
           </div>
 
-          <div className="bg-white/10 rounded-xl p-3 backdrop-blur-xs border border-white/10">
-            <div className="text-[11px] text-blue-200 font-semibold flex items-center gap-1">
-              <Layers size={12} /> Batch Unik
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-200/80">
+            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+              <Layers size={12} className="text-blue-900" /> Batch Unik
             </div>
-            <div className="text-xl sm:text-2xl font-black text-white mt-0.5">
+            <div className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
               {totalBatchCount.toLocaleString('id-ID')}
             </div>
           </div>
 
-          <div className="bg-white/10 rounded-xl p-3 backdrop-blur-xs border border-white/10">
-            <div className="text-[11px] text-blue-200 font-semibold flex items-center gap-1">
-              <Calendar size={12} /> Tujuan / Pengajuan
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-200/80">
+            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+              <Calendar size={12} className="text-emerald-600" /> Tujuan / Pengajuan
             </div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-0.5">
-              {uniqueTujuan.length} <span className="text-xs font-bold text-white/80">Batch</span>
+            <div className="text-xl sm:text-2xl font-bold text-emerald-600 mt-0.5">
+              {uniqueTujuan.length} <span className="text-xs font-semibold text-slate-500">Batch</span>
             </div>
           </div>
         </div>
@@ -2259,6 +2200,16 @@ function handleRequest(e) {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Qty Awal:</label>
+                  <input
+                    type="number"
+                    value={formData.qty_awal ?? ''}
+                    onChange={(e) => setFormData({ ...formData, qty_awal: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Qty Akhir:</label>
                   <input
                     type="number"
@@ -2275,6 +2226,27 @@ function handleRequest(e) {
                     value={formData.uom || ''}
                     onChange={(e) => setFormData({ ...formData, uom: e.target.value })}
                     placeholder="TUB, PCS, BT, SCH, etc"
+                    className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Qty Convert (Car):</label>
+                  <input
+                    type="number"
+                    value={formData.qty_convert ?? ''}
+                    onChange={(e) => setFormData({ ...formData, qty_convert: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">UOM Convert:</label>
+                  <input
+                    type="text"
+                    value={formData.uom_convert || 'Car'}
+                    onChange={(e) => setFormData({ ...formData, uom_convert: e.target.value })}
+                    placeholder="Car"
                     className="w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-600 outline-none"
                   />
                 </div>
@@ -2381,73 +2353,6 @@ function handleRequest(e) {
                 className="px-5 py-2 rounded-xl bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Save size={14} /> Simpan Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 8. MODAL SQL SCHEMA & SETUP GUIDE */}
-      {showSqlModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/70 p-4 animate-in fade-in duration-150">
-          <div className="bg-white p-6 sm:p-7 rounded-2xl max-w-2xl w-full shadow-2xl border border-blue-300 relative overflow-hidden text-left max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-900 text-white flex items-center justify-center shadow-md">
-                  <Code2 size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 m-0">
-                    Skrip SQL Supabase untuk Data Pemusnahan
-                  </h3>
-                  <p className="text-xs text-slate-500 m-0">
-                    Jalankan skrip ini di SQL Editor dashboard Supabase Anda
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowSqlModal(false)}
-                className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-all cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto py-3 space-y-3 flex-1">
-              <div className="relative">
-                <pre className="p-3.5 bg-slate-900 text-slate-100 rounded-xl text-[11px] font-mono overflow-x-auto max-h-[380px] leading-relaxed">
-                  {SQL_SCRIPT}
-                </pre>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(SQL_SCRIPT);
-                    showToast('Disalin', 'Skrip SQL Supabase berhasil disalin!', 'success');
-                  }}
-                  className="absolute top-2.5 right-2.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <Copy size={13} /> Salin SQL
-                </button>
-              </div>
-
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                <div className="font-bold flex items-center gap-1">
-                  <CheckCircle2 size={13} className="text-emerald-600" />
-                  Langkah Eksekusi:
-                </div>
-                <ol className="list-decimal list-inside text-[11px] text-emerald-800 space-y-0.5 m-0 pl-1">
-                  <li>Buka Dashboard Supabase Anda &rarr; Pilih Menu <strong>SQL Editor</strong></li>
-                  <li>Klik tombol <strong>Salin SQL</strong> di atas, lalu tempel pada editor</li>
-                  <li>Klik tombol <strong>Run</strong> untuk membuat tabel <code>public.data_pemusnahan</code></li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setShowSqlModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-              >
-                Tutup
               </button>
             </div>
           </div>
