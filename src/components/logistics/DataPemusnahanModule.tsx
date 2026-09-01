@@ -69,9 +69,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0314',
@@ -98,9 +98,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0315',
@@ -127,9 +127,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0316',
@@ -156,9 +156,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0317',
@@ -185,9 +185,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0318',
@@ -214,9 +214,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0319',
@@ -243,9 +243,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0320',
@@ -272,9 +272,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0321',
@@ -301,9 +301,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   },
   {
     id: 'seed-pms-0322',
@@ -330,9 +330,9 @@ const INITIAL_SAMPLE_DATA: DataPemusnahanItem[] = [
     sumber: '-',
     tujuan: 'Pengajuan Sept 26 - W1',
     user_input: 'Dede  Administrator',
-    tanggal_update: '27/08/2026',
     status: '-',
-    catatan: '-'
+    catatan: '-',
+    updated_at: '27/08/2026'
   }
 ];
 
@@ -385,7 +385,7 @@ function parseItemFromRow(row: Record<string, any> | any[], idx: number): DataPe
     return isNaN(num) ? defaultNum : num;
   };
 
-  // The exact 26 columns in spreadsheet:
+  // The columns in spreadsheet & database:
   // 1: ID Pemusnahan (Col 0)
   // 2: Item Code (Col 1)
   // 3: Nama Barang (Col 2)
@@ -409,9 +409,9 @@ function parseItemFromRow(row: Record<string, any> | any[], idx: number): DataPe
   // 21: Sumber (Col 20)
   // 22: Tujuan (Col 21)
   // 23: User Input (Col 22)
-  // 24: Tanggal Update (Col 23)
-  // 25: Status (Col 24)
-  // 26: Catatan / Note (Col 25)
+  // 24: Status (Col 23)
+  // 25: Catatan / Note (Col 24)
+  // Kolom Waktu: updated_at (disatukan agar hemat data)
 
   const idPms = getVal(['ID Pemusnahan', 'id_pemusnahan', 'ID_Pemusnahan', 'ID PMS', 'idPemusnahan', 'ID'], 0, `PMS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(idx + 1).padStart(4, '0')}`);
   const itemCode = getVal(['Item Code', 'item_code', 'ItemCode', 'Material', 'Kode Barang', 'SKU'], 1, '-');
@@ -437,7 +437,7 @@ function parseItemFromRow(row: Record<string, any> | any[], idx: number): DataPe
   const sumber = getVal(['Sumber', 'sumber', 'Source'], 20, '-');
   const tujuan = getVal(['Tujuan', 'tujuan', 'Destination', 'Pengajuan'], 21, '-');
   const userInput = getVal(['User Input', 'user_input', 'UserInput', 'User', 'Admin'], 22, 'Dede Administrator');
-  const tanggalUpdate = getVal(['Tanggal Update', 'tanggal_update', 'TanggalUpdate', 'Date', 'Tanggal'], 23, new Date().toLocaleDateString('id-ID'));
+  const updatedAt = getVal(['updated_at', 'Tanggal Update', 'tanggal_update', 'TanggalUpdate', 'UpdatedAt', 'Date', 'Tanggal'], 23, new Date().toLocaleDateString('id-ID'));
   const status = getVal(['Status', 'status'], 24, '-');
   const catatan = getVal(['Catatan / Note', 'catatan', 'Catatan', 'Note', 'Catatan / Note', 'Keterangan'], 25, '-');
 
@@ -468,9 +468,10 @@ function parseItemFromRow(row: Record<string, any> | any[], idx: number): DataPe
     sumber,
     tujuan,
     user_input: userInput,
-    tanggal_update: tanggalUpdate,
     status,
-    catatan
+    catatan,
+    created_at: rowObj.created_at || new Date().toISOString(),
+    updated_at: rowObj.updated_at || updatedAt
   };
 }
 
@@ -880,7 +881,6 @@ export function DataPemusnahanModule() {
       sumber: item.sumber || '-',
       tujuan: item.tujuan || '-',
       user_input: item.user_input || '-',
-      tanggal_update: item.tanggal_update || '-',
       status: item.status || '-',
       catatan: item.catatan || '-',
       created_at: item.created_at || new Date().toISOString(),
@@ -891,7 +891,7 @@ export function DataPemusnahanModule() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Data Pemusnahan');
     XLSX.writeFile(wb, `Data_Pemusnahan_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast('Export Berhasil', `File Excel berisi ${filteredItems.length} baris telah diunduh dengan urutan kolom database.`, 'success');
+    showToast('Export Berhasil', `File Excel berisi ${filteredItems.length} baris telah diunduh dengan kolom database optimal.`, 'success');
   };
 
   // Open Form for Add / Edit
@@ -925,9 +925,9 @@ export function DataPemusnahanModule() {
       sumber: '-',
       tujuan: 'Pengajuan Sept 26 - W1',
       user_input: 'Dede Administrator',
-      tanggal_update: dateStr,
       status: '-',
-      catatan: '-'
+      catatan: '-',
+      updated_at: dateStr
     });
     setShowItemFormModal(true);
   };
@@ -944,12 +944,15 @@ export function DataPemusnahanModule() {
       return;
     }
 
+    const nowIso = new Date().toISOString();
+
     if (editingItem) {
       // Update
       const updatedList = items.map(i => i.id === editingItem.id ? {
         ...i,
         ...formData,
-        uom_convert: (!formData.uom_convert || formData.uom_convert === '-' || formData.uom_convert.toUpperCase() === 'PCS') ? 'Car' : formData.uom_convert
+        uom_convert: (!formData.uom_convert || formData.uom_convert === '-' || formData.uom_convert.toUpperCase() === 'PCS') ? 'Car' : formData.uom_convert,
+        updated_at: nowIso
       } as DataPemusnahanItem : i);
       await persistItems(updatedList, true);
       showToast('Tersimpan', 'Data pemusnahan berhasil diperbarui', 'success');
@@ -980,9 +983,10 @@ export function DataPemusnahanModule() {
         sumber: formData.sumber || '-',
         tujuan: formData.tujuan || '-',
         user_input: formData.user_input || 'Admin',
-        tanggal_update: formData.tanggal_update || new Date().toLocaleDateString('id-ID'),
         status: formData.status || '-',
-        catatan: formData.catatan || '-'
+        catatan: formData.catatan || '-',
+        created_at: nowIso,
+        updated_at: nowIso
       };
       const updatedList = [newItem, ...items];
       await persistItems(updatedList, true);
@@ -1489,7 +1493,7 @@ function handleRequest(e) {
                     <th className="p-3 whitespace-nowrap">Shelf Life</th>
                     <th className="p-3 whitespace-nowrap">Sumber</th>
                     <th className="p-3 whitespace-nowrap">User Input</th>
-                    <th className="p-3 whitespace-nowrap">Tanggal Update</th>
+                    <th className="p-3 whitespace-nowrap">Updated At</th>
                     <th className="p-3 whitespace-nowrap">Catatan / Note</th>
                   </>
                 )}
@@ -1650,7 +1654,7 @@ function handleRequest(e) {
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.shelf_life}</td>
                           <td className="p-3 whitespace-nowrap text-slate-600">{item.sumber}</td>
                           <td className="p-3 whitespace-nowrap text-slate-700">{item.user_input}</td>
-                          <td className="p-3 whitespace-nowrap font-mono text-slate-600">{item.tanggal_update}</td>
+                          <td className="p-3 whitespace-nowrap font-mono text-slate-600">{item.updated_at || item.created_at || '-'}</td>
                           <td className="p-3 max-w-[150px] truncate text-slate-600" title={item.catatan}>{item.catatan}</td>
                         </>
                       )}
@@ -2091,8 +2095,8 @@ function handleRequest(e) {
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                  <span className="text-[10px] font-bold text-slate-500 block uppercase">24. Tanggal Update</span>
-                  <span className="text-xs font-mono font-semibold text-slate-800">{detailItem.tanggal_update}</span>
+                  <span className="text-[10px] font-bold text-slate-500 block uppercase">24. Updated At</span>
+                  <span className="text-xs font-mono font-semibold text-slate-800">{detailItem.updated_at || detailItem.created_at || '-'}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">

@@ -412,7 +412,7 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- =========================================================
--- TABEL DATA PEMUSNAHAN (26 KOLOM DETAIL BARANG / SPREADSHEET GAS)
+-- TABEL DATA PEMUSNAHAN (DETAIL BARANG / SPREADSHEET GAS)
 -- =========================================================
 CREATE TABLE IF NOT EXISTS public.data_pemusnahan (
     id VARCHAR(100) PRIMARY KEY,
@@ -439,12 +439,21 @@ CREATE TABLE IF NOT EXISTS public.data_pemusnahan (
     sumber VARCHAR(100) DEFAULT '-',
     tujuan VARCHAR(150) DEFAULT '-',
     user_input VARCHAR(150) DEFAULT '-',
-    tanggal_update VARCHAR(100) DEFAULT '-',
     status VARCHAR(100) DEFAULT '-',
     catatan TEXT DEFAULT '-',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Hapus kolom duplikat tanggal_update jika tabel sudah ada sebelumnya (hemat data)
+ALTER TABLE public.data_pemusnahan DROP COLUMN IF EXISTS tanggal_update;
+
+-- Trigger auto-update timestamp updated_at pada data_pemusnahan
+DROP TRIGGER IF EXISTS set_data_pemusnahan_updated_at ON public.data_pemusnahan;
+CREATE TRIGGER set_data_pemusnahan_updated_at
+    BEFORE UPDATE ON public.data_pemusnahan
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
 
 -- Index performa pencarian & filter
 CREATE INDEX IF NOT EXISTS idx_data_pms_id_pms ON public.data_pemusnahan(id_pemusnahan);

@@ -180,7 +180,6 @@ export interface DataPemusnahanItem {
   sumber: string;
   tujuan: string;
   user_input: string;
-  tanggal_update: string;
   status: string;
   catatan: string;
   created_at?: string;
