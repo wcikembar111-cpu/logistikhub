@@ -22,6 +22,8 @@ import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
 import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
 import { PopyMaternityCountdown } from '../countdown/PopyMaternityCountdown';
+import { VoiceWaveVisualizer } from '../common/VoiceWaveVisualizer';
+import { playWelcomeVoice, stopWelcomeVoice, getWelcomeGreetingText } from '../../utils/welcomeVoice';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 
 interface LoginPageProps {
@@ -68,6 +70,37 @@ export function LoginPage({
   // Live real-time clock and date widget
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
+
+  // Voice Greeting & Visual Wave Feedback States
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [greetingText, setGreetingText] = useState(() => getWelcomeGreetingText());
+
+  useEffect(() => {
+    setGreetingText(getWelcomeGreetingText());
+  }, [currentTime]);
+
+  const handlePlayGreetingVoice = () => {
+    const text = getWelcomeGreetingText();
+    setGreetingText(text);
+    playWelcomeVoice({
+      text,
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false)
+    });
+  };
+
+  const handleStopGreetingVoice = () => {
+    stopWelcomeVoice();
+    setIsSpeaking(false);
+  };
+
+  // Cleanup active voice on unmount
+  useEffect(() => {
+    return () => {
+      stopWelcomeVoice();
+    };
+  }, []);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -240,18 +273,39 @@ export function LoginPage({
           </div>
 
           {/* Right Column: Professional Login Form Card with Robot Companion on Top */}
-          <div className="lg:col-span-6 flex flex-col items-center justify-center">
+          <div className="lg:col-span-6 flex flex-col items-center justify-center space-y-3">
             
-            {/* Robot Companion tepat di atas form login */}
-            <div className="flex flex-col items-center mb-3.5 z-20">
+            {/* Robot Companion tepat di atas form login with Audio Wave Animation Rings */}
+            <div className="relative flex flex-col items-center z-20">
+              
+              {/* ACOUSTIC WAVE ANIMATION RINGS (Pulsing Sonar / Radar Wave Rings when Voice is Active) */}
+              {isSpeaking && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+                  {/* Wave Ring 1 */}
+                  <div className="absolute w-24 h-24 rounded-full border-2 border-indigo-400/80 animate-voice-wave-1 shadow-[0_0_20px_rgba(99,102,241,0.6)]" />
+                  {/* Wave Ring 2 */}
+                  <div className="absolute w-24 h-24 rounded-full border-2 border-cyan-400/80 animate-voice-wave-2 shadow-[0_0_25px_rgba(34,211,238,0.5)]" />
+                  {/* Wave Ring 3 */}
+                  <div className="absolute w-24 h-24 rounded-full border-2 border-pink-400/70 animate-voice-wave-3 shadow-[0_0_30px_rgba(244,114,182,0.5)]" />
+                  {/* Ambient Core Glow */}
+                  <div className="absolute w-28 h-28 rounded-full bg-gradient-to-r from-blue-500/30 via-indigo-500/30 to-pink-500/30 blur-xl animate-pulse" />
+                </div>
+              )}
+
               <div className="flex flex-col items-center">
                 {/* Speech Bubble / Badge Sambutan Robot di atas form */}
-                <div className="mb-2 px-3 py-1 bg-white/90 backdrop-blur-xs border border-indigo-200/80 rounded-full shadow-2xs flex items-center gap-2 text-xs text-slate-700 font-medium hover:border-indigo-400 transition-colors">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Robot Komunikator CKB
+                <div className={`mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 ${
+                  isSpeaking 
+                    ? 'bg-indigo-600 text-white border border-indigo-400 shadow-md shadow-indigo-500/30 scale-105' 
+                    : 'bg-white/90 border border-indigo-200/80 text-slate-700 hover:border-indigo-400'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${isSpeaking ? 'bg-amber-300 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
+                  <span className={isSpeaking ? 'font-extrabold text-white' : 'font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent'}>
+                    {isSpeaking ? 'Robot Sedang Berbicara...' : 'Robot Komunikator CKB'}
                   </span>
-                  <span className="text-slate-400 text-[11px]">&bull; Siaran Cepat</span>
+                  <span className={`text-[11px] ${isSpeaking ? 'text-indigo-200 font-bold' : 'text-slate-400'}`}>
+                    &bull; {isSpeaking ? 'Audio Aktif' : 'Siaran Cepat'}
+                  </span>
                 </div>
 
                 {/* Robot Avatar Component */}
@@ -264,6 +318,15 @@ export function LoginPage({
                 />
               </div>
             </div>
+
+            {/* VISUAL FEEDBACK: VOICE WAVE EQUALIZER & CONTROLS */}
+            <VoiceWaveVisualizer 
+              isSpeaking={isSpeaking}
+              onTogglePlay={handlePlayGreetingVoice}
+              onStop={handleStopGreetingVoice}
+              greetingText={greetingText}
+              className="z-10"
+            />
 
             <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden relative transition-all">
               
