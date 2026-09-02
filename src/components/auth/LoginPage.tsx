@@ -21,6 +21,7 @@ import { useAuth } from '../../hooks/useSupabase';
 import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
 import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
+import { PopyMaternityCountdown } from '../countdown/PopyMaternityCountdown';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 
 interface LoginPageProps {
@@ -155,29 +156,34 @@ export function LoginPage({
           </div>
         </div>
 
-        {/* Live Date & Time Indicator on Desktop */}
-        <div className="hidden md:flex items-center gap-4 text-xs font-medium text-slate-700 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <Calendar size={14} className="text-blue-600" />
-            <span>{currentDate}</span>
-          </div>
-          <span className="text-slate-300">|</span>
-          <div className="flex items-center gap-1.5 text-amber-600 font-mono font-bold">
-            <Clock size={14} className="text-amber-500" />
-            <span>{currentTime}</span>
-          </div>
-        </div>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Popy Maternity Countdown (Muncul untuk semua perangkat & user di form login) */}
+          <PopyMaternityCountdown isAdmin={false} />
 
-        {/* Action button if PWA installable */}
-        {canInstall && (
-          <button
-            onClick={promptInstall}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl transition-all cursor-pointer shadow-2xs"
-          >
-            <Smartphone size={14} />
-            <span className="hidden sm:inline">Install Aplikasi PWA</span>
-          </button>
-        )}
+          {/* Live Date & Time Indicator on Desktop */}
+          <div className="hidden md:flex items-center gap-4 text-xs font-medium text-slate-700 bg-white border border-slate-200 px-3.5 py-1.5 rounded-xl shadow-xs">
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Calendar size={14} className="text-blue-600" />
+              <span>{currentDate}</span>
+            </div>
+            <span className="text-slate-300">|</span>
+            <div className="flex items-center gap-1.5 text-amber-600 font-mono font-bold">
+              <Clock size={14} className="text-amber-500" />
+              <span>{currentTime}</span>
+            </div>
+          </div>
+
+          {/* Action button if PWA installable */}
+          {canInstall && (
+            <button
+              onClick={promptInstall}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl transition-all cursor-pointer shadow-2xs"
+            >
+              <Smartphone size={14} />
+              <span className="hidden sm:inline">Install Aplikasi PWA</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Main Authentication Container */}
