@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Heart, Sparkles, X, Copy, Check, Baby, Gift, Send, Calendar, Clock, Smile, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Heart, Sparkles, X, Copy, Check, Baby, Gift, Smile, ShieldAlert, Volume2, VolumeX, Play, Square } from 'lucide-react';
+import { playWelcomeVoice, stopWelcomeVoice } from '../../utils/welcomeVoice';
 
 interface PopyMaternityModalProps {
   isOpen: boolean;
@@ -14,6 +15,58 @@ export function PopyMaternityModal({
   isTestPreview = false,
 }: PopyMaternityModalProps) {
   const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const spokenVoiceText = 
+    "Selamat menjelang cuti melahirkan untuk Rekan Popy. " +
+    "Masa cuti resmi dimulai per tanggal tiga September dua ribu dua puluh enam. " +
+    "Segenap Keluarga Besar dan Tim Retur Logistik mengucapkan selamat menjalankan masa cuti melahirkan untuk Kak Popy. " +
+    "Terima kasih yang sebesar-besarnya atas segala dedikasi, kerja keras, dan support luar biasa untuk Tim Retur. " +
+    "Semoga proses persalinannya dilancarkan, ibu dan buah hati diberikan keselamatan serta kesehatan. Aamiin yaa Rabbal alamin.";
+
+  // Auto-play voice when modal opens, and auto-stop on close
+  useEffect(() => {
+    if (isOpen) {
+      // Short delay so chime sound finishes and dialog transitions smoothly
+      audioTimerRef.current = setTimeout(() => {
+        playWelcomeVoice({
+          text: spokenVoiceText,
+          onStart: () => setIsSpeaking(true),
+          onEnd: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+        });
+      }, 400);
+    } else {
+      stopWelcomeVoice();
+      setIsSpeaking(false);
+      if (audioTimerRef.current) {
+        clearTimeout(audioTimerRef.current);
+      }
+    }
+
+    return () => {
+      stopWelcomeVoice();
+      setIsSpeaking(false);
+      if (audioTimerRef.current) {
+        clearTimeout(audioTimerRef.current);
+      }
+    };
+  }, [isOpen]);
+
+  const handleToggleVoice = () => {
+    if (isSpeaking) {
+      stopWelcomeVoice();
+      setIsSpeaking(false);
+    } else {
+      playWelcomeVoice({
+        text: spokenVoiceText,
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -35,10 +88,16 @@ export function PopyMaternityModal({
     }
   };
 
+  const handleModalClose = () => {
+    stopWelcomeVoice();
+    setIsSpeaking(false);
+    onClose();
+  };
+
   return (
     <div 
       className="fixed inset-0 z-[10005] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 animate-fade-in"
-      onClick={onClose}
+      onClick={handleModalClose}
     >
       <div 
         className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border-2 border-rose-300 relative overflow-hidden text-slate-800 animate-scale-up"
@@ -51,7 +110,7 @@ export function PopyMaternityModal({
           <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-yellow-300/30 rounded-full blur-lg pointer-events-none" />
           
           <button 
-            onClick={onClose}
+            onClick={handleModalClose}
             className="absolute top-3.5 right-3.5 text-white/80 hover:text-white bg-black/15 hover:bg-black/30 p-1.5 rounded-full transition-all cursor-pointer"
             title="Tutup Popup"
           >
@@ -65,8 +124,17 @@ export function PopyMaternityModal({
             </div>
           )}
 
-          <div className="w-16 h-16 bg-white text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-lg border-2 border-rose-200">
-            <Baby size={34} className="animate-bounce" />
+          {/* Baby Icon & Pulsing Acoustic Rings when Speaking */}
+          <div className="relative w-16 h-16 mx-auto mb-2.5">
+            {isSpeaking && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute w-20 h-20 rounded-full border-2 border-yellow-200 animate-voice-wave-1 shadow-[0_0_15px_rgba(254,240,138,0.8)]" />
+                <div className="absolute w-20 h-20 rounded-full border-2 border-pink-200 animate-voice-wave-2 shadow-[0_0_20px_rgba(251,207,232,0.8)]" />
+              </div>
+            )}
+            <div className="w-16 h-16 bg-white text-rose-500 rounded-2xl flex items-center justify-center shadow-lg border-2 border-rose-200 relative z-10">
+              <Baby size={34} className={isSpeaking ? 'animate-bounce text-rose-600' : 'animate-pulse'} />
+            </div>
           </div>
 
           <span className="text-[11px] font-black tracking-widest uppercase bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-rose-100 border border-white/30 inline-block mb-1">
@@ -79,13 +147,47 @@ export function PopyMaternityModal({
           <p className="text-rose-100 font-extrabold text-sm sm:text-base mt-0.5 m-0">
             Atas Nama: <span className="text-yellow-200 underline decoration-yellow-300 underline-offset-2">POPY</span>
           </p>
+
+          {/* Voice Wave Status Indicator Pill inside Header */}
+          <div className="mt-3 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={handleToggleVoice}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
+                isSpeaking
+                  ? 'bg-yellow-300 text-rose-900 border-yellow-400 animate-pulse'
+                  : 'bg-white/25 hover:bg-white/35 text-white border-white/40'
+              }`}
+            >
+              {isSpeaking ? (
+                <>
+                  <Volume2 size={14} className="animate-bounce text-rose-700" />
+                  <span>Suara Sedang Membacakan Doa...</span>
+                  {/* Mini Audio Equalizer Bar */}
+                  <span className="flex items-center gap-0.5 ml-1">
+                    <span className="w-1 h-3 bg-rose-700 rounded-full animate-pulse" />
+                    <span className="w-1 h-4 bg-rose-700 rounded-full animate-pulse delay-75" />
+                    <span className="w-1 h-2.5 bg-rose-700 rounded-full animate-pulse delay-150" />
+                  </span>
+                  <Square size={11} className="fill-rose-700 ml-1" />
+                </>
+              ) : (
+                <>
+                  <Play size={13} className="fill-white" />
+                  <span>Dengarkan Pembacaan Suara</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Modal Content Body */}
         <div className="p-5 sm:p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
           
           {/* Card 1: Ucapan Terima Kasih Support Tim Retur */}
-          <div className="bg-rose-50/80 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
+          <div className={`border rounded-2xl p-4 flex items-start gap-3 transition-colors ${
+            isSpeaking ? 'bg-rose-50 border-rose-300 shadow-sm ring-2 ring-rose-300/40' : 'bg-rose-50/80 border-rose-200'
+          }`}>
             <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs">
               <Gift size={20} />
             </div>
@@ -101,7 +203,9 @@ export function PopyMaternityModal({
           </div>
 
           {/* Card 2: Doa & Harapan Persalinan */}
-          <div className="bg-gradient-to-br from-amber-50 to-orange-50/70 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <div className={`border rounded-2xl p-4 flex items-start gap-3 transition-colors ${
+            isSpeaking ? 'bg-amber-50/90 border-amber-300 shadow-sm ring-2 ring-amber-300/40' : 'bg-gradient-to-br from-amber-50 to-orange-50/70 border-amber-200'
+          }`}>
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
               <Sparkles size={20} />
             </div>
@@ -123,29 +227,6 @@ export function PopyMaternityModal({
             </div>
           </div>
 
-          {/* Time Reference Badge */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2 text-[11px] text-slate-700">
-            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/80">
-              <div className="flex items-center gap-1.5 font-semibold text-rose-700">
-                <Clock size={14} className="text-rose-500 shrink-0" />
-                <span>Momen Pelepasan Tim: <strong>02 September 2026 (11:00 WIB)</strong></span>
-              </div>
-              <span className="text-[10px] bg-rose-100/80 text-rose-700 font-bold px-2 py-0.5 rounded-full">
-                Hari Terakhir Kerja
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-700">
-                <Calendar size={14} className="text-amber-500 shrink-0" />
-                <span>Mulai Efektif Cuti Melahirkan: <strong>03 September 2026</strong></span>
-              </div>
-              <div className="font-extrabold text-slate-700 bg-amber-100/70 px-2 py-0.5 rounded-md text-[10px]">
-                Tim Retur Logistik Kino
-              </div>
-            </div>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex items-center justify-between gap-2.5 pt-2 border-t border-slate-100 flex-wrap">
             <button
@@ -162,7 +243,7 @@ export function PopyMaternityModal({
             </button>
 
             <button
-              onClick={onClose}
+              onClick={handleModalClose}
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
             >
               <Smile size={15} />
@@ -175,3 +256,4 @@ export function PopyMaternityModal({
     </div>
   );
 }
+
