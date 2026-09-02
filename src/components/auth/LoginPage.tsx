@@ -21,7 +21,6 @@ import { useAuth } from '../../hooks/useSupabase';
 import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
 import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
-import { PopyMaternityCountdown } from '../countdown/PopyMaternityCountdown';
 import { VoiceWaveVisualizer } from '../common/VoiceWaveVisualizer';
 import { playWelcomeVoice, stopWelcomeVoice, getWelcomeGreetingText } from '../../utils/welcomeVoice';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
@@ -190,9 +189,6 @@ export function LoginPage({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Popy Maternity Countdown (Muncul untuk semua perangkat & user di form login) */}
-          <PopyMaternityCountdown isAdmin={false} />
-
           {/* Live Date & Time Indicator on Desktop */}
           <div className="hidden md:flex items-center gap-4 text-xs font-medium text-slate-700 bg-white border border-slate-200 px-3.5 py-1.5 rounded-xl shadow-xs">
             <div className="flex items-center gap-1.5 text-slate-500">

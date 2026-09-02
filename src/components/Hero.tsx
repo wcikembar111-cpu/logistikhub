@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
-import { PopyMaternityCountdown } from './countdown/PopyMaternityCountdown';
 
 interface HeroProps {
   user?: {
@@ -1004,7 +1003,7 @@ export function Hero({
             </div>
           </div>
 
-          {/* Right: Action Buttons Group (Date Badge, Login/User Controls, Install App, Popy Countdown) */}
+          {/* Right: Action Buttons Group (Date Badge, Login/User Controls, Install App) */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap self-start md:self-center">
             
             {/* Sidebar Tools Kiri Toggle Button */}
@@ -1083,9 +1082,6 @@ export function Hero({
 
             {/* Tombol Install PWA jika belum terinstall */}
             <InstallPwaButton variant="header" />
-
-            {/* Countdown Cuti Melahirkan Popy */}
-            <PopyMaternityCountdown isAdmin={isAdmin} />
           </div>
         </div>
         
