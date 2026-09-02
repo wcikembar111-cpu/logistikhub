@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Sparkles, X, Copy, Check, Baby, Gift, Smile, ShieldAlert, Volume2, VolumeX, Play, Square } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Heart, Sparkles, X, Copy, Check, Baby, Gift, Smile, ShieldAlert, Volume2, Play, Square } from 'lucide-react';
 import { playWelcomeVoice, stopWelcomeVoice } from '../../utils/welcomeVoice';
 
 interface PopyMaternityModalProps {
@@ -16,19 +17,29 @@ export function PopyMaternityModal({
 }: PopyMaternityModalProps) {
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const spokenVoiceText = 
     "Selamat menjelang cuti melahirkan untuk Rekan Popy. " +
     "Masa cuti resmi dimulai per tanggal tiga September dua ribu dua puluh enam. " +
     "Segenap Keluarga Besar dan Tim Retur Logistik mengucapkan selamat menjalankan masa cuti melahirkan untuk Kak Popy. " +
     "Terima kasih yang sebesar-besarnya atas segala dedikasi, kerja keras, dan support luar biasa untuk Tim Retur. " +
-    "Semoga proses persalinannya dilancarkan, ibu dan buah hati diberikan keselamatan serta kesehatan. Aamiin yaa Rabbal alamin.";
+    "Semoga proses persalinannya dilancarkan, ibu dan buah hati senantiasa diberikan keselamatan, kesehatan, dan keberkahan. Aamiin yaa Rabbal alamin.";
 
   // Auto-play voice when modal opens, and auto-stop on close
   useEffect(() => {
     if (isOpen) {
-      // Short delay so chime sound finishes and dialog transitions smoothly
+      // Start visual indicator immediately
+      setIsSpeaking(true);
+
+      // Trigger voice greeting with smooth delay after modal animation
+      if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
       audioTimerRef.current = setTimeout(() => {
         playWelcomeVoice({
           text: spokenVoiceText,
@@ -36,7 +47,7 @@ export function PopyMaternityModal({
           onEnd: () => setIsSpeaking(false),
           onError: () => setIsSpeaking(false),
         });
-      }, 400);
+      }, 300);
     } else {
       stopWelcomeVoice();
       setIsSpeaking(false);
@@ -54,11 +65,23 @@ export function PopyMaternityModal({
     };
   }, [isOpen]);
 
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleModalClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   const handleToggleVoice = () => {
     if (isSpeaking) {
       stopWelcomeVoice();
       setIsSpeaking(false);
     } else {
+      setIsSpeaking(true);
       playWelcomeVoice({
         text: spokenVoiceText,
         onStart: () => setIsSpeaking(true),
@@ -67,8 +90,6 @@ export function PopyMaternityModal({
       });
     }
   };
-
-  if (!isOpen) return null;
 
   const messageText = `🎉 *Selamat Menjelang Cuti Melahirkan untuk Rekan Popy!* 👶🌸\n\n` +
     `Masa cuti resmi dimulai per tanggal *03 September 2026*.\n` +
@@ -94,13 +115,16 @@ export function PopyMaternityModal({
     onClose();
   };
 
-  return (
+  if (!isOpen || !mounted) return null;
+
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-[10005] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 animate-fade-in"
       onClick={handleModalClose}
+      style={{ isolation: 'isolate' }}
     >
       <div 
-        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border-2 border-rose-300 relative overflow-hidden text-slate-800 animate-scale-up"
+        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border-2 border-rose-300 relative overflow-hidden text-slate-800 animate-scale-up z-10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Decorative Banner */}
@@ -112,7 +136,7 @@ export function PopyMaternityModal({
           <button 
             onClick={handleModalClose}
             className="absolute top-3.5 right-3.5 text-white/80 hover:text-white bg-black/15 hover:bg-black/30 p-1.5 rounded-full transition-all cursor-pointer"
-            title="Tutup Popup"
+            title="Tutup Popup (Esc)"
           >
             <X size={18} />
           </button>
@@ -255,5 +279,8 @@ export function PopyMaternityModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }
+
 

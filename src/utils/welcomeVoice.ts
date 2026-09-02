@@ -2,6 +2,7 @@
 
 let activeUtterance: SpeechSynthesisUtterance | null = null;
 let activeAudioCtx: AudioContext | null = null;
+let keepAliveInterval: NodeJS.Timeout | null = null;
 
 export function isSpeechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -50,8 +51,24 @@ export function playWelcomeChime() {
   }
 }
 
+function selectIndonesianVoice(): SpeechSynthesisVoice | null {
+  if (!isSpeechSupported()) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  // Prioritize Indonesian voices (Google Bahasa Indonesia, Damayanti, Microsoft etc.)
+  const idVoice = voices.find(v => 
+    v.lang.toLowerCase().startsWith('id') || 
+    v.lang.toLowerCase().includes('indonesia') || 
+    v.name.toLowerCase().includes('indonesia') ||
+    v.name.toLowerCase().includes('damayanti') ||
+    v.name.toLowerCase().includes('gadis')
+  );
+  return idVoice || null;
+}
+
 /**
- * Speaks welcome greeting using browser SpeechSynthesis with Indonesian voice if available
+ * Speaks greeting/announcement using browser SpeechSynthesis with reliable keepalive
  */
 export function playWelcomeVoice({
   onStart,
@@ -74,54 +91,80 @@ export function playWelcomeVoice({
   }
 
   try {
-    window.speechSynthesis.cancel();
+    // Clear any previous speech or keepalive
+    stopWelcomeVoice();
 
     // Play subtle crystal chime first
     playWelcomeChime();
 
+    // Ensure synth is unpaused
+    window.speechSynthesis.resume();
+
     const speechText = text || getWelcomeGreetingText();
     const utterance = new SpeechSynthesisUtterance(speechText);
     utterance.lang = 'id-ID';
-    utterance.rate = 1.0; // natural rate
-    utterance.pitch = 1.05; // slightly friendly bright pitch
+    utterance.rate = 0.98; // slightly more paced for clarity
+    utterance.pitch = 1.05; // clear, friendly warm pitch
 
-    // Try to find best Indonesian voice
-    const voices = window.speechSynthesis.getVoices();
-    const idVoice = voices.find(v => v.lang.startsWith('id') || v.lang.includes('ID') || v.name.toLowerCase().includes('indonesia'));
+    const idVoice = selectIndonesianVoice();
     if (idVoice) {
       utterance.voice = idVoice;
     }
 
+    const cleanup = () => {
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+      }
+      activeUtterance = null;
+    };
+
     utterance.onstart = () => {
       activeUtterance = utterance;
       if (onStart) onStart();
+
+      // Chrome speech synthesis workaround for long utterances: ping resume every 5s
+      if (keepAliveInterval) clearInterval(keepAliveInterval);
+      keepAliveInterval = setInterval(() => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } else {
+          cleanup();
+        }
+      }, 5000);
     };
 
     utterance.onend = () => {
-      activeUtterance = null;
+      cleanup();
       if (onEnd) onEnd();
     };
 
-    utterance.onerror = () => {
-      activeUtterance = null;
+    utterance.onerror = (e) => {
+      // Ignore 'interrupted' or 'canceled' errors caused by user stopping
+      console.warn('SpeechSynthesis event error:', e);
+      cleanup();
       if (onError) onError();
       if (onEnd) onEnd();
     };
 
-    // Timeout safety fallback if speech synthesis stalls on some mobile browsers
-    const estimatedDurationMs = Math.max(2500, speechText.length * 75);
+    // Safety timeout in case browser never fires onend
+    const estimatedDurationMs = Math.max(3000, speechText.length * 90);
     const safetyTimer = setTimeout(() => {
       if (activeUtterance === utterance) {
-        activeUtterance = null;
+        cleanup();
         if (onEnd) onEnd();
       }
-    }, estimatedDurationMs + 1000);
+    }, estimatedDurationMs + 2000);
 
     const originalOnEnd = utterance.onend;
     utterance.onend = (e) => {
       clearTimeout(safetyTimer);
       if (originalOnEnd) originalOnEnd.call(utterance, e);
     };
+
+    // Store globally to prevent Garbage Collection during speech
+    (window as unknown as { __currentSpeechUtterance: SpeechSynthesisUtterance }).__currentSpeechUtterance = utterance;
 
     window.speechSynthesis.speak(utterance);
     return true;
@@ -138,6 +181,10 @@ export function playWelcomeVoice({
  */
 export function stopWelcomeVoice() {
   try {
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+      keepAliveInterval = null;
+    }
     if (isSpeechSupported()) {
       window.speechSynthesis.cancel();
     }
@@ -150,3 +197,4 @@ export function stopWelcomeVoice() {
   }
   activeUtterance = null;
 }
+
