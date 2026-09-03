@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Lock, 
   User, 
@@ -15,7 +15,9 @@ import {
   Shield, 
   Smartphone, 
   Building2, 
-  Calendar 
+  Calendar,
+  RotateCcw,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
 import { usePwa } from '../../context/PwaContext';
@@ -65,9 +67,61 @@ export function LoginPage({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Dynamic session token to prevent browsers from autofilling previously saved credentials
+  const [formFieldKey, setFormFieldKey] = useState(() => Math.random().toString(36).substring(2, 8));
+  // Autofill blocking gate: fields are readOnly for initial 120ms so browser auto-complete skips them on load
+  const [isEditable, setIsEditable] = useState(false);
+
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const usernameRef = useRef<HTMLInputElement | null>(null);
+  const pinRef = useRef<HTMLInputElement | null>(null);
+
   // Live real-time clock and date widget
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
+
+  // Complete cleanup function that resets state, DOM values, and field keys
+  const clearForm = useCallback(() => {
+    setUsername('');
+    setPin('');
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    if (usernameRef.current) usernameRef.current.value = '';
+    if (pinRef.current) pinRef.current.value = '';
+    if (formRef.current) formRef.current.reset();
+    setFormFieldKey(Math.random().toString(36).substring(2, 8));
+    setIsEditable(false);
+    setTimeout(() => setIsEditable(true), 120);
+  }, []);
+
+  // Guarantee clean fields on mount and listen to logout events
+  useEffect(() => {
+    clearForm();
+
+    const checkAutofillTimer = setTimeout(() => {
+      // If browser autofill aggressively injected anything before interaction, wipe it clean
+      if (usernameRef.current && usernameRef.current.value && !username) {
+        usernameRef.current.value = '';
+      }
+      if (pinRef.current && pinRef.current.value && !pin) {
+        pinRef.current.value = '';
+      }
+      setIsEditable(true);
+    }, 120);
+
+    const handleLogoutEvent = () => {
+      clearForm();
+    };
+
+    window.addEventListener('ckb-auth-logout', handleLogoutEvent);
+    window.addEventListener('ckb-auth-inactivity-logout', handleLogoutEvent);
+
+    return () => {
+      clearTimeout(checkAutofillTimer);
+      window.removeEventListener('ckb-auth-logout', handleLogoutEvent);
+      window.removeEventListener('ckb-auth-inactivity-logout', handleLogoutEvent);
+    };
+  }, [clearForm]);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -124,6 +178,13 @@ export function LoginPage({
           }
         } catch {}
         setSuccessMessage(result.message || 'Login berhasil! Membuka halaman utama...');
+        
+        // Bersihkan state dan DOM input segera agar tidak tersisa di memori
+        setUsername('');
+        setPin('');
+        if (usernameRef.current) usernameRef.current.value = '';
+        if (pinRef.current) pinRef.current.value = '';
+        if (formRef.current) formRef.current.reset();
       } else {
         setErrorMessage(result.message || 'Username atau PIN tidak sesuai.');
       }
@@ -304,7 +365,24 @@ export function LoginPage({
               </div>
 
               {/* Card Form Body */}
-              <form onSubmit={handleSubmit} autoComplete="off" data-lpignore="true" data-form-type="other" className="p-6 sm:p-7 space-y-4">
+              <form 
+                ref={formRef}
+                onSubmit={handleSubmit} 
+                autoComplete="off" 
+                data-lpignore="true" 
+                data-bwignore="true"
+                data-1p-ignore="true"
+                data-form-type="other" 
+                className="p-6 sm:p-7 space-y-4"
+              >
+                {/* Decoy hidden inputs to divert browser autofill engines away from actual fields */}
+                <div 
+                  style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', overflow: 'hidden' }} 
+                  aria-hidden="true"
+                >
+                  <input type="text" name="decoy_user_filler" tabIndex={-1} autoComplete="off" />
+                  <input type="password" name="decoy_pass_filler" tabIndex={-1} autoComplete="off" />
+                </div>
                 
                 {/* Error Banner */}
                 {errorMessage && (
@@ -324,30 +402,67 @@ export function LoginPage({
 
                 {/* Username Input */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Username Akun
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Username Akun
+                    </label>
+                    {username.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUsername('');
+                          if (usernameRef.current) usernameRef.current.value = '';
+                        }}
+                        className="text-[11px] font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Bersihkan username"
+                      >
+                        <XCircle size={12} />
+                        <span>Bersihkan</span>
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <User size={16} />
                     </div>
                     <input 
+                      ref={usernameRef}
+                      key={`usr_${formFieldKey}`}
                       type="text"
-                      name="kino_user_id"
+                      name={`kino_auth_usr_${formFieldKey}`}
                       value={username}
                       onChange={e => {
                         setUsername(e.target.value);
                         if (errorMessage) setErrorMessage(null);
                       }}
+                      onFocus={() => setIsEditable(true)}
+                      readOnly={!isEditable}
                       placeholder="misal: admin, dede, pelaksana"
                       autoCapitalize="none"
                       autoCorrect="off"
-                      autoComplete="off"
+                      autoComplete="new-password"
+                      spellCheck={false}
                       data-lpignore="true"
+                      data-bwignore="true"
+                      data-1p-ignore="true"
+                      data-form-type="other"
                       disabled={loading}
                       required
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
                     />
+                    {username.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUsername('');
+                          if (usernameRef.current) usernameRef.current.value = '';
+                        }}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        title="Hapus teks username"
+                      >
+                        <XCircle size={15} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -357,31 +472,53 @@ export function LoginPage({
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                       PIN Keamanan (4-6 Digit)
                     </label>
-                    <button 
-                      type="button" 
-                      onClick={() => setShowPin(!showPin)}
-                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
-                    >
-                      {showPin ? <EyeOff size={13} /> : <Eye size={13} />}
-                      <span>{showPin ? 'Sembunyikan' : 'Tampilkan'}</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {pin.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPin('');
+                            if (pinRef.current) pinRef.current.value = '';
+                          }}
+                          className="text-[11px] font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Bersihkan PIN"
+                        >
+                          <XCircle size={12} />
+                          <span>Bersihkan</span>
+                        </button>
+                      )}
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPin(!showPin)}
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        {showPin ? <EyeOff size={13} /> : <Eye size={13} />}
+                        <span>{showPin ? 'Sembunyikan' : 'Tampilkan'}</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <KeyRound size={16} />
                     </div>
                     <input 
+                      ref={pinRef}
+                      key={`pin_${formFieldKey}`}
                       type="text"
                       inputMode="numeric"
-                      name="kino_pin_code"
+                      name={`kino_auth_pin_${formFieldKey}`}
                       value={pin}
                       onChange={e => {
                         setPin(e.target.value);
                         if (errorMessage) setErrorMessage(null);
                       }}
+                      onFocus={() => setIsEditable(true)}
+                      readOnly={!isEditable}
                       placeholder="Masukkan PIN 4-6 digit"
-                      autoComplete="one-time-code"
+                      autoComplete="new-password"
                       data-lpignore="true"
+                      data-bwignore="true"
+                      data-1p-ignore="true"
                       data-form-type="other"
                       disabled={loading}
                       required
@@ -389,8 +526,36 @@ export function LoginPage({
                         !showPin ? 'pin-mask-disc' : ''
                       }`}
                     />
+                    {pin.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPin('');
+                          if (pinRef.current) pinRef.current.value = '';
+                        }}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        title="Hapus input PIN"
+                      >
+                        <XCircle size={15} />
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Reset All Fields Action if Any Input is Entered */}
+                {(username.length > 0 || pin.length > 0) && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={clearForm}
+                      className="text-xs text-slate-500 hover:text-rose-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Kosongkan seluruh kolom input"
+                    >
+                      <RotateCcw size={12} />
+                      <span>Reset / Kosongkan Formulir</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Submit Action Button */}
                 <button 
@@ -410,6 +575,12 @@ export function LoginPage({
                     </>
                   )}
                 </button>
+
+                {/* Privacy and Security Indicator */}
+                <div className="pt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 text-center font-medium">
+                  <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+                  <span>Kerahasiaan Aman: Kredensial & PIN otomatis dihapus saat logout</span>
+                </div>
               </form>
             </div>
           </div>

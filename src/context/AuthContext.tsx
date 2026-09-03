@@ -140,9 +140,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('pending_welcome_user');
       localStorage.removeItem(LEGACY_STORAGE_KEY);
       localStorage.removeItem('ckb_logistic_last_active_time');
+      sessionStorage.setItem('ckb_auth_just_logged_out', Date.now().toString());
     } catch {}
     setUser(null);
     setInactivityWarning({ show: false, remainingSeconds: 120 });
+
+    // Broadcast logout event to immediately clean up and clear any login form inputs in the DOM
+    window.dispatchEvent(new CustomEvent('ckb-auth-logout'));
 
     if (reason === 'inactivity' || reason === 'Inactivity') {
       window.dispatchEvent(new CustomEvent('ckb-auth-inactivity-logout'));

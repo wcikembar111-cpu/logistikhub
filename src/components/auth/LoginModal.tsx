@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Lock, 
   User, 
@@ -9,7 +9,9 @@ import {
   AlertTriangle, 
   ShieldCheck, 
   X, 
-  ArrowRight
+  ArrowRight,
+  RotateCcw,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
 import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
@@ -29,6 +31,52 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Dynamic session token per modal session
+  const [modalKey, setModalKey] = useState(() => Math.random().toString(36).substring(2, 8));
+  const [isEditable, setIsEditable] = useState(false);
+
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const usernameRef = useRef<HTMLInputElement | null>(null);
+  const pinRef = useRef<HTMLInputElement | null>(null);
+
+  const clearForm = useCallback(() => {
+    setUsername('');
+    setPin('');
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    if (usernameRef.current) usernameRef.current.value = '';
+    if (pinRef.current) pinRef.current.value = '';
+    if (formRef.current) formRef.current.reset();
+    setModalKey(Math.random().toString(36).substring(2, 8));
+    setIsEditable(false);
+    setTimeout(() => setIsEditable(true), 120);
+  }, []);
+
+  // When modal opens or logout event is received, clear all inputs cleanly
+  useEffect(() => {
+    if (isOpen) {
+      clearForm();
+      const timer = setTimeout(() => {
+        if (usernameRef.current && usernameRef.current.value && !username) {
+          usernameRef.current.value = '';
+        }
+        if (pinRef.current && pinRef.current.value && !pin) {
+          pinRef.current.value = '';
+        }
+        setIsEditable(true);
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, clearForm]);
+
+  useEffect(() => {
+    const handleLogoutEvent = () => {
+      clearForm();
+    };
+    window.addEventListener('ckb-auth-logout', handleLogoutEvent);
+    return () => window.removeEventListener('ckb-auth-logout', handleLogoutEvent);
+  }, [clearForm]);
 
   if (!isOpen) return null;
 
@@ -59,12 +107,17 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
           }
         } catch {}
         setSuccessMessage(result.message);
+        // Wipe inputs immediately
+        setUsername('');
+        setPin('');
+        if (usernameRef.current) usernameRef.current.value = '';
+        if (pinRef.current) pinRef.current.value = '';
+        if (formRef.current) formRef.current.reset();
+
         setTimeout(() => {
           onClose();
-          setUsername('');
-          setPin('');
           setSuccessMessage(null);
-        }, 700);
+        }, 600);
       } else {
         setErrorMessage(result.message);
       }
@@ -122,7 +175,24 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} autoComplete="off" data-lpignore="true" data-form-type="other" className="p-6 sm:p-7 space-y-4">
+        <form 
+          ref={formRef}
+          onSubmit={handleSubmit} 
+          autoComplete="off" 
+          data-lpignore="true" 
+          data-bwignore="true"
+          data-1p-ignore="true"
+          data-form-type="other" 
+          className="p-6 sm:p-7 space-y-4"
+        >
+          {/* Decoy hidden inputs to divert browser autofill */}
+          <div 
+            style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', overflow: 'hidden' }} 
+            aria-hidden="true"
+          >
+            <input type="text" name="decoy_modal_usr" tabIndex={-1} autoComplete="off" />
+            <input type="password" name="decoy_modal_pwd" tabIndex={-1} autoComplete="off" />
+          </div>
           
           {/* Error Message Box */}
           {errorMessage && (
@@ -144,29 +214,65 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
 
           {/* Input Username */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Username
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Username
+              </label>
+              {username.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('');
+                    if (usernameRef.current) usernameRef.current.value = '';
+                  }}
+                  className="text-[11px] font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Bersihkan username"
+                >
+                  <XCircle size={12} />
+                  <span>Bersihkan</span>
+                </button>
+              )}
+            </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <User size={16} />
               </div>
               <input 
+                ref={usernameRef}
+                key={`mdl_usr_${modalKey}`}
                 type="text"
-                name="kino_modal_user"
+                name={`kino_mdl_usr_${modalKey}`}
                 value={username}
                 onChange={e => {
                   setUsername(e.target.value);
                   if (errorMessage) setErrorMessage(null);
                 }}
+                onFocus={() => setIsEditable(true)}
+                readOnly={!isEditable}
                 placeholder="misal: admin, dede, pelaksana1"
                 autoCapitalize="none"
                 autoCorrect="off"
-                autoComplete="off"
+                autoComplete="new-password"
                 data-lpignore="true"
+                data-bwignore="true"
+                data-1p-ignore="true"
+                data-form-type="other"
                 disabled={loading}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:bg-white focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all outline-none"
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:bg-white focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all outline-none"
               />
+              {username.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('');
+                    if (usernameRef.current) usernameRef.current.value = '';
+                  }}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                  title="Hapus input username"
+                >
+                  <XCircle size={15} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -176,39 +282,88 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                 PIN Keamanan (4-6 Digit)
               </label>
-              <button 
-                type="button" 
-                onClick={() => setShowPin(!showPin)}
-                className="text-[11px] font-bold text-blue-900 hover:text-blue-950 flex items-center gap-1 cursor-pointer"
-              >
-                {showPin ? <EyeOff size={13} /> : <Eye size={13} />}
-                <span>{showPin ? 'Sembunyikan' : 'Tampilkan'}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                {pin.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPin('');
+                      if (pinRef.current) pinRef.current.value = '';
+                    }}
+                    className="text-[11px] font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Bersihkan PIN"
+                  >
+                    <XCircle size={12} />
+                    <span>Bersihkan</span>
+                  </button>
+                )}
+                <button 
+                  type="button" 
+                  onClick={() => setShowPin(!showPin)}
+                  className="text-[11px] font-bold text-blue-900 hover:text-blue-950 flex items-center gap-1 cursor-pointer"
+                >
+                  {showPin ? <EyeOff size={13} /> : <Eye size={13} />}
+                  <span>{showPin ? 'Sembunyikan' : 'Tampilkan'}</span>
+                </button>
+              </div>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <KeyRound size={16} />
               </div>
               <input 
-                type="text"
+                ref={pinRef}
+                key={`mdl_pin_${modalKey}`}
+                type={showPin ? "text" : "password"}
                 inputMode="numeric"
-                name="kino_modal_pin"
+                pattern="[0-9]*"
+                name={`kino_mdl_pin_${modalKey}`}
                 value={pin}
                 onChange={e => {
                   setPin(e.target.value);
                   if (errorMessage) setErrorMessage(null);
                 }}
+                onFocus={() => setIsEditable(true)}
+                readOnly={!isEditable}
                 placeholder="Ketik PIN 4-6 digit"
-                autoComplete="one-time-code"
+                autoComplete="new-password"
                 data-lpignore="true"
+                data-bwignore="true"
+                data-1p-ignore="true"
                 data-form-type="other"
                 disabled={loading}
-                className={`w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-semibold tracking-wider placeholder:tracking-normal placeholder:text-slate-400 focus:bg-white focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all outline-none ${
-                  !showPin ? 'pin-mask-disc' : ''
-                }`}
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-semibold tracking-wider placeholder:tracking-normal placeholder:text-slate-400 focus:bg-white focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all outline-none"
               />
+              {pin.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPin('');
+                    if (pinRef.current) pinRef.current.value = '';
+                  }}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                  title="Hapus input PIN"
+                >
+                  <XCircle size={15} />
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Reset All Fields Action */}
+          {(username.length > 0 || pin.length > 0) && (
+            <div className="flex justify-end pt-0.5">
+              <button
+                type="button"
+                onClick={clearForm}
+                className="text-xs text-slate-500 hover:text-rose-600 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Kosongkan seluruh kolom input"
+              >
+                <RotateCcw size={12} />
+                <span>Reset / Kosongkan Formulir</span>
+              </button>
+            </div>
+          )}
 
           {/* Action Submit Button */}
           <button 
@@ -228,6 +383,11 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
               </>
             )}
           </button>
+
+          <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 text-center font-medium">
+            <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+            <span>Kredensial & PIN otomatis dibersihkan saat sesi ditutup</span>
+          </div>
         </form>
       </div>
     </div>
