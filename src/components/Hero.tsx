@@ -25,10 +25,14 @@ import {
   Database,
   KeyRound,
   UserCheck,
-  Wrench
+  Wrench,
+  Play,
+  Square,
+  Mic
 } from 'lucide-react';
 import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
+import { playWelcomeVoice, stopWelcomeVoice, getWelcomeGreetingText } from '../utils/welcomeVoice';
 
 interface HeroProps {
   user?: {
@@ -53,7 +57,7 @@ interface HeroProps {
   onOpenUserManagement?: () => void;
   onOpenSqlScript?: () => void;
   onLogout?: () => void;
-  renderAvatarSlot?: React.ReactNode;
+  renderAvatarSlot?: ((isSpeaking: boolean) => React.ReactNode) | React.ReactNode;
 }
 
 interface PrayerJadwal {
@@ -433,6 +437,76 @@ export function Hero({
   const handleClosePrayerAlarm = () => {
     setActiveAlarm(null);
   };
+
+  // Sapaan Sambutan Suara untuk Pengguna yang Sudah Login
+  const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false);
+  const isVoiceSpeakingRef = useRef(false);
+  isVoiceSpeakingRef.current = isVoiceSpeaking;
+
+  const welcomeVoiceText = getWelcomeGreetingText(resolvedFullName, roleBadgeInfo.shortLabel);
+
+  const handlePlayVoiceGreeting = () => {
+    const text = getWelcomeGreetingText(resolvedFullName, roleBadgeInfo.shortLabel);
+    playWelcomeVoice({
+      text,
+      userName: resolvedFullName,
+      roleTitle: roleBadgeInfo.shortLabel,
+      onStart: () => setIsVoiceSpeaking(true),
+      onEnd: () => setIsVoiceSpeaking(false),
+      onError: () => setIsVoiceSpeaking(false)
+    });
+  };
+
+  const handleStopVoiceGreeting = () => {
+    stopWelcomeVoice();
+    setIsVoiceSpeaking(false);
+  };
+
+  // Bersihkan audio synthesizer saat unmount jika masih aktif berbicara
+  useEffect(() => {
+    return () => {
+      if (isVoiceSpeakingRef.current) {
+        stopWelcomeVoice();
+      }
+    };
+  }, []);
+
+  // Auto-play sapaan suara kepada user yang sudah login pada awal masuk ke halaman utama
+  const hasTriggeredVoiceRef = useRef(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let shouldPlay = false;
+    try {
+      shouldPlay = sessionStorage.getItem('should_play_welcome_greeting') === 'true';
+    } catch {}
+
+    const currentUserKey = String(user.id || user.username || 'user');
+    let lastGreetedUser = '';
+    try {
+      lastGreetedUser = sessionStorage.getItem('last_greeted_user_session') || '';
+    } catch {}
+
+    const isNewUserEntry = lastGreetedUser !== currentUserKey;
+
+    if ((shouldPlay || isNewUserEntry) && !hasTriggeredVoiceRef.current) {
+      // Jeda 450ms agar transisi masuk ke halaman utama termuat mulus lalu sapa
+      const autoPlayTimer = setTimeout(() => {
+        hasTriggeredVoiceRef.current = true;
+        try {
+          sessionStorage.removeItem('should_play_welcome_greeting');
+          sessionStorage.setItem('last_greeted_user_session', currentUserKey);
+        } catch {}
+
+        handlePlayVoiceGreeting();
+      }, 450);
+
+      return () => {
+        clearTimeout(autoPlayTimer);
+      };
+    }
+  }, [user?.id, user?.username, resolvedFullName, roleBadgeInfo.shortLabel]);
 
   return (
     <>
@@ -930,7 +1004,7 @@ export function Hero({
                 <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center">
                   {/* Robot Companion floating freely without background */}
                   <div className="w-full h-full flex items-center justify-center">
-                    {renderAvatarSlot}
+                    {typeof renderAvatarSlot === 'function' ? renderAvatarSlot(isVoiceSpeaking) : renderAvatarSlot}
                   </div>
 
                   {/* Tombol Mini Detail Akun / Zoom di pojok */}
@@ -979,9 +1053,33 @@ export function Hero({
             </div>
 
             <div className="min-w-0">
-              <h1 className="font-extrabold text-slate-800 m-0 text-base sm:text-lg md:text-xl tracking-tight uppercase leading-tight">
-                {greeting}
-              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-extrabold text-slate-800 m-0 text-base sm:text-lg md:text-xl tracking-tight uppercase leading-tight">
+                  {greeting}
+                </h1>
+                <button
+                  type="button"
+                  onClick={isVoiceSpeaking ? handleStopVoiceGreeting : handlePlayVoiceGreeting}
+                  className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                    isVoiceSpeaking
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                  }`}
+                  title={isVoiceSpeaking ? "Hentikan Suara Sapaan" : "Dengarkan Sapaan Sambutan Suara"}
+                >
+                  {isVoiceSpeaking ? (
+                    <>
+                      <VolumeX size={12} className="text-rose-600" />
+                      <span>Hentikan</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 size={12} className="text-indigo-600" />
+                      <span>Sapa Suara</span>
+                    </>
+                  )}
+                </button>
+              </div>
               
               <div className="flex items-center gap-2 flex-wrap mt-1">
                 <span className={`${roleBadgeInfo.colorClass} border text-[9px] sm:text-[10px] font-extrabold py-0.5 px-2 uppercase rounded-full shadow-2xs flex items-center gap-1`}>
@@ -1082,6 +1180,96 @@ export function Hero({
 
             {/* Tombol Install PWA jika belum terinstall */}
             <InstallPwaButton variant="header" />
+          </div>
+        </div>
+
+        {/* Welcome Voice Greeting Bar for Logged-In User */}
+        <div className={`px-4 sm:px-5 py-2.5 border-b transition-all duration-300 ${
+          isVoiceSpeaking 
+            ? 'bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-amber-50/90 border-indigo-300' 
+            : 'bg-gradient-to-r from-slate-50/70 via-blue-50/30 to-slate-50/70 border-slate-200/80'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Left: Speaker Icon, Robot Status & Audio Caption */}
+            <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                isVoiceSpeaking 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30 ring-2 ring-indigo-300' 
+                  : 'bg-white text-blue-600 border border-slate-200 shadow-2xs'
+              }`}>
+                {isVoiceSpeaking ? (
+                  <Volume2 size={16} className="animate-bounce" />
+                ) : (
+                  <Mic size={15} />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`w-2 h-2 rounded-full ${isVoiceSpeaking ? 'bg-emerald-500 animate-ping' : 'bg-blue-500'}`} />
+                  <span className="text-xs font-bold text-slate-800">
+                    {isVoiceSpeaking ? 'Robot Komunikator Sedang Menyapa...' : 'Sapaan Sambutan Pengguna Logistik'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium hidden md:inline">
+                    &bull; Warehouse Logistics Studio
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 italic leading-snug line-clamp-1 mt-0.5">
+                  &ldquo;{welcomeVoiceText}&rdquo;
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Audio Equalizer Bars & Toggle Button */}
+            <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+              {/* Equalizer Wave Bars */}
+              <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/90 border border-slate-200/80 shadow-2xs">
+                {[
+                  { h: isVoiceSpeaking ? 'h-5' : 'h-1.5', d: '0ms' },
+                  { h: isVoiceSpeaking ? 'h-3.5' : 'h-2', d: '150ms' },
+                  { h: isVoiceSpeaking ? 'h-6' : 'h-1.5', d: '75ms' },
+                  { h: isVoiceSpeaking ? 'h-4' : 'h-2.5', d: '220ms' },
+                  { h: isVoiceSpeaking ? 'h-5.5' : 'h-1.5', d: '100ms' },
+                  { h: isVoiceSpeaking ? 'h-3' : 'h-2', d: '180ms' },
+                ].map((bar, idx) => (
+                  <span
+                    key={idx}
+                    className={`w-1 rounded-full transition-all duration-200 ${
+                      isVoiceSpeaking
+                        ? 'bg-gradient-to-t from-blue-600 to-indigo-500 animate-pulse'
+                        : 'bg-slate-300'
+                    } ${bar.h}`}
+                    style={{
+                      animationDelay: bar.d,
+                      animationDuration: isVoiceSpeaking ? '600ms' : '0ms'
+                    }}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={isVoiceSpeaking ? handleStopVoiceGreeting : handlePlayVoiceGreeting}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs ${
+                  isVoiceSpeaking
+                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 active:scale-95'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 shadow-indigo-500/20 active:scale-95'
+                }`}
+                title={isVoiceSpeaking ? "Hentikan Sambutan Suara" : "Putar Ulang Sapaan Sambutan Suara"}
+              >
+                {isVoiceSpeaking ? (
+                  <>
+                    <Square size={12} className="fill-rose-700" />
+                    <span>Hentikan</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={12} className="fill-white" />
+                    <span>Putar Sapaan</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
         

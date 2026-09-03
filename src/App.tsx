@@ -205,7 +205,7 @@ export default function App() {
                 onOpenLogin={() => setShowLoginModal(true)}
                 onOpenUserManagement={() => setShowUserManagementModal(true)}
                 onLogout={() => logout('manual')}
-                renderAvatarSlot={
+                renderAvatarSlot={(isSpeaking) => (
                   <FloatingRobotCompanion 
                     onSendBroadcast={sendBroadcast}
                     latestBroadcast={broadcastMessages[0] || null}
@@ -217,8 +217,9 @@ export default function App() {
                     onDeleteMessage={deleteBroadcastMessage}
                     isSidebarOpen={isSidebarOpen}
                     mode="profile-avatar"
+                    isSpeaking={isSpeaking}
                   />
-                }
+                )}
               />
 
               {/* 2. Daftar Aplikasi & Sistem (Menu Grid Tetap di Halaman Utama) */}

@@ -42,6 +42,7 @@ export interface FloatingRobotCompanionProps {
   className?: string;
   isSidebarOpen?: boolean;
   onOpenProfileDetail?: () => void;
+  isSpeaking?: boolean;
 }
 
 export function FloatingRobotCompanion({
@@ -55,7 +56,8 @@ export function FloatingRobotCompanion({
   onDeleteMessage,
   mode = 'dashboard',
   className = '',
-  isSidebarOpen = false
+  isSidebarOpen = false,
+  isSpeaking = false
 }: FloatingRobotCompanionProps) {
   // Modal Open State
   const [isOpen, setIsOpen] = useState(false);
@@ -247,9 +249,19 @@ export function FloatingRobotCompanion({
             />
           </div>
 
+          {/* Acoustic Wave Animation Rings when robot is speaking */}
+          {isSpeaking && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <div className="absolute w-14 h-14 rounded-full border-2 border-indigo-400/80 animate-voice-wave-1 shadow-[0_0_15px_rgba(99,102,241,0.6)]" />
+              <div className="absolute w-18 h-18 rounded-full border-2 border-cyan-400/80 animate-voice-wave-2 shadow-[0_0_20px_rgba(34,211,238,0.5)]" />
+              <div className="absolute w-22 h-22 rounded-full border-2 border-pink-400/70 animate-voice-wave-3 shadow-[0_0_25px_rgba(244,114,182,0.4)]" />
+              <div className="absolute w-24 h-24 rounded-full bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-pink-500/20 blur-xl animate-pulse" />
+            </div>
+          )}
+
           {/* Subtle Ambient Cyber Glow */}
           <div className={`absolute -inset-2 rounded-full bg-gradient-to-r from-pink-400/20 via-cyan-400/20 to-indigo-400/20 blur-md transition-opacity duration-300 pointer-events-none ${
-            isNearCursor || isHovered ? 'opacity-100 scale-110' : 'opacity-25 scale-90'
+            isSpeaking ? 'opacity-100 scale-125' : (isNearCursor || isHovered ? 'opacity-100 scale-110' : 'opacity-25 scale-90')
           }`} />
 
           {/* Floating Robot Body Container with Smooth Anti-Gravity Bobbing */}

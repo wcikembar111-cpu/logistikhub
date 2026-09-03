@@ -41,7 +41,7 @@ function getCompactDateString(dateStr: string): string {
 }
 
 // Helper to generate a unique Batch Document Number (Rule: M081-[FromSloc][YYMMDD][4DigitAcak], e.g. M081-8A122609024829)
-function generateBatchDocumentNo(fromSloc: string = '8A12', dateStr?: string, prefix: string = 'M081-'): string {
+function generateBatchDocumentNo(fromSloc: string = '8A12', dateStr?: string, prefix: string = 'M081-', existingRandomDigits?: string): string {
   let yy = '';
   let mm = '';
   let dd = '';
@@ -59,7 +59,9 @@ function generateBatchDocumentNo(fromSloc: string = '8A12', dateStr?: string, pr
   }
 
   const cleanFromSloc = (fromSloc || '8A12').trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || '8A12';
-  const random4 = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit acak (1000 - 9999)
+  const random4 = (existingRandomDigits && /^\d{4}$/.test(existingRandomDigits))
+    ? existingRandomDigits
+    : Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit acak (1000 - 9999)
   const cleanPrefix = prefix.trim().endsWith('-') ? prefix.trim() : `${prefix.trim()}-`;
   
   return `${cleanPrefix}${cleanFromSloc}${yy}${mm}${dd}${random4}`;
@@ -75,13 +77,13 @@ export function OutboundLrgModule() {
   // 1. TAB SELECTION: '1200' vs '1800'
   const [activeTab, setActiveTab] = useState<'1200' | '1800'>('1200');
 
-  // 2. FORM CONFIGURATION PARAMETERS
-  const [toSloc1200, setToSloc1200] = useState<string>('8A11');
-  const [toSloc1800, setToSloc1800] = useState<string>('8A18');
+  // 2. FORM CONFIGURATION PARAMETERS (To Sloc empty by default for manual entry)
+  const [toSloc1200, setToSloc1200] = useState<string>('');
+  const [toSloc1800, setToSloc1800] = useState<string>('');
   const [warehouse1200, setWarehouse1200] = useState<string>('Distribusi');
   const [warehouse1800, setWarehouse1800] = useState<string>('Distribusi');
   const [destination1200, setDestination1200] = useState<string>('Sukabumi');
-  const [destination1800, setDestination1800] = useState<string>('8A18');
+  const [destination1800, setDestination1800] = useState<string>('');
   const [date1200, setDate1200] = useState<string>(getTodayString());
   const [deliveryDate1200, setDeliveryDate1200] = useState<string>(getTodayString());
   const [date1800, setDate1800] = useState<string>(getTodayString());
@@ -121,6 +123,33 @@ export function OutboundLrgModule() {
   const setCurrentType = (val: string) => {
     if (activeTab === '1200') setType1200(val);
     else setType1800(val);
+  };
+
+  // Auto update No Document when From Sloc is modified
+  const handleFromSlocChange = (val: string) => {
+    const upper = val.toUpperCase();
+    setFromSlocOverride(upper);
+    const effectiveSloc = upper.trim() || (parsedRows[0]?.from_sloc) || '8A12';
+
+    const rand1200 = docNo1200.slice(-4);
+    const rand1800 = docNo1800.slice(-4);
+
+    setDocNo1200(generateBatchDocumentNo(effectiveSloc, date1200, 'M081-', rand1200));
+    setDocNo1800(generateBatchDocumentNo(effectiveSloc, date1800, 'M083-', rand1800));
+  };
+
+  // Auto update No Document when Date is modified
+  const handleDateChange = (val: string) => {
+    const effectiveSloc = fromSlocOverride.trim() || (parsedRows[0]?.from_sloc) || '8A12';
+    if (activeTab === '1200') {
+      setDate1200(val);
+      const rand1200 = docNo1200.slice(-4);
+      setDocNo1200(generateBatchDocumentNo(effectiveSloc, val, 'M081-', rand1200));
+    } else {
+      setDate1800(val);
+      const rand1800 = docNo1800.slice(-4);
+      setDocNo1800(generateBatchDocumentNo(effectiveSloc, val, 'M083-', rand1800));
+    }
   };
 
   const handleGenerateNewDocNo = (slocHint?: string) => {
@@ -669,8 +698,8 @@ export function OutboundLrgModule() {
                     setDestination1800(val); // Destination in 1800 matches To Sloc
                   }
                 }}
-                placeholder={activeTab === '1200' ? 'misal: 8A11' : 'misal: 8A18'}
-                className="w-full bg-white border border-blue-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 shadow-2xs uppercase"
+                placeholder={activeTab === '1200' ? 'Ketik To Sloc (misal: 8A11)...' : 'Ketik To Sloc (misal: 8A18)...'}
+                className="w-full bg-white border border-blue-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 shadow-2xs uppercase placeholder:text-slate-400 placeholder:normal-case"
               />
             </div>
 
@@ -682,10 +711,10 @@ export function OutboundLrgModule() {
               <input
                 type="text"
                 value={fromSlocOverride}
-                onChange={(e) => setFromSlocOverride(e.target.value.toUpperCase())}
+                onChange={(e) => handleFromSlocChange(e.target.value)}
                 placeholder="Auto dari SLC data"
-                className="w-full bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs"
-                title="Kosongkan untuk otomatis membaca dari kolom SLC pada data excel yang di-paste"
+                className="w-full bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs uppercase"
+                title="Ketik untuk mengubah From Sloc & No Document otomatis diperbarui"
               />
             </div>
 
@@ -715,7 +744,7 @@ export function OutboundLrgModule() {
                   if (activeTab === '1200') setDestination1200(e.target.value);
                   else setDestination1800(e.target.value);
                 }}
-                placeholder={activeTab === '1800' ? toSloc1800 : 'Sukabumi'}
+                placeholder={activeTab === '1800' ? (toSloc1800 || 'Ketik To Sloc...') : 'Sukabumi'}
                 className="w-full bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs"
               />
             </div>
@@ -726,10 +755,7 @@ export function OutboundLrgModule() {
               <input
                 type="date"
                 value={activeTab === '1200' ? date1200 : date1800}
-                onChange={(e) => {
-                  if (activeTab === '1200') setDate1200(e.target.value);
-                  else setDate1800(e.target.value);
-                }}
+                onChange={(e) => handleDateChange(e.target.value)}
                 className="w-full bg-white border border-slate-300 focus:border-blue-500 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-800 shadow-2xs"
               />
             </div>

@@ -135,6 +135,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       sessionStorage.removeItem(STORAGE_KEY_USER);
       sessionStorage.removeItem(STORAGE_KEY_LAST_ACTIVE);
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.removeItem('last_greeted_user_session');
+      sessionStorage.removeItem('pending_welcome_user');
       localStorage.removeItem(LEGACY_STORAGE_KEY);
       localStorage.removeItem('ckb_logistic_last_active_time');
     } catch {}

@@ -8,14 +8,54 @@ export function isSpeechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
-export function getWelcomeGreetingText(): string {
+// Proactive voice list initialization
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  try {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+      try {
+        window.speechSynthesis.getVoices();
+      } catch {}
+    };
+  } catch {}
+}
+
+/**
+ * Unlocks audio context and speech synthesis permissions immediately upon user gesture (e.g. clicking login)
+ */
+export function unlockAudioAndSpeech() {
+  try {
+    if (typeof window !== 'undefined') {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.resume();
+      }
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        if (!activeAudioCtx) {
+          activeAudioCtx = new AudioCtx();
+        }
+        if (activeAudioCtx.state === 'suspended') {
+          activeAudioCtx.resume();
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+export function getWelcomeGreetingText(userName?: string, roleTitle?: string): string {
   const hour = new Date().getHours();
   let waktu = 'Malam';
   if (hour >= 4 && hour < 11) waktu = 'Pagi';
   else if (hour >= 11 && hour < 15) waktu = 'Siang';
   else if (hour >= 15 && hour < 18) waktu = 'Sore';
 
-  return `Selamat ${waktu.toLowerCase()} rekan logistik. Selamat datang di Warehouse Logistics Studio Cikembar PT Kino Indonesia. Silakan masukkan PIN Anda untuk mengakses sistem.`;
+  const cleanName = (userName || '').trim();
+  const displayName = cleanName ? `${cleanName}` : 'Rekan Logistik';
+  const roleGreeting = roleTitle ? ` (${roleTitle})` : '';
+
+  return `Selamat ${waktu.toLowerCase()}, ${displayName}${roleGreeting}. Selamat datang di Warehouse Logistics Studio Cikembar PT Kino Indonesia. Sistem operasional siap digunakan. Selamat bertugas!`;
 }
 
 /**
@@ -74,12 +114,16 @@ export function playWelcomeVoice({
   onStart,
   onEnd,
   onError,
-  text
+  text,
+  userName,
+  roleTitle
 }: {
   onStart?: () => void;
   onEnd?: () => void;
   onError?: () => void;
   text?: string;
+  userName?: string;
+  roleTitle?: string;
 } = {}): boolean {
   if (!isSpeechSupported()) {
     playWelcomeChime();
@@ -100,7 +144,7 @@ export function playWelcomeVoice({
     // Ensure synth is unpaused
     window.speechSynthesis.resume();
 
-    const speechText = text || getWelcomeGreetingText();
+    const speechText = text || getWelcomeGreetingText(userName, roleTitle);
     const utterance = new SpeechSynthesisUtterance(speechText);
     utterance.lang = 'id-ID';
     utterance.rate = 0.98; // slightly more paced for clarity
@@ -167,6 +211,8 @@ export function playWelcomeVoice({
     (window as unknown as { __currentSpeechUtterance: SpeechSynthesisUtterance }).__currentSpeechUtterance = utterance;
 
     window.speechSynthesis.speak(utterance);
+    // Many browsers (Chromium / WebKit) might pause utterance if triggered right after context switch
+    window.speechSynthesis.resume();
     return true;
   } catch (err) {
     console.warn('Speech synthesis playback error:', err);

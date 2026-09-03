@@ -12,6 +12,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
+import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -36,6 +37,8 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    unlockAudioAndSpeech();
+
     const cleanUsername = username.trim().toLowerCase();
     const cleanPin = pin.trim();
 
@@ -48,6 +51,13 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
     try {
       const result = await login(cleanUsername, cleanPin);
       if (result.success) {
+        try {
+          sessionStorage.setItem('should_play_welcome_greeting', 'true');
+          sessionStorage.removeItem('last_greeted_user_session');
+          if (result.user?.nama || result.user?.username) {
+            sessionStorage.setItem('pending_welcome_user', result.user.nama || result.user.username);
+          }
+        } catch {}
         setSuccessMessage(result.message);
         setTimeout(() => {
           onClose();
