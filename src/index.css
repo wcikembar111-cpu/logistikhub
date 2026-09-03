@@ -37,6 +37,12 @@
   .glass-badge {
     @apply bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs rounded-full inline-flex items-center justify-center text-[0.65rem] font-bold w-5 h-5;
   }
+
+  /* PIN Masking without triggering browser leaked password warnings */
+  .pin-mask-disc {
+    -webkit-text-security: disc;
+    text-security: disc;
+  }
 }
 
 /* Animasi Kedip Warna Todo Prioritas */

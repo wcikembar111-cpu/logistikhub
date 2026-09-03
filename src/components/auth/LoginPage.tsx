@@ -304,7 +304,7 @@ export function LoginPage({
               </div>
 
               {/* Card Form Body */}
-              <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-4">
+              <form onSubmit={handleSubmit} autoComplete="off" data-lpignore="true" data-form-type="other" className="p-6 sm:p-7 space-y-4">
                 
                 {/* Error Banner */}
                 {errorMessage && (
@@ -333,6 +333,7 @@ export function LoginPage({
                     </div>
                     <input 
                       type="text"
+                      name="kino_user_id"
                       value={username}
                       onChange={e => {
                         setUsername(e.target.value);
@@ -341,7 +342,8 @@ export function LoginPage({
                       placeholder="misal: admin, dede, pelaksana"
                       autoCapitalize="none"
                       autoCorrect="off"
-                      autoComplete="username"
+                      autoComplete="off"
+                      data-lpignore="true"
                       disabled={loading}
                       required
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
@@ -369,17 +371,23 @@ export function LoginPage({
                       <KeyRound size={16} />
                     </div>
                     <input 
-                      type={showPin ? 'text' : 'password'}
+                      type="text"
+                      inputMode="numeric"
+                      name="kino_pin_code"
                       value={pin}
                       onChange={e => {
                         setPin(e.target.value);
                         if (errorMessage) setErrorMessage(null);
                       }}
                       placeholder="Masukkan PIN 4-6 digit"
-                      autoComplete="current-password"
+                      autoComplete="one-time-code"
+                      data-lpignore="true"
+                      data-form-type="other"
                       disabled={loading}
                       required
-                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold tracking-wider placeholder:tracking-normal placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                      className={`w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold tracking-wider placeholder:tracking-normal placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none ${
+                        !showPin ? 'pin-mask-disc' : ''
+                      }`}
                     />
                   </div>
                 </div>

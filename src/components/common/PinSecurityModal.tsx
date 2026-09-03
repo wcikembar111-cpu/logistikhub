@@ -241,10 +241,13 @@ export function PinSecurityModal({
             <div className="relative flex items-center">
               <input 
                 ref={inputRef}
-                type={showPin ? 'text' : 'password'}
+                type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={6}
+                name="pin_security_code"
+                autoComplete="one-time-code"
+                data-lpignore="true"
                 value={pin}
                 onChange={e => {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -256,7 +259,9 @@ export function PinSecurityModal({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Masukkan 6 digit PIN"
-                className="w-full text-center text-xl sm:text-2xl font-mono tracking-widest px-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 outline-none transition-all placeholder:text-slate-400 placeholder:text-sm placeholder:font-sans placeholder:tracking-normal font-bold"
+                className={`w-full text-center text-xl sm:text-2xl font-mono tracking-widest px-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 outline-none transition-all placeholder:text-slate-400 placeholder:text-sm placeholder:font-sans placeholder:tracking-normal font-bold ${
+                  !showPin ? 'pin-mask-disc' : ''
+                }`}
               />
               <button 
                 type="button"

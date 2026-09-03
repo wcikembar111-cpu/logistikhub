@@ -182,8 +182,8 @@ export function OutboundLrgModule() {
       qtyVal = source.qty_convert !== undefined && source.qty_convert !== null ? source.qty_convert : (source.last_qty ?? '');
     }
 
-    // Determine UOM CONVERT
-    const uomConvertVal = source.uom_convert?.trim() || source.uom?.trim() || 'CAR';
+    // Determine UOM CONVERT (Sesuai instruksi: kolom UOM CONVERT = ISI KOLOM Uom dari yang di-upload user)
+    const uomConvertVal = source.uom?.trim() || source.uom_convert?.trim() || 'CAR';
 
     return {
       id: `outbound-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
@@ -271,9 +271,9 @@ export function OutboundLrgModule() {
         else if (h.includes('location type') || h.includes('tipe lokasi')) colLocationType = idx;
         else if (h.includes('first qty') || h.includes('qty awal')) colFirstQty = idx;
         else if (h.includes('last qty') || h.includes('qty akhir') || h === 'qty') colLastQty = idx;
-        else if (h === 'uom' || h.startsWith('uo') || h === 'satuan') colUom = idx;
-        else if (h.includes('qty convert') || h.includes('qty konversi')) colQtyConvert = idx;
-        else if (h.includes('uom convert') || h.includes('uom conver') || h.includes('satuan konversi')) colUomConvert = idx;
+        else if (h.includes('uom convert') || h.includes('uom conver') || h.includes('satuan konversi') || h === 'uom_convert') colUomConvert = idx;
+        else if (h === 'uom' || (h.startsWith('uom') && !h.includes('convert')) || h === 'satuan' || h === 'unit' || h === 'base uom') colUom = idx;
+        else if (h.includes('qty convert') || h.includes('qty konversi') || h === 'qty_convert') colQtyConvert = idx;
         else if (h.includes('lpn') || h.includes('serial number') || h.includes('sn')) colLpn = idx;
         else if (h === 'batch' || h === 'no batch' || h === 'lot') colBatch = idx;
         else if (h.includes('vendor batch')) colVendorBatch = idx;
@@ -978,7 +978,7 @@ export function OutboundLrgModule() {
 
         <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
           <span className="text-blue-700 font-medium">
-            *Auto SUMIF & Deduplikasi: Jika Material ID sama, Qty otomatis dijumlahkan dan baris digabung
+            *Auto SUMIF & Deduplikasi: Jika Material ID sama, Qty otomatis dijumlahkan dan baris digabung • Kolom UOM CONVERT = Isi kolom Uom dari data upload user
           </span>
           <span className="font-semibold text-slate-700">{parsedRows.length} Material Unik</span>
         </div>
