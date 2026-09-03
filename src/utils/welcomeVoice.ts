@@ -67,7 +67,7 @@ export function unlockAudioAndSpeech() {
   }
 }
 
-export function getWelcomeGreetingText(userName?: string, roleTitle?: string): string {
+export function getWelcomeGreetingText(userName?: string, _roleTitle?: string): string {
   const hour = new Date().getHours();
   let waktu = 'Malam';
   if (hour >= 4 && hour < 11) waktu = 'Pagi';
@@ -76,9 +76,8 @@ export function getWelcomeGreetingText(userName?: string, roleTitle?: string): s
 
   const cleanName = (userName || '').trim();
   const displayName = cleanName ? cleanName : 'Rekan Logistik';
-  const roleGreeting = roleTitle ? ` (${roleTitle})` : '';
 
-  return `Selamat ${waktu.toLowerCase()}, ${displayName}${roleGreeting}. Selamat datang di Warehouse Logistics Studio Cikembar PT Kino Indonesia. Sistem operasional siap digunakan. Selamat bertugas!`;
+  return `Selamat ${waktu.toLowerCase()}, ${displayName}!`;
 }
 
 /**

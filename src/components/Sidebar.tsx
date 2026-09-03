@@ -33,6 +33,7 @@ export interface ToolItemDef {
   title: string;
   category: string;
   group: 'barcode' | 'audit' | 'doc' | 'disposal';
+  hasDatabase: boolean;
   desc: string;
   keywords: string;
   icon: React.ReactNode;
@@ -42,16 +43,76 @@ export interface ToolItemDef {
 }
 
 export const TOOLS_LIST: ToolItemDef[] = [
+  // ==========================================
+  // 1. MENU TERHUBUNG DATABASE (SUPABASE)
+  // ==========================================
+  {
+    id: 'surat-jalan',
+    title: 'Surat Jalan',
+    category: 'Buat, Cetak & Rekap SJ',
+    group: 'doc',
+    hasDatabase: true,
+    desc: 'Pembuatan surat jalan ekspedisi, cetak otomatis, dan rekapan tersimpan ke database',
+    keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman database supabase',
+    icon: <FileText size={15} className="text-white" />,
+    iconBg: 'bg-blue-700',
+    badge: 'Database',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+  {
+    id: 'promosi',
+    title: 'Penerimaan Promosi',
+    category: 'Penerimaan Barang Promosi',
+    group: 'doc',
+    hasDatabase: true,
+    desc: 'Manajemen pencatatan & penerimaan barang promosi tersimpan di database',
+    keywords: 'promosi promo penerimaan barang bonus merchandise hadiah receiving logistik database supabase',
+    icon: <PackageCheck size={15} className="text-white" />,
+    iconBg: 'bg-teal-600',
+    badge: 'Database',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+  {
+    id: 'monitoring-pemusnahan',
+    title: 'Monitoring Pemusnahan',
+    category: 'WH-CKB 27 Kolom Data',
+    group: 'disposal',
+    hasDatabase: true,
+    desc: 'Pipeline monitoring barang afkir/pemusnahan WH-CKB Z87 BAP & migo tersimpan di database',
+    keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir database supabase',
+    icon: <Flame size={15} className="text-white" />,
+    iconBg: 'bg-amber-600',
+    badge: 'Database',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+  {
+    id: 'data-pemusnahan',
+    title: 'Data Pemusnahan',
+    category: 'Spreadsheet GAS & DB',
+    group: 'disposal',
+    hasDatabase: true,
+    desc: 'Integrasi Google Apps Script 26 kolom penarikan data pemusnahan real-time & database',
+    keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan database supabase',
+    icon: <Database size={15} className="text-white" />,
+    iconBg: 'bg-emerald-600',
+    badge: 'Live DB',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+
+  // ==========================================
+  // 2. TOOLS & GENERATOR (TANPA DATABASE)
+  // ==========================================
   {
     id: 'qr-generator',
     title: 'Generator QR Code',
     category: 'Satuan & Massal Honeywell',
     group: 'barcode',
-    desc: 'Pembuat label QR code satuan & massal Honeywell, export PNG & PDF',
-    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell',
-    icon: <QrCode size={17} className="text-white" />,
+    hasDatabase: false,
+    desc: 'Pembuat label QR code satuan & massal Honeywell, export PNG & PDF (Offline/Generator)',
+    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell offline tanpa database',
+    icon: <QrCode size={15} className="text-white" />,
     iconBg: 'bg-blue-600',
-    badge: 'Populer',
+    badge: 'Generator',
     badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
   },
   {
@@ -59,19 +120,23 @@ export const TOOLS_LIST: ToolItemDef[] = [
     title: 'Generator Serial No',
     category: 'Unique Anti-Duplicate',
     group: 'barcode',
+    hasDatabase: false,
     desc: 'Pembuat nomor seri unik anti duplikasi dengan format barcode kustom',
-    keywords: 'generator serial number sn no unique barcode anti duplicate acak urut',
-    icon: <Barcode size={17} className="text-white" />,
-    iconBg: 'bg-sky-600'
+    keywords: 'generator serial number sn no unique barcode anti duplicate acak urut offline tanpa database',
+    icon: <Barcode size={15} className="text-white" />,
+    iconBg: 'bg-sky-600',
+    badge: 'Generator',
+    badgeColor: 'bg-sky-50 text-sky-700 border-sky-200'
   },
   {
     id: 'ed-checker',
     title: 'Cek Expired Date',
     category: 'ED & DOY Calculator',
     group: 'audit',
+    hasDatabase: false,
     desc: 'Kalkulator tanggal kedaluwarsa, Day of Year (DOY), dan sisa masa simpan',
-    keywords: 'expired date ed doy calculator kedaluwarsa tanggal sisa hari exp hitung shelf life',
-    icon: <Calendar size={17} className="text-white" />,
+    keywords: 'expired date ed doy calculator kedaluwarsa tanggal sisa hari exp hitung shelf life kalkulator',
+    icon: <Calendar size={15} className="text-white" />,
     iconBg: 'bg-amber-500',
     badge: 'Kalkulator',
     badgeColor: 'bg-amber-50 text-amber-700 border-amber-200'
@@ -81,9 +146,10 @@ export const TOOLS_LIST: ToolItemDef[] = [
     title: 'Stock Opname Suite',
     category: 'LARGO to SAP & BA SO',
     group: 'audit',
+    hasDatabase: false,
     desc: 'Rekonsiliasi data fisik vs sistem LARGO ke SAP dan pembuatan Berita Acara',
     keywords: 'stock opname so suite largo sap ba berita acara selisih audit fisik gudang rekonsiliasi',
-    icon: <Layers size={17} className="text-white" />,
+    icon: <Layers size={15} className="text-white" />,
     iconBg: 'bg-indigo-600',
     badge: 'Audit',
     badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200'
@@ -93,31 +159,25 @@ export const TOOLS_LIST: ToolItemDef[] = [
     title: 'Batch Checker',
     category: 'LARGO vs SAP Compare',
     group: 'audit',
+    hasDatabase: false,
     desc: 'Cek perbandingan nomor batch dan kuantitas antara LARGO dengan SAP',
     keywords: 'batch checker largo vs sap compare cek selisih perbandingan data rekonsiliasi',
-    icon: <ArrowRightLeft size={17} className="text-white" />,
-    iconBg: 'bg-orange-500'
+    icon: <ArrowRightLeft size={15} className="text-white" />,
+    iconBg: 'bg-orange-500',
+    badge: 'Komparasi',
+    badgeColor: 'bg-orange-50 text-orange-700 border-orange-200'
   },
   {
-    id: 'promosi',
-    title: 'Penerimaan Promosi',
-    category: 'Penerimaan Barang Promosi',
+    id: 'outbound-lrg',
+    title: 'OutboundLRG',
+    category: 'Template Transfer SAP 1200/1800',
     group: 'doc',
-    desc: 'Manajemen pencatatan & penerimaan barang promosi dan merchandise',
-    keywords: 'promosi promo penerimaan barang bonus merchandise hadiah receiving logistik',
-    icon: <PackageCheck size={17} className="text-white" />,
-    iconBg: 'bg-teal-600'
-  },
-  {
-    id: 'surat-jalan',
-    title: 'Surat Jalan',
-    category: 'Buat, Cetak & Rekap SJ',
-    group: 'doc',
-    desc: 'Pembuatan surat jalan ekspedisi, cetak otomatis, dan rekap pengiriman',
-    keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman',
-    icon: <FileText size={17} className="text-white" />,
-    iconBg: 'bg-blue-700',
-    badge: 'Logistik',
+    hasDatabase: false,
+    desc: 'Konversi data Excel LARGO ke 14 kolom template SAP Outbound 1200 & 1800',
+    keywords: 'outbound lrg outboundlrg sap transfer 1200 1800 to plant sloc distribusi sukabumi m081 konversi converter',
+    icon: <Truck size={15} className="text-white" />,
+    iconBg: 'bg-blue-600',
+    badge: 'Konverter',
     badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
   },
   {
@@ -125,48 +185,13 @@ export const TOOLS_LIST: ToolItemDef[] = [
     title: 'Retur Inventory',
     category: 'Pengajuan & Tracking Retur',
     group: 'doc',
-    desc: 'Sistem pengajuan retur barang near ED, rusak kemasan, COGS & tracking',
-    keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim',
-    icon: <Undo2 size={17} className="text-white" />,
+    hasDatabase: false,
+    desc: 'Sistem pengajuan retur barang near ED, rusak kemasan, COGS & tracking lokal browser',
+    keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim lokal',
+    icon: <Undo2 size={15} className="text-white" />,
     iconBg: 'bg-rose-500',
-    badge: 'Retur',
+    badge: 'Lokal',
     badgeColor: 'bg-rose-50 text-rose-700 border-rose-200'
-  },
-  {
-    id: 'outbound-lrg',
-    title: 'OutboundLRG',
-    category: 'Template Transfer SAP 1200/1800',
-    group: 'doc',
-    desc: 'Konversi data Excel LARGO ke 14 kolom template SAP Outbound 1200 & 1800',
-    keywords: 'outbound lrg outboundlrg sap transfer 1200 1800 to plant sloc distribusi sukabumi m081',
-    icon: <Truck size={17} className="text-white" />,
-    iconBg: 'bg-blue-600',
-    badge: 'Baru',
-    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
-  },
-  {
-    id: 'monitoring-pemusnahan',
-    title: 'Monitoring Pemusnahan',
-    category: 'WH-CKB 27 Kolom Data',
-    group: 'disposal',
-    desc: 'Pipeline monitoring barang afkir/pemusnahan WH-CKB Z87 BAP & migo',
-    keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir',
-    icon: <Flame size={17} className="text-white" />,
-    iconBg: 'bg-amber-600',
-    badge: 'Disposal',
-    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200'
-  },
-  {
-    id: 'data-pemusnahan',
-    title: 'Data Pemusnahan',
-    category: 'Spreadsheet GAS 26 Kolom',
-    group: 'disposal',
-    desc: 'Integrasi Google Apps Script 26 kolom penarikan data pemusnahan real-time',
-    keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan',
-    icon: <Database size={17} className="text-white" />,
-    iconBg: 'bg-emerald-600',
-    badge: 'GAS Live',
-    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   }
 ];
 
@@ -199,16 +224,30 @@ export function Sidebar({
   isAdmin = false
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDbExpanded, setIsDbExpanded] = useState(true);
   const [isToolsExpanded, setIsToolsExpanded] = useState(true);
 
-  // Filter tools based on search query
-  const filteredTools = useMemo(() => {
+  // Filter tools based on search query, partitioned into Database Connected and Generator tools
+  const { dbTools, generatorTools, totalMatches } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return TOOLS_LIST;
-    return TOOLS_LIST.filter(item =>
-      item.title.toLowerCase().includes(q) ||
-      item.keywords.toLowerCase().includes(q)
-    );
+    const filterFn = (item: ToolItemDef) => {
+      if (!q) return true;
+      return (
+        item.title.toLowerCase().includes(q) ||
+        item.keywords.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.desc.toLowerCase().includes(q)
+      );
+    };
+
+    const db = TOOLS_LIST.filter(item => item.hasDatabase && filterFn(item));
+    const gen = TOOLS_LIST.filter(item => !item.hasDatabase && filterFn(item));
+
+    return {
+      dbTools: db,
+      generatorTools: gen,
+      totalMatches: db.length + gen.length
+    };
   }, [searchQuery]);
 
   const handleToolClick = (toolId: MainToolTab) => {
@@ -228,6 +267,36 @@ export function Sidebar({
     if (window.innerWidth < 1024) {
       onToggle();
     }
+  };
+
+  // Helper renderer for individual tool navigation button
+  const renderToolButton = (tool: ToolItemDef) => {
+    const isActive = currentView === 'tool-workspace' && activeTool === tool.id;
+
+    return (
+      <button
+        key={tool.id}
+        onClick={() => handleToolClick(tool.id)}
+        className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group border ${
+          isActive
+            ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
+            : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200/70 shadow-2xs'
+        }`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`w-6 h-6 rounded-lg ${tool.iconBg} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
+            {tool.icon}
+          </div>
+          <span className="text-xs font-semibold truncate block">
+            {tool.title}
+          </span>
+        </div>
+
+        {isActive && (
+          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
+        )}
+      </button>
+    );
   };
 
   return (
@@ -288,7 +357,7 @@ export function Sidebar({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari menu..."
+              placeholder="Cari menu & tools..."
               className="w-full pl-8 pr-7 py-1.5 text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-2xs"
             />
             {searchQuery && (
@@ -304,7 +373,7 @@ export function Sidebar({
         </div>
 
         {/* Navigation Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-2.5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
           {/* 1. Main Navigation Section */}
           <div className="space-y-1">
             <div className="px-2 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -325,7 +394,7 @@ export function Sidebar({
                 }`}>
                   <LayoutGrid size={14} />
                 </div>
-                <span className="text-xs truncate font-semibold">
+                <span className="text-xs truncate font-semibold block">
                   Daftar Aplikasi & Sistem
                 </span>
               </div>
@@ -336,16 +405,52 @@ export function Sidebar({
             </button>
           </div>
 
-          {/* 2. Tools & Utilitas Section */}
+          {/* 2. Menu Terhubung Database Section */}
           <div className="space-y-1 pt-1">
             <div className="flex items-center justify-between px-2">
-              <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
-                Tools & Utilitas ({filteredTools.length})
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Database size={12} className="text-emerald-600 shrink-0" />
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
+                  Terhubung Database ({dbTools.length})
+                </span>
+              </div>
               <button
+                type="button"
+                onClick={() => setIsDbExpanded(!isDbExpanded)}
+                className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
+                title={isDbExpanded ? 'Perkecil grup Database' : 'Bentangkan grup Database'}
+              >
+                <ChevronDown size={13} className={`transition-transform duration-200 ${isDbExpanded ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+            </div>
+
+            {isDbExpanded && (
+              <div className="space-y-1">
+                {dbTools.length === 0 ? (
+                  <div className="text-center py-3 px-2 bg-white/70 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[10px] font-medium">
+                    Tidak ada menu database yang cocok
+                  </div>
+                ) : (
+                  dbTools.map(renderToolButton)
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Tools Generator Section (Tanpa Database) */}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Wrench size={12} className="text-blue-600 shrink-0" />
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
+                  Tools Generator ({generatorTools.length})
+                </span>
+              </div>
+              <button
+                type="button"
                 onClick={() => setIsToolsExpanded(!isToolsExpanded)}
                 className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
-                title={isToolsExpanded ? 'Perkecil grup' : 'Bentangkan grup'}
+                title={isToolsExpanded ? 'Perkecil grup Generator' : 'Bentangkan grup Generator'}
               >
                 <ChevronDown size={13} className={`transition-transform duration-200 ${isToolsExpanded ? 'rotate-0' : '-rotate-90'}`} />
               </button>
@@ -353,45 +458,25 @@ export function Sidebar({
 
             {isToolsExpanded && (
               <div className="space-y-1">
-                {filteredTools.length === 0 ? (
-                  <div className="text-center py-5 px-3 bg-white rounded-xl border border-slate-200/70">
-                    <Search size={16} className="mx-auto text-slate-400 mb-1" />
-                    <p className="text-xs font-bold text-slate-600 m-0">Menu tidak ditemukan</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Coba cari kata kunci lainnya</p>
+                {generatorTools.length === 0 ? (
+                  <div className="text-center py-3 px-2 bg-white/70 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[10px] font-medium">
+                    Tidak ada tools generator yang cocok
                   </div>
                 ) : (
-                  filteredTools.map((tool) => {
-                    const isActive = currentView === 'tool-workspace' && activeTool === tool.id;
-
-                    return (
-                      <button
-                        key={tool.id}
-                        onClick={() => handleToolClick(tool.id)}
-                        className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group border ${
-                          isActive
-                            ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
-                            : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200/70 shadow-2xs'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-6 h-6 rounded-lg ${tool.iconBg} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
-                            {tool.icon}
-                          </div>
-                          <span className="text-xs font-semibold truncate">
-                            {tool.title}
-                          </span>
-                        </div>
-
-                        {isActive && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
-                        )}
-                      </button>
-                    );
-                  })
+                  generatorTools.map(renderToolButton)
                 )}
               </div>
             )}
           </div>
+
+          {/* Global Empty State when searching */}
+          {totalMatches === 0 && (
+            <div className="text-center py-5 px-3 bg-white rounded-xl border border-slate-200/70">
+              <Search size={16} className="mx-auto text-slate-400 mb-1" />
+              <p className="text-xs font-bold text-slate-600 m-0">Menu tidak ditemukan</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Coba cari kata kunci lainnya</p>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Footer: User Status & System Info */}
@@ -407,7 +492,7 @@ export function Sidebar({
                 </div>
                 <div className="text-[9px] text-slate-500 flex items-center gap-1 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span>{isAdmin ? 'Superadmin' : 'Operator Aktif'}</span>
+                  <span>Sistem Online &bull; Aktif</span>
                 </div>
               </div>
             </div>

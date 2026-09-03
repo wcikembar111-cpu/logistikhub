@@ -26,8 +26,6 @@ import {
   KeyRound,
   UserCheck,
   Wrench,
-  Play,
-  Square,
   Mic
 } from 'lucide-react';
 import { TodoData, UserPermissions } from '../types';
@@ -92,19 +90,16 @@ export function Hero({
 
   // Resolved full name of active logged-in user
   const resolvedFullName = user?.nama_lengkap || user?.nama || (
-    isSuperAdminUser ? 'Super Administrator' :
     isDedeUser ? 'Dede Suparman' :
-    isAdminUser ? 'Administrator Logistics' :
-    isOperatorUser ? 'Operator Logistik' :
-    user?.username ? user.username : 'Administrator'
+    user?.username ? user.username : 'Rekan Logistik'
   );
 
-  // Active user name for the dynamic greeting sapaan
+  // Active user name for the dynamic greeting sapaan (hanya nama, bukan role)
   const greetingUserName = (
     user?.nama_lengkap ||
     user?.nama ||
-    (user?.username ? (user.username.toUpperCase() === 'ADMIN' ? 'ADMINISTRATOR' : user.username) : '') ||
-    (isSuperAdminUser ? 'SUPER ADMINISTRATOR' : isDedeUser ? 'DEDE SUPARMAN' : isAdminUser ? 'ADMINISTRATOR' : 'REKAN LOGISTIK')
+    user?.username ||
+    (isDedeUser ? 'Dede Suparman' : 'Rekan Logistik')
   ).trim();
 
   // Helper to compute initial and live greeting based on hour and user name
@@ -1083,38 +1078,11 @@ export function Hero({
                 <h1 className="font-extrabold text-slate-800 m-0 text-base sm:text-lg md:text-xl tracking-tight uppercase leading-tight">
                   {greeting}
                 </h1>
-                <button
-                  type="button"
-                  onClick={isVoiceSpeaking ? handleStopVoiceGreeting : handlePlayVoiceGreeting}
-                  className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
-                    isVoiceSpeaking
-                      ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
-                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-                  }`}
-                  title={isVoiceSpeaking ? "Hentikan Suara Sapaan" : "Dengarkan Sapaan Sambutan Suara"}
-                >
-                  {isVoiceSpeaking ? (
-                    <>
-                      <VolumeX size={12} className="text-rose-600" />
-                      <span>Hentikan</span>
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 size={12} className="text-indigo-600" />
-                      <span>Sapa Suara</span>
-                    </>
-                  )}
-                </button>
               </div>
               
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                <span className={`${roleBadgeInfo.colorClass} border text-[9px] sm:text-[10px] font-extrabold py-0.5 px-2 uppercase rounded-full shadow-2xs flex items-center gap-1`}>
-                  <span>{roleBadgeInfo.icon}</span>
-                  <span>{roleBadgeInfo.label}</span>
-                </span>
-
-                {/* Status Aktif Badge */}
-                {user?.status && (
+              {/* Status Aktif Badge */}
+              {user?.status && (
+                <div className="flex items-center gap-2 flex-wrap mt-1">
                   <span className={`text-[9px] sm:text-[10px] font-extrabold py-0.5 px-2 rounded-full border shadow-2xs ${
                     user.status === 'Aktif' 
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
@@ -1122,8 +1090,8 @@ export function Hero({
                   }`}>
                     {user.status}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1246,7 +1214,7 @@ export function Hero({
               </div>
             </div>
 
-            {/* Right: Audio Equalizer Bars & Toggle Button */}
+            {/* Right: Audio Equalizer Bars */}
             <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
               {/* Equalizer Wave Bars */}
               <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/90 border border-slate-200/80 shadow-2xs">
@@ -1272,29 +1240,6 @@ export function Hero({
                   />
                 ))}
               </div>
-
-              <button
-                type="button"
-                onClick={isVoiceSpeaking ? handleStopVoiceGreeting : handlePlayVoiceGreeting}
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs ${
-                  isVoiceSpeaking
-                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 active:scale-95'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 shadow-indigo-500/20 active:scale-95'
-                }`}
-                title={isVoiceSpeaking ? "Hentikan Sambutan Suara" : "Putar Ulang Sapaan Sambutan Suara"}
-              >
-                {isVoiceSpeaking ? (
-                  <>
-                    <Square size={12} className="fill-rose-700" />
-                    <span>Hentikan</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={12} className="fill-white" />
-                    <span>Putar Sapaan</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </div>
