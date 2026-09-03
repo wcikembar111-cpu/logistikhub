@@ -304,11 +304,45 @@ export function OutboundLrgModule() {
       });
     }
 
+    // Group and SUMIF by item_code (Material ID) to eliminate duplicates
+    const aggregatedMap = new Map<string, OutboundLrgSourceItem>();
+
+    for (const item of parsedSourceItems) {
+      const code = (item.item_code || '').trim();
+      if (!code) continue;
+
+      if (!aggregatedMap.has(code)) {
+        aggregatedMap.set(code, {
+          ...item,
+          last_qty: item.last_qty || 0,
+          first_qty: item.first_qty || 0,
+          qty_convert: item.qty_convert || 0
+        });
+      } else {
+        const existing = aggregatedMap.get(code)!;
+        const newLastQty = (existing.last_qty || 0) + (item.last_qty || 0);
+        const newFirstQty = (existing.first_qty || 0) + (item.first_qty || 0);
+        const newQtyConvert = (existing.qty_convert || 0) + (item.qty_convert || 0);
+
+        // Round to 4 decimal places to prevent float precision issues
+        existing.last_qty = Math.round(newLastQty * 10000) / 10000;
+        existing.first_qty = Math.round(newFirstQty * 10000) / 10000;
+        existing.qty_convert = Math.round(newQtyConvert * 10000) / 10000;
+
+        if (!existing.item_name && item.item_name) existing.item_name = item.item_name;
+        if (!existing.uom && item.uom) existing.uom = item.uom;
+        if (!existing.uom_convert && item.uom_convert) existing.uom_convert = item.uom_convert;
+        if (!existing.sloc && item.sloc) existing.sloc = item.sloc;
+      }
+    }
+
+    const uniqueSourceItems = Array.from(aggregatedMap.values());
+
     const effectiveDocNo = batchDocNo || currentDocNo;
 
-    // Convert source items to the 14-column template rows (All rows get the exact same No Document)
-    const newTemplateRows = parsedSourceItems.map((item, idx) => 
-      buildTemplateRow(item, idx, parsedSourceItems.length, effectiveDocNo)
+    // Convert aggregated source items to the 14-column template rows (No duplicates, SUMIF qty)
+    const newTemplateRows = uniqueSourceItems.map((item, idx) => 
+      buildTemplateRow(item, idx, uniqueSourceItems.length, effectiveDocNo)
     );
 
     setParsedRows(newTemplateRows);
@@ -917,8 +951,10 @@ export function OutboundLrgModule() {
         </div>
 
         <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-          <span>*Otomatis mendeteksi kolom Item Code, Last Qty, UOM Convert, Batch, dan SLC</span>
-          <span>{parsedRows.length} baris terdeteksi</span>
+          <span className="text-blue-700 font-medium">
+            *Auto SUMIF & Deduplikasi: Jika Material ID sama, Qty otomatis dijumlahkan dan baris digabung
+          </span>
+          <span className="font-semibold text-slate-700">{parsedRows.length} Material Unik</span>
         </div>
       </div>
 
