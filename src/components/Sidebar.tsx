@@ -16,6 +16,7 @@ import {
   Undo2,
   Flame,
   Database,
+  Truck,
   CheckCircle2,
   Sparkles,
   ExternalLink,
@@ -130,6 +131,18 @@ export const TOOLS_LIST: ToolItemDef[] = [
     iconBg: 'bg-rose-500',
     badge: 'Retur',
     badgeColor: 'bg-rose-50 text-rose-700 border-rose-200'
+  },
+  {
+    id: 'outbound-lrg',
+    title: 'OutboundLRG',
+    category: 'Template Transfer SAP 1200/1800',
+    group: 'doc',
+    desc: 'Konversi data Excel LARGO ke 14 kolom template SAP Outbound 1200 & 1800',
+    keywords: 'outbound lrg outboundlrg sap transfer 1200 1800 to plant sloc distribusi sukabumi m081',
+    icon: <Truck size={17} className="text-white" />,
+    iconBg: 'bg-blue-600',
+    badge: 'Baru',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
   },
   {
     id: 'monitoring-pemusnahan',

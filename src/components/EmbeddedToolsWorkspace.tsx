@@ -12,6 +12,7 @@ import { SuratJalanModule } from './logistics/SuratJalanModule';
 import { ReturInventoryModule } from './logistics/ReturInventoryModule';
 import { MonitoringPemusnahanModule } from './logistics/MonitoringPemusnahanModule';
 import { DataPemusnahanModule } from './logistics/DataPemusnahanModule';
+import { OutboundLrgModule } from './logistics/OutboundLrgModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -48,6 +49,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'retur-inventory' && <ReturInventoryModule />}
             {activeTool === 'monitoring-pemusnahan' && <MonitoringPemusnahanModule />}
             {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}
+            {activeTool === 'outbound-lrg' && <OutboundLrgModule />}
           </ErrorBoundary>
         </div>
       </div>

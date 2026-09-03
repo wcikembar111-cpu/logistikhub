@@ -9,7 +9,8 @@ import {
   PackageCheck, 
   FileText, 
   Undo2,
-  Flame
+  Flame,
+  Truck
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
@@ -83,6 +84,12 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'Spreadsheet GAS 26 Kolom',
     icon: <Flame size={18} className="text-white" />,
     iconBg: 'bg-orange-600'
+  },
+  'outbound-lrg': {
+    title: 'OutboundLRG',
+    category: 'Template Transfer SAP 1200/1800',
+    icon: <Truck size={18} className="text-white" />,
+    iconBg: 'bg-blue-600'
   }
 };
 

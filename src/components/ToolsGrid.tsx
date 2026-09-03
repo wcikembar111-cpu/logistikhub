@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Database } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Database, Truck } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -97,6 +97,14 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan',
       icon: <Database size={20} className="text-white" />,
       iconBg: 'bg-emerald-600'
+    },
+    {
+      id: 'outbound-lrg',
+      title: 'OutboundLRG',
+      category: 'Template Transfer SAP 1200/1800',
+      keywords: 'outbound lrg outboundlrg sap transfer 1200 1800 to plant sloc distribusi sukabumi m081',
+      icon: <Truck size={20} className="text-white" />,
+      iconBg: 'bg-blue-600'
     }
   ];
 

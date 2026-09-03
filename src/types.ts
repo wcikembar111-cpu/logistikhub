@@ -151,9 +151,56 @@ export type LogisticsTab =
   | 'surat-jalan' 
   | 'retur-inventory' 
   | 'monitoring-pemusnahan'
-  | 'data-pemusnahan';
+  | 'data-pemusnahan'
+  | 'outbound-lrg';
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
+
+export interface OutboundLrgSourceItem {
+  item_code?: string;
+  item_name?: string;
+  category?: string;
+  location?: string;
+  location_type?: string;
+  first_qty?: number;
+  last_qty?: number;
+  uom?: string;
+  qty_convert?: number;
+  uom_convert?: string;
+  lpn_serial?: string;
+  batch?: string;
+  vendor_batch?: string;
+  sloc?: string;
+  expired_date?: string;
+  destination_code?: string;
+  qc_code?: string;
+  user_tally?: string;
+  shelf_life?: string;
+  source?: string;
+}
+
+export interface OutboundLrgTemplateRow {
+  id: string;
+  no_document: string;
+  date: string;
+  delivery_date: string;
+  type: string;
+  destination: string;
+  shipping_note: string;
+  material_id: string;
+  qty: number | string;
+  warehouse: string;
+  to_plant: string;
+  to_sloc: string;
+  from_sloc: string;
+  cost_center: string;
+  uom_convert: string;
+  // Extra reference attributes
+  item_name?: string;
+  batch?: string;
+  lpn?: string;
+  expired_date?: string;
+}
 
 export interface DataPemusnahanItem {
   id: string;
