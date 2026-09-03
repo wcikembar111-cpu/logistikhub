@@ -443,14 +443,23 @@ export function Hero({
   const isVoiceSpeakingRef = useRef(false);
   isVoiceSpeakingRef.current = isVoiceSpeaking;
 
+  const resolvedFullNameRef = useRef(resolvedFullName);
+  resolvedFullNameRef.current = resolvedFullName;
+
+  const roleLabelRef = useRef(roleBadgeInfo.shortLabel);
+  roleLabelRef.current = roleBadgeInfo.shortLabel;
+
   const welcomeVoiceText = getWelcomeGreetingText(resolvedFullName, roleBadgeInfo.shortLabel);
 
   const handlePlayVoiceGreeting = () => {
-    const text = getWelcomeGreetingText(resolvedFullName, roleBadgeInfo.shortLabel);
+    const currentName = resolvedFullNameRef.current || resolvedFullName;
+    const currentRole = roleLabelRef.current || roleBadgeInfo.shortLabel;
+    const text = getWelcomeGreetingText(currentName, currentRole);
+
     playWelcomeVoice({
       text,
-      userName: resolvedFullName,
-      roleTitle: roleBadgeInfo.shortLabel,
+      userName: currentName,
+      roleTitle: currentRole,
       onStart: () => setIsVoiceSpeaking(true),
       onEnd: () => setIsVoiceSpeaking(false),
       onError: () => setIsVoiceSpeaking(false)
@@ -473,6 +482,7 @@ export function Hero({
 
   // Auto-play sapaan suara kepada user yang sudah login pada awal masuk ke halaman utama
   const hasTriggeredVoiceRef = useRef(false);
+  const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -490,23 +500,39 @@ export function Hero({
 
     const isNewUserEntry = lastGreetedUser !== currentUserKey;
 
-    if ((shouldPlay || isNewUserEntry) && !hasTriggeredVoiceRef.current) {
-      // Jeda 450ms agar transisi masuk ke halaman utama termuat mulus lalu sapa
-      const autoPlayTimer = setTimeout(() => {
-        hasTriggeredVoiceRef.current = true;
-        try {
-          sessionStorage.removeItem('should_play_welcome_greeting');
-          sessionStorage.setItem('last_greeted_user_session', currentUserKey);
-        } catch {}
+    if ((shouldPlay || isNewUserEntry) && !hasTriggeredVoiceRef.current && !autoPlayTimerRef.current) {
+      hasTriggeredVoiceRef.current = true;
+      try {
+        sessionStorage.removeItem('should_play_welcome_greeting');
+        sessionStorage.setItem('last_greeted_user_session', currentUserKey);
+      } catch {}
 
+      // Beri jeda 400ms agar transisi masuk ke halaman utama termuat mulus lalu sapa
+      autoPlayTimerRef.current = setTimeout(() => {
+        autoPlayTimerRef.current = null;
         handlePlayVoiceGreeting();
-      }, 450);
-
-      return () => {
-        clearTimeout(autoPlayTimer);
-      };
+      }, 400);
     }
-  }, [user?.id, user?.username, resolvedFullName, roleBadgeInfo.shortLabel]);
+  }, [user?.id, user?.username]);
+
+  // Fallback pengaman autoplay: jika browser sempat memblokir karena kebijakan autoplay,
+  // interaksi sentuh/klik pertama pada halaman akan memutar sapaan yang tertunda
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { once: true, passive: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true, passive: true });
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, []);
 
   return (
     <>
