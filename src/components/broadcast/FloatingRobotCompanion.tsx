@@ -13,8 +13,9 @@ import {
   MessageSquare,
   ChevronRight,
   Trash2,
-  Heart
+  Sparkles
 } from 'lucide-react';
+import { KinoRobotAvatar, KinoEmblemSvg } from './KinoRobotAvatar';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 import { playBroadcastSound } from '../../utils/broadcastSound';
 import { parseBroadcastPayload, formatBroadcastMessage } from '../../utils/broadcastFormat';
@@ -209,173 +210,24 @@ export function FloatingRobotCompanion({
             : `fixed bottom-6 ${isSidebarOpen ? 'right-[380px]' : 'right-6'} z-40 transition-all duration-300 select-none ${className}`
         }
       >
-        {/* COMPACT FUTURISTIC FLOATING AI ROBOT COMPANION WITH ARMS & FLOATING PINK HEARTS */}
+        {/* ROBOT MASKOT RESMI PT KINO INDONESIA (KINOBOT) */}
         <div 
           className="relative cursor-pointer group flex flex-col items-center justify-center"
           onClick={() => setIsOpen(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          title="Robot Komunikator Siaran (Klik untuk kirim pesan siaran)"
+          title="Robot Maskot Kino (Klik untuk kirim pesan siaran)"
         >
-          {/* FLOATING PINK HEARTS / LOVE MELAYANG */}
-          {/* Heart 1: Top Left floating & bobbing */}
-          <div className="absolute -top-3.5 -left-3 pointer-events-none z-30 animate-bounce duration-1000">
-            <div className="relative flex items-center justify-center">
-              <Heart 
-                size={14} 
-                className="text-pink-500 fill-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)] transform -rotate-12 transition-transform duration-300 group-hover:scale-125" 
-              />
-              <span className="absolute -top-0.5 -right-0.5 w-1 h-1 bg-white rounded-full animate-ping" />
-            </div>
-          </div>
-
-          {/* Heart 2: Top Right floating & gentle drift */}
-          <div className="absolute -top-2 -right-3.5 pointer-events-none z-30 animate-[pulse_2s_ease-in-out_infinite]">
-            <div className="relative flex items-center justify-center">
-              <Heart 
-                size={11} 
-                className="text-rose-400 fill-pink-300 drop-shadow-[0_0_6px_rgba(251,113,133,0.8)] transform rotate-15 transition-transform duration-300 group-hover:scale-125" 
-              />
-            </div>
-          </div>
-
-          {/* Heart 3: Extra sweet mini heart popping on hover or gentle glow */}
-          <div className={`absolute -bottom-1 -right-2 pointer-events-none z-30 transition-all duration-300 ${
-            isHovered || isNearCursor ? 'opacity-100 scale-100 translate-y-0' : 'opacity-40 scale-75'
-          }`}>
-            <Heart 
-              size={9} 
-              className="text-pink-400 fill-pink-400 drop-shadow-[0_0_5px_rgba(244,114,182,0.9)] animate-pulse" 
-            />
-          </div>
-
-          {/* Acoustic Wave Animation Rings when robot is speaking */}
-          {isSpeaking && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <div className="absolute w-14 h-14 rounded-full border-2 border-indigo-400/80 animate-voice-wave-1 shadow-[0_0_15px_rgba(99,102,241,0.6)]" />
-              <div className="absolute w-18 h-18 rounded-full border-2 border-cyan-400/80 animate-voice-wave-2 shadow-[0_0_20px_rgba(34,211,238,0.5)]" />
-              <div className="absolute w-22 h-22 rounded-full border-2 border-pink-400/70 animate-voice-wave-3 shadow-[0_0_25px_rgba(244,114,182,0.4)]" />
-              <div className="absolute w-24 h-24 rounded-full bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-pink-500/20 blur-xl animate-pulse" />
-            </div>
-          )}
-
-          {/* Subtle Ambient Cyber Glow */}
-          <div className={`absolute -inset-2 rounded-full bg-gradient-to-r from-pink-400/20 via-cyan-400/20 to-indigo-400/20 blur-md transition-opacity duration-300 pointer-events-none ${
-            isSpeaking ? 'opacity-100 scale-125' : (isNearCursor || isHovered ? 'opacity-100 scale-110' : 'opacity-25 scale-90')
-          }`} />
-
-          {/* Floating Robot Body Container with Smooth Anti-Gravity Bobbing */}
-          <div 
-            className="relative flex flex-col items-center transition-all duration-200 group-hover:scale-105"
-            style={{
-              transform: `perspective(400px) rotateX(${headTilt.rotateX * 0.5}deg) rotateY(${headTilt.rotateY * 0.5}deg)`
-            }}
-          >
-            {/* 1. MINI ANTENNA BEACON WITH LOVE PULSE */}
-            <div className="flex flex-col items-center -mb-0.5 relative z-20">
-              <div className={`w-2.5 h-2.5 rounded-full border border-white/90 flex items-center justify-center transition-colors ${
-                isNearCursor || isHovered 
-                  ? 'bg-pink-400 shadow-[0_0_8px_#f472b6]' 
-                  : 'bg-cyan-400 shadow-[0_0_6px_#22d3ee]'
-              }`}>
-                <span className="w-1 h-1 bg-white rounded-full animate-ping" />
-              </div>
-              <div className="w-0.5 h-1.5 bg-indigo-300" />
-            </div>
-
-            {/* 2. ROBOT HEAD & SLEEK VISOR WITH ARMS ATTACHED */}
-            <div className="relative flex items-center justify-center">
-              
-              {/* TANGAN KIRI (Left Robot Arm) */}
-              <div className="absolute -left-3.5 top-3 flex flex-col items-center z-10 transition-transform duration-200 group-hover:-rotate-12">
-                <div className="w-1.5 h-3 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded-full border border-white/60 shadow-xs transform -rotate-12" />
-                {/* Tangan Bulat / Hand Paw */}
-                <div className="w-2.5 h-2.5 rounded-full bg-white border border-indigo-400 shadow-xs -mt-1 flex items-center justify-center">
-                  <div className="w-1 h-1 bg-pink-400 rounded-full" />
-                </div>
-              </div>
-
-              {/* ROBOT HELMET & VISOR */}
-              <div className="relative w-11 h-9 sm:w-12 sm:h-9.5 rounded-2xl bg-gradient-to-b from-white via-indigo-50 to-indigo-200 border border-white shadow-[0_4px_12px_rgba(30,41,59,0.25)] flex items-center justify-center p-1 z-10">
-                
-                {/* Ear / Audio Transceivers */}
-                <div className="absolute -left-1 w-1 h-3.5 rounded-l-md bg-indigo-400 border-l border-white/60 shadow-xs" />
-                <div className="absolute -right-1 w-1 h-3.5 rounded-r-md bg-indigo-400 border-r border-white/60 shadow-xs" />
-
-                {/* Glossy OLED Face Visor */}
-                <div className="w-full h-full rounded-xl bg-slate-950 border border-indigo-400/50 flex items-center justify-between px-1.5 py-0.5 shadow-inner relative overflow-hidden">
-                  {/* Subtle Visor Glass Glare Reflection */}
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-white/20 rounded-t-xl pointer-events-none" />
-
-                  {/* Left Eye */}
-                  <div className="relative w-2.5 h-2.5 flex items-center justify-center">
-                    {isBlinking ? (
-                      <div className="w-2.5 h-0.5 bg-cyan-300 rounded-full shadow-[0_0_4px_#22d3ee]" />
-                    ) : isHovered ? (
-                      /* Happy squinting eye ^ on hover */
-                      <div className="w-2 h-1.5 border-t-2 border-l-2 border-r-2 border-cyan-300 rounded-t-full shadow-[0_0_6px_#22d3ee]" />
-                    ) : (
-                      /* Dynamic glowing OLED eye */
-                      <div 
-                        className="w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_6px_#22d3ee] flex items-center justify-center transition-transform duration-75"
-                        style={{
-                          transform: `translate(${eyeOffset.x * 0.4}px, ${eyeOffset.y * 0.4}px)`
-                        }}
-                      >
-                        <div className="w-0.5 h-0.5 bg-white rounded-full -mt-0.5 -ml-0.5" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Center Cute Pink Heart / Mouth */}
-                  <div className="flex items-center justify-center">
-                    <Heart size={5} className="text-pink-400 fill-pink-400 animate-pulse" />
-                  </div>
-
-                  {/* Right Eye */}
-                  <div className="relative w-2.5 h-2.5 flex items-center justify-center">
-                    {isBlinking ? (
-                      <div className="w-2.5 h-0.5 bg-cyan-300 rounded-full shadow-[0_0_4px_#22d3ee]" />
-                    ) : isHovered ? (
-                      /* Happy squinting eye ^ on hover */
-                      <div className="w-2 h-1.5 border-t-2 border-l-2 border-r-2 border-cyan-300 rounded-t-full shadow-[0_0_6px_#22d3ee]" />
-                    ) : (
-                      /* Dynamic glowing OLED eye */
-                      <div 
-                        className="w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_6px_#22d3ee] flex items-center justify-center transition-transform duration-75"
-                        style={{
-                          transform: `translate(${eyeOffset.x * 0.4}px, ${eyeOffset.y * 0.4}px)`
-                        }}
-                      >
-                        <div className="w-0.5 h-0.5 bg-white rounded-full -mt-0.5 -ml-0.5" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* TANGAN KANAN (Right Robot Arm - Waving Greeting Gesture) */}
-              <div className="absolute -right-3.5 top-2.5 flex flex-col items-center z-10 origin-bottom transition-transform duration-300 group-hover:rotate-12 animate-[bounce_2s_ease-in-out_infinite]">
-                {/* Waving Hand / Claw */}
-                <div className="w-3 h-3 rounded-full bg-pink-100 border border-pink-400 shadow-xs flex items-center justify-center -mb-0.5">
-                  <span className="text-[8px] leading-none">👋</span>
-                </div>
-                <div className="w-1.5 h-3 bg-gradient-to-t from-indigo-400 to-indigo-600 rounded-full border border-white/60 shadow-xs transform rotate-12" />
-              </div>
-            </div>
-
-            {/* 3. MINI FLOATING TORSO WITH HEART REACTOR */}
-            <div className="relative flex items-center justify-center -mt-1 z-0">
-              <div className="w-7 h-3 rounded-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-600 border border-white/80 shadow-xs flex items-center justify-center gap-1 px-1">
-                {/* Glowing Pink Arc Core */}
-                <Heart size={6} className="text-pink-300 fill-pink-300 animate-pulse drop-shadow-[0_0_4px_#f472b6]" />
-                <div className="w-1 h-1 rounded-full bg-cyan-300 shadow-[0_0_4px_#22d3ee]" />
-              </div>
-            </div>
-
-            {/* 4. ANTI-GRAVITY MICRO PLASMA THRUSTER */}
-            <div className="w-3.5 h-1 bg-gradient-to-r from-cyan-400 via-pink-400 to-cyan-400 rounded-full blur-[1px] animate-pulse -mt-0.5" />
-          </div>
+          <KinoRobotAvatar
+            size={mode === 'profile-avatar' ? 'sm' : 'md'}
+            isSpeaking={isSpeaking}
+            isBlinking={isBlinking}
+            isHovered={isHovered}
+            isNearCursor={isNearCursor}
+            eyeOffset={eyeOffset}
+            headTilt={headTilt}
+            showFloatingBadges={true}
+          />
         </div>
       </div>
 
@@ -392,15 +244,15 @@ export function FloatingRobotCompanion({
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white p-4 sm:p-5 relative overflow-hidden flex items-center justify-between shrink-0">
+            <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white p-4 sm:p-5 relative overflow-hidden flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3 relative z-10">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-amber-300 shadow-inner shrink-0">
-                  <Radio size={20} className="animate-pulse" />
+                <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-inner shrink-0">
+                  <KinoEmblemSvg className="w-6 h-6" glow />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-indigo-200">
-                      Robot Komunikator Siaran
+                    <span className="text-[10px] uppercase font-black tracking-widest text-amber-300">
+                      Robot Komunikator Kino
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   </div>

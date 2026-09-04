@@ -23,6 +23,7 @@ import { useAuth } from '../../hooks/useSupabase';
 import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
 import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
+import { KinoEmblemSvg } from '../broadcast/KinoRobotAvatar';
 import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 
@@ -72,7 +73,6 @@ export function LoginPage({
   // Autofill blocking gate: fields are readOnly for initial 120ms so browser auto-complete skips them on load
   const [isEditable, setIsEditable] = useState(false);
 
-  const formRef = useRef<HTMLFormElement | null>(null);
   const usernameRef = useRef<HTMLInputElement | null>(null);
   const pinRef = useRef<HTMLInputElement | null>(null);
 
@@ -88,7 +88,6 @@ export function LoginPage({
     setSuccessMessage(null);
     if (usernameRef.current) usernameRef.current.value = '';
     if (pinRef.current) pinRef.current.value = '';
-    if (formRef.current) formRef.current.reset();
     setFormFieldKey(Math.random().toString(36).substring(2, 8));
     setIsEditable(false);
     setTimeout(() => setIsEditable(true), 120);
@@ -149,8 +148,8 @@ export function LoginPage({
     return () => clearInterval(timer);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -184,7 +183,6 @@ export function LoginPage({
         setPin('');
         if (usernameRef.current) usernameRef.current.value = '';
         if (pinRef.current) pinRef.current.value = '';
-        if (formRef.current) formRef.current.reset();
       } else {
         setErrorMessage(result.message || 'Username atau PIN tidak sesuai.');
       }
@@ -315,14 +313,12 @@ export function LoginPage({
             <div className="relative flex flex-col items-center z-20">
               <div className="flex flex-col items-center">
                 {/* Speech Bubble / Badge Sambutan Robot di atas form */}
-                <div className="mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 bg-white/90 border border-indigo-200/80 text-slate-700 hover:border-indigo-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Robot Komunikator CKB
+                <div className="mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 bg-white/95 border border-blue-200 text-slate-700 hover:border-blue-400">
+                  <KinoEmblemSvg className="w-4 h-4" />
+                  <span className="font-black bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
+                    KinoBot • PT Kino Indonesia
                   </span>
-                  <span className="text-[11px] text-slate-400">
-                    &bull; Siaran Cepat
-                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
 
                 {/* Robot Avatar Component */}
@@ -365,25 +361,12 @@ export function LoginPage({
               </div>
 
               {/* Card Form Body */}
-              <form 
-                ref={formRef}
-                onSubmit={handleSubmit} 
-                autoComplete="off" 
-                data-lpignore="true" 
-                data-bwignore="true"
-                data-1p-ignore="true"
-                data-form-type="other" 
+              {/* Card Form Body (Div container to prevent Chrome form submission password leak checks) */}
+              <div 
                 className="p-6 sm:p-7 space-y-4"
+                role="region"
+                aria-label="Portal Login"
               >
-                {/* Decoy hidden inputs to divert browser autofill engines away from actual fields */}
-                <div 
-                  style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', overflow: 'hidden' }} 
-                  aria-hidden="true"
-                >
-                  <input type="text" name="decoy_user_filler" tabIndex={-1} autoComplete="off" />
-                  <input type="password" name="decoy_pass_filler" tabIndex={-1} autoComplete="off" />
-                </div>
-                
                 {/* Error Banner */}
                 {errorMessage && (
                   <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5">
@@ -429,18 +412,31 @@ export function LoginPage({
                       ref={usernameRef}
                       key={`usr_${formFieldKey}`}
                       type="text"
-                      name={`kino_auth_usr_${formFieldKey}`}
+                      name={`user_id_${formFieldKey}`}
                       value={username}
                       onChange={e => {
                         setUsername(e.target.value);
                         if (errorMessage) setErrorMessage(null);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Tab' && !e.shiftKey) {
+                          e.preventDefault();
+                          pinRef.current?.focus();
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!pin) {
+                            pinRef.current?.focus();
+                          } else {
+                            handleSubmit();
+                          }
+                        }
                       }}
                       onFocus={() => setIsEditable(true)}
                       readOnly={!isEditable}
                       placeholder="misal: admin, dede, pelaksana"
                       autoCapitalize="none"
                       autoCorrect="off"
-                      autoComplete="new-password"
+                      autoComplete="off"
                       spellCheck={false}
                       data-lpignore="true"
                       data-bwignore="true"
@@ -453,6 +449,7 @@ export function LoginPage({
                     {username.length > 0 && (
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={() => {
                           setUsername('');
                           if (usernameRef.current) usernameRef.current.value = '';
@@ -476,6 +473,7 @@ export function LoginPage({
                       {pin.length > 0 && (
                         <button
                           type="button"
+                          tabIndex={-1}
                           onClick={() => {
                             setPin('');
                             if (pinRef.current) pinRef.current.value = '';
@@ -489,6 +487,7 @@ export function LoginPage({
                       )}
                       <button 
                         type="button" 
+                        tabIndex={-1}
                         onClick={() => setShowPin(!showPin)}
                         className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                       >
@@ -506,16 +505,28 @@ export function LoginPage({
                       key={`pin_${formFieldKey}`}
                       type="text"
                       inputMode="numeric"
-                      name={`kino_auth_pin_${formFieldKey}`}
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      name={`access_code_${formFieldKey}`}
                       value={pin}
                       onChange={e => {
-                        setPin(e.target.value);
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setPin(val);
                         if (errorMessage) setErrorMessage(null);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSubmit();
+                        } else if (e.key === 'Tab' && e.shiftKey) {
+                          e.preventDefault();
+                          usernameRef.current?.focus();
+                        }
                       }}
                       onFocus={() => setIsEditable(true)}
                       readOnly={!isEditable}
                       placeholder="Masukkan PIN 4-6 digit"
-                      autoComplete="new-password"
+                      autoComplete="off"
                       data-lpignore="true"
                       data-bwignore="true"
                       data-1p-ignore="true"
@@ -529,6 +540,7 @@ export function LoginPage({
                     {pin.length > 0 && (
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={() => {
                           setPin('');
                           if (pinRef.current) pinRef.current.value = '';
@@ -559,7 +571,8 @@ export function LoginPage({
 
                 {/* Submit Action Button */}
                 <button 
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSubmit()}
                   disabled={loading}
                   className="w-full mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-extrabold text-sm shadow-md shadow-blue-500/25 hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -581,7 +594,7 @@ export function LoginPage({
                   <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
                   <span>Kerahasiaan Aman: Kredensial & PIN otomatis dihapus saat logout</span>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

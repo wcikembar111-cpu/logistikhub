@@ -36,7 +36,6 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
   const [modalKey, setModalKey] = useState(() => Math.random().toString(36).substring(2, 8));
   const [isEditable, setIsEditable] = useState(false);
 
-  const formRef = useRef<HTMLFormElement | null>(null);
   const usernameRef = useRef<HTMLInputElement | null>(null);
   const pinRef = useRef<HTMLInputElement | null>(null);
 
@@ -47,7 +46,6 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
     setSuccessMessage(null);
     if (usernameRef.current) usernameRef.current.value = '';
     if (pinRef.current) pinRef.current.value = '';
-    if (formRef.current) formRef.current.reset();
     setModalKey(Math.random().toString(36).substring(2, 8));
     setIsEditable(false);
     setTimeout(() => setIsEditable(true), 120);
@@ -80,8 +78,8 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -112,7 +110,6 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
         setPin('');
         if (usernameRef.current) usernameRef.current.value = '';
         if (pinRef.current) pinRef.current.value = '';
-        if (formRef.current) formRef.current.reset();
 
         setTimeout(() => {
           onClose();
@@ -174,26 +171,12 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
           </p>
         </div>
 
-        {/* Form Body */}
-        <form 
-          ref={formRef}
-          onSubmit={handleSubmit} 
-          autoComplete="off" 
-          data-lpignore="true" 
-          data-bwignore="true"
-          data-1p-ignore="true"
-          data-form-type="other" 
+        {/* Form Body (Div container to prevent Chrome form submission password leak checks) */}
+        <div 
           className="p-6 sm:p-7 space-y-4"
+          role="region" 
+          aria-label="Modal Login"
         >
-          {/* Decoy hidden inputs to divert browser autofill */}
-          <div 
-            style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', overflow: 'hidden' }} 
-            aria-hidden="true"
-          >
-            <input type="text" name="decoy_modal_usr" tabIndex={-1} autoComplete="off" />
-            <input type="password" name="decoy_modal_pwd" tabIndex={-1} autoComplete="off" />
-          </div>
-          
           {/* Error Message Box */}
           {errorMessage && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-shake">
@@ -221,6 +204,7 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
               {username.length > 0 && (
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => {
                     setUsername('');
                     if (usernameRef.current) usernameRef.current.value = '';
@@ -241,18 +225,31 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
                 ref={usernameRef}
                 key={`mdl_usr_${modalKey}`}
                 type="text"
-                name={`kino_mdl_usr_${modalKey}`}
+                name={`user_id_${modalKey}`}
                 value={username}
                 onChange={e => {
                   setUsername(e.target.value);
                   if (errorMessage) setErrorMessage(null);
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Tab' && !e.shiftKey) {
+                    e.preventDefault();
+                    pinRef.current?.focus();
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!pin) {
+                      pinRef.current?.focus();
+                    } else {
+                      handleSubmit();
+                    }
+                  }
                 }}
                 onFocus={() => setIsEditable(true)}
                 readOnly={!isEditable}
                 placeholder="misal: admin, dede, pelaksana1"
                 autoCapitalize="none"
                 autoCorrect="off"
-                autoComplete="new-password"
+                autoComplete="off"
                 data-lpignore="true"
                 data-bwignore="true"
                 data-1p-ignore="true"
@@ -263,6 +260,7 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
               {username.length > 0 && (
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => {
                     setUsername('');
                     if (usernameRef.current) usernameRef.current.value = '';
@@ -286,6 +284,7 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
                 {pin.length > 0 && (
                   <button
                     type="button"
+                    tabIndex={-1}
                     onClick={() => {
                       setPin('');
                       if (pinRef.current) pinRef.current.value = '';
@@ -299,6 +298,7 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
                 )}
                 <button 
                   type="button" 
+                  tabIndex={-1}
                   onClick={() => setShowPin(!showPin)}
                   className="text-[11px] font-bold text-blue-900 hover:text-blue-950 flex items-center gap-1 cursor-pointer"
                 >
@@ -314,29 +314,43 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
               <input 
                 ref={pinRef}
                 key={`mdl_pin_${modalKey}`}
-                type={showPin ? "text" : "password"}
+                type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                name={`kino_mdl_pin_${modalKey}`}
+                maxLength={6}
+                name={`access_code_${modalKey}`}
                 value={pin}
                 onChange={e => {
-                  setPin(e.target.value);
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setPin(val);
                   if (errorMessage) setErrorMessage(null);
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSubmit();
+                  } else if (e.key === 'Tab' && e.shiftKey) {
+                    e.preventDefault();
+                    usernameRef.current?.focus();
+                  }
                 }}
                 onFocus={() => setIsEditable(true)}
                 readOnly={!isEditable}
                 placeholder="Ketik PIN 4-6 digit"
-                autoComplete="new-password"
+                autoComplete="off"
                 data-lpignore="true"
                 data-bwignore="true"
                 data-1p-ignore="true"
                 data-form-type="other"
                 disabled={loading}
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-semibold tracking-wider placeholder:tracking-normal placeholder:text-slate-400 focus:bg-white focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all outline-none"
+                className={`w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-semibold tracking-wider placeholder:tracking-normal placeholder:text-slate-400 focus:bg-white focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all outline-none ${
+                  !showPin ? 'pin-mask-disc' : ''
+                }`}
               />
               {pin.length > 0 && (
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => {
                     setPin('');
                     if (pinRef.current) pinRef.current.value = '';
@@ -367,7 +381,8 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
 
           {/* Action Submit Button */}
           <button 
-            type="submit"
+            type="button"
+            onClick={() => handleSubmit()}
             disabled={loading}
             className="w-full mt-2 py-3 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -388,7 +403,7 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
             <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
             <span>Kredensial & PIN otomatis dibersihkan saat sesi ditutup</span>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

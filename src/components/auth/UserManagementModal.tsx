@@ -204,8 +204,8 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
     }));
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
     const cleanUsername = formUsername.trim().toLowerCase();
     const cleanNama = formNama.trim();
     const cleanPin = formPin.trim();
@@ -435,8 +435,8 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={6}
-                  name="pin_verify_modal"
-                  autoComplete="one-time-code"
+                  name="gate_code_input"
+                  autoComplete="off"
                   data-lpignore="true"
                   value={pinInput}
                   onChange={e => {
@@ -548,7 +548,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
           
           {isEditing ? (
             /* FORM ADD / EDIT USER */
-            <form onSubmit={handleSave} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-4 animate-fade-in">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-4 animate-fade-in" role="region" aria-label="Form Pengguna">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
@@ -582,6 +582,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   <input 
                     type="text"
                     required
+                    autoComplete="off"
                     value={formUsername}
                     onChange={e => setFormUsername(e.target.value)}
                     placeholder="misal: pelaksana1"
@@ -596,6 +597,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   <input 
                     type="text"
                     required
+                    autoComplete="off"
                     value={formNama}
                     onChange={e => setFormNama(e.target.value)}
                     placeholder="misal: Ahmad Fauzi"
@@ -609,9 +611,13 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   </label>
                   <input 
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    autoComplete="off"
                     required
                     value={formPin}
-                    onChange={e => setFormPin(e.target.value)}
+                    onChange={e => setFormPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="misal: 123456"
                     className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 font-mono focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 outline-none"
                   />
@@ -623,6 +629,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   </label>
                   <input 
                     type="email"
+                    autoComplete="off"
                     value={formEmailGoogle}
                     onChange={e => setFormEmailGoogle(e.target.value)}
                     placeholder="misal: user@kino.co.id"
@@ -793,7 +800,8 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   Batal
                 </button>
                 <button 
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSave()}
                   disabled={formSaving}
                   className="px-6 py-2 rounded-xl bg-blue-900 hover:bg-blue-950 text-white text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
@@ -801,7 +809,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                   <span>{editingId ? 'Simpan Perubahan' : 'Buat Pengguna'}</span>
                 </button>
               </div>
-            </form>
+            </div>
           ) : (
             /* USER LIST & FILTERS */
             <>

@@ -245,8 +245,8 @@ export function PinSecurityModal({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={6}
-                name="pin_security_code"
-                autoComplete="one-time-code"
+                name="security_check_val"
+                autoComplete="off"
                 data-lpignore="true"
                 value={pin}
                 onChange={e => {
