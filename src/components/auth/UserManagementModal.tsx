@@ -782,8 +782,8 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                       {formPermissions.canAccessDatabase ? <CheckSquare size={16} className="text-amber-700" /> : <Square size={16} className="text-slate-400" />}
                     </div>
                     <div>
-                      <div className="text-xs font-bold">canAccessDatabase</div>
-                      <div className="text-[10px] text-slate-500 leading-tight">Akses konfigurasi Database/Sistem</div>
+                      <div className="text-xs font-bold">Konfigurasi Sistem</div>
+                      <div className="text-[10px] text-slate-500 leading-tight">Akses Konfigurasi Sistem Utama</div>
                     </div>
                   </button>
 
@@ -944,7 +944,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                               {perms.canEditMasterBarang && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-800 rounded border border-blue-200">Master</span>}
                               {perms.canManageUsers && <span className="px-1.5 py-0.5 bg-purple-50 text-purple-800 rounded border border-purple-200">ManageUsers</span>}
                               {perms.canApproveQC && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded border border-emerald-200">ApproveQC</span>}
-                              {perms.canAccessDatabase && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">Database</span>}
+                              {perms.canAccessDatabase && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">Sistem</span>}
                             </div>
                           </div>
                         </div>

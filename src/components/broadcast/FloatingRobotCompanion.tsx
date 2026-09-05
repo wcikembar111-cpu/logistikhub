@@ -491,7 +491,7 @@ export function FloatingRobotCompanion({
                     Riwayat Pesan Siaran
                   </h3>
                   <p className="text-[10px] text-indigo-200 m-0">
-                    Total {recentMessages.length} pesan tersimpan di database
+                    Total {recentMessages.length} pesan tersimpan di sistem
                   </p>
                 </div>
               </div>
@@ -508,7 +508,7 @@ export function FloatingRobotCompanion({
             <div className="p-4 overflow-y-auto flex-1 bg-white space-y-2">
               {recentMessages.length === 0 ? (
                 <div className="text-center py-12 rounded-2xl bg-slate-50 text-slate-400 text-xs">
-                  Belum ada pesan siaran di database.
+                  Belum ada pesan siaran.
                 </div>
               ) : (
                 recentMessages.map(item => {

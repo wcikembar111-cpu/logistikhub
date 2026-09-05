@@ -69,7 +69,7 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
   },
   'retur-inventory': {
     title: 'Retur Inventory',
-    category: 'Pengajuan & Tracking Retur',
+    category: 'Analisis & Generator Retur',
     icon: <Undo2 size={18} className="text-white" />,
     iconBg: 'bg-rose-600'
   },

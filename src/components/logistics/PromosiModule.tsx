@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   PackageCheck, Save, RefreshCw, Download, Upload, Trash2, Edit, 
-  X, FileSpreadsheet, FileCheck, Database, FileText
+  X, FileSpreadsheet, FileCheck, Layers, FileText
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
@@ -281,7 +281,7 @@ export function PromosiModule() {
           console.warn('Database update note:', error.message);
           showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui', 'success');
         } else {
-          showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui di Database', 'success');
+          showToast('Berhasil', 'Data penerimaan barang promosi berhasil diperbarui', 'success');
           fetchPromosiData();
         }
       } catch (e: any) {
@@ -317,7 +317,7 @@ export function PromosiModule() {
           console.warn('Database insert note:', error.message);
           showToast('Berhasil', 'Data penerimaan berhasil disimpan', 'success');
         } else {
-          showToast('Berhasil', 'Data penerimaan berhasil disimpan ke Database', 'success');
+          showToast('Berhasil', 'Data penerimaan berhasil disimpan', 'success');
           fetchPromosiData();
         }
       } catch (e: any) {
@@ -374,7 +374,7 @@ export function PromosiModule() {
 
     showConfirm({
       title: 'Konfirmasi Hapus Massal Data Promosi (Admin)',
-      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} data barang promosi yang dipilih secara permanen dari database?`,
+      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} data barang promosi yang dipilih secara permanen?`,
       confirmText: `Ya, Hapus ${selectedIds.length} Data`,
       cancelText: 'Batal',
       type: 'danger',
@@ -390,7 +390,7 @@ export function PromosiModule() {
             console.error('Bulk delete error:', error);
             showToast('Peringatan', error.message, 'danger');
           } else {
-            showToast('Sukses Hapus Massal', `${selectedIds.length} data promosi berhasil dihapus dari database!`, 'success');
+            showToast('Sukses Hapus Massal', `${selectedIds.length} data promosi berhasil dihapus!`, 'success');
           }
         } catch (e: any) {
           console.error(e);
@@ -413,7 +413,7 @@ export function PromosiModule() {
 
     showConfirm({
       title: 'Kosongkan Semua Data Promosi (Admin)',
-      message: `PERINGATAN: Anda akan menghapus SELURUH (${promosiList.length}) data barang promosi dari database. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
+      message: `PERINGATAN: Anda akan menghapus SELURUH (${promosiList.length}) data barang promosi. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
       confirmText: 'Ya, Kosongkan Semua',
       cancelText: 'Batal',
       type: 'danger',
@@ -425,7 +425,7 @@ export function PromosiModule() {
         setPromosiList([]);
         setSelectedIds([]);
         setLoading(false);
-        showToast('Dibersihkan', 'Seluruh data promosi berhasil dikosongkan dari database', 'info');
+        showToast('Dibersihkan', 'Seluruh data promosi berhasil dikosongkan', 'info');
       }
     });
   };
@@ -438,7 +438,7 @@ export function PromosiModule() {
 
     showConfirm({
       title: 'Hapus Data Penerimaan (Admin)',
-      message: 'Yakin ingin menghapus data penerimaan ini dari Database?',
+      message: 'Yakin ingin menghapus data penerimaan ini?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       type: 'danger',
@@ -460,7 +460,7 @@ export function PromosiModule() {
             console.warn('Database delete warning:', error.message);
             showToast('Peringatan', `Terhapus lokal: ${error.message}`, 'info');
           } else {
-            showToast('Berhasil', 'Data penerimaan berhasil dihapus dari Database', 'success');
+            showToast('Berhasil', 'Data penerimaan berhasil dihapus', 'success');
             fetchPromosiData();
           }
         } catch (e) {
@@ -501,9 +501,9 @@ export function PromosiModule() {
 
     const ws = XLSX.utils.json_to_sheet(templateRows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Promosi DB');
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Promosi');
     XLSX.writeFile(wb, 'Template_Impor_Penerimaan_Promosi.xlsx');
-    showToast('Download Sukses', 'Template Excel struktur Database berhasil diunduh', 'success');
+    showToast('Download Sukses', 'Template Excel struktur data berhasil diunduh', 'success');
   };
 
   // 2. DOWNLOAD CURRENT DATA TO EXCEL
@@ -581,7 +581,7 @@ export function PromosiModule() {
         });
 
         setPreviewItems(parsedItems);
-        showToast('File Dibaca', `Ditemukan ${parsedItems.length} baris data. Silakan klik "Simpan Ke Database"`, 'info');
+        showToast('File Dibaca', `Ditemukan ${parsedItems.length} baris data. Silakan klik "Simpan Data"`, 'info');
       } catch (err) {
         console.error('Failed reading Excel:', err);
         showToast('Gagal Impor', 'Gagal membaca file Excel. Pastikan menggunakan format template yang benar.', 'danger');
@@ -592,7 +592,7 @@ export function PromosiModule() {
     reader.readAsArrayBuffer(file);
   };
 
-  // 4. EXPLICIT BATCH SAVE PREVIEW ITEMS TO SUPABASE DATABASE
+  // 4. EXPLICIT BATCH SAVE PREVIEW ITEMS
   const handleSavePreviewToDatabase = async () => {
     if (!previewItems || previewItems.length === 0) return;
 
@@ -616,15 +616,15 @@ export function PromosiModule() {
 
       if (error) {
         console.error('Batch insert error:', error);
-        showToast('Gagal Simpan DB', `Gagal menyimpan ke Database: ${error.message.replace(/supabase/gi, 'database')}`, 'danger');
+        showToast('Gagal Simpan', `Gagal menyimpan: ${error.message.replace(/supabase/gi, 'server')}`, 'danger');
       } else {
-        showToast('Sukses Database', `${previewItems.length} data barang promosi berhasil disimpan penuh ke Database!`, 'success');
+        showToast('Sukses Tersimpan', `${previewItems.length} data barang promosi berhasil disimpan penuh!`, 'success');
         setPreviewItems(null);
         fetchPromosiData();
       }
     } catch (e: any) {
       console.error(e);
-      showToast('Error', e?.message || 'Gagal menyimpan ke database', 'danger');
+      showToast('Error', e?.message || 'Gagal menyimpan data', 'danger');
     } finally {
       setSavingBatch(false);
     }
@@ -653,7 +653,7 @@ export function PromosiModule() {
           <button
             onClick={downloadDatabaseTemplate}
             className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-indigo-600/30"
-            title="Unduh file template Excel sesuai struktur database"
+            title="Unduh file template Excel sesuai format"
           >
             <FileSpreadsheet size={16} />
             <span>Download Template Excel</span>
@@ -661,18 +661,18 @@ export function PromosiModule() {
         </div>
       </div>
 
-      {/* PREVIEW BANNER & SAVE TO DATABASE MODAL/BAR IF EXCEL UPLOADED */}
+      {/* PREVIEW BANNER & SAVE TO SERVER MODAL/BAR IF EXCEL UPLOADED */}
       {previewItems && (
         <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 sm:p-5 shadow-md space-y-3 animate-in fade-in duration-200">
           <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-amber-200">
             <div className="flex items-center gap-2">
-              <Database size={20} className="text-amber-700 shrink-0" />
+              <Layers size={20} className="text-amber-700 shrink-0" />
               <div>
                 <h3 className="text-sm font-black text-amber-900 m-0 uppercase">
                   Pratinjau Impor File Excel ({previewItems.length} Data)
                 </h3>
                 <p className="text-xs text-amber-700 font-semibold m-0">
-                  Data berikut belum masuk database. Klik tombol "Simpan Ke Database" di sebelah kanan.
+                  Data berikut belum tersimpan ke sistem. Klik tombol "Simpan Data" di sebelah kanan.
                 </p>
               </div>
             </div>
@@ -692,7 +692,7 @@ export function PromosiModule() {
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center gap-2"
               >
                 <Save size={16} className={savingBatch ? 'animate-spin' : ''} />
-                <span>{savingBatch ? 'Menyimpan...' : `Simpan ${previewItems.length} Data Ke Database`}</span>
+                <span>{savingBatch ? 'Menyimpan...' : `Simpan ${previewItems.length} Data`}</span>
               </button>
             </div>
           </div>
@@ -945,7 +945,7 @@ export function PromosiModule() {
               onClick={fetchPromosiData}
               disabled={loading}
               className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              title="Refresh data dari database"
+              title="Refresh data terbaru"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin text-blue-600' : ''} />
             </button>
@@ -954,7 +954,7 @@ export function PromosiModule() {
             <button
               onClick={downloadDatabaseTemplate}
               className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-              title="Unduh Template Excel sesuai struktur Database"
+              title="Unduh Template Excel sesuai format sistem"
             >
               <FileSpreadsheet size={14} />
               <span>Download Template</span>
@@ -994,7 +994,7 @@ export function PromosiModule() {
                   Mode Admin: {selectedIds.length} Dari {promosiList.length} Data Dipilih
                 </span>
                 <p className="text-[11px] text-red-700 font-medium m-0">
-                  Pilih aksi massal untuk menghapus data terpilih sekaligus dari database.
+                  Pilih aksi massal untuk menghapus data terpilih sekaligus.
                 </p>
               </div>
             </div>

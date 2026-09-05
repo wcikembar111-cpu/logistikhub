@@ -22,7 +22,6 @@ import {
   Users,
   Lock,
   LogOut,
-  Database,
   KeyRound,
   UserCheck,
   Wrench,
@@ -956,7 +955,7 @@ export function Hero({
                     <span>• canApproveQC</span>
                   </div>
                   <div className={`p-1.5 rounded-lg border flex items-center gap-1 ${user.permissions.canAccessDatabase ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-400 border-slate-200 line-through'}`}>
-                    <span>• canAccessDatabase</span>
+                    <span>• Akses Konfigurasi Sistem</span>
                   </div>
                 </div>
               </div>

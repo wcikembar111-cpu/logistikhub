@@ -4,7 +4,7 @@ import {
   FileText, Plus, Search, Printer, Edit, Trash2, Save, Download, Upload, 
   RefreshCw, ChevronLeft, Building2, User, Phone, MapPin, CheckCircle2, 
   Settings, Layers, ListFilter, FileSpreadsheet, ArrowLeft, PlusCircle,
-  Database, FolderCheck, Eye, X, Sparkles, Calendar
+  FolderCheck, Eye, X, Sparkles, Calendar
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
@@ -543,7 +543,7 @@ export function SuratJalanModule() {
 
     showConfirm({
       title: 'Konfirmasi Hapus Massal Surat Jalan (Admin)',
-      message: `Apakah Anda yakin ingin menghapus ${selectedDocIds.length} dokumen Surat Jalan yang dipilih beserta seluruh rincian barangnya secara permanen dari Database?`,
+      message: `Apakah Anda yakin ingin menghapus ${selectedDocIds.length} dokumen Surat Jalan yang dipilih beserta seluruh rincian barangnya secara permanen?`,
       confirmText: `Ya, Hapus ${selectedDocIds.length} Dokumen`,
       cancelText: 'Batal',
       type: 'danger',
@@ -558,7 +558,7 @@ export function SuratJalanModule() {
             console.error('Bulk delete doc error:', error);
             showToast('Peringatan', error.message, 'danger');
           } else {
-            showToast('Sukses Hapus Massal', `${selectedDocIds.length} dokumen Surat Jalan berhasil dihapus dari Database!`, 'success');
+            showToast('Sukses Hapus Massal', `${selectedDocIds.length} dokumen Surat Jalan berhasil dihapus!`, 'success');
           }
         } catch (e: any) {
           console.error(e);
@@ -582,7 +582,7 @@ export function SuratJalanModule() {
 
     showConfirm({
       title: 'Kosongkan Semua Dokumen Surat Jalan (Admin)',
-      message: `PERINGATAN: Anda akan menghapus SELURUH (${documents.length}) dokumen Surat Jalan dan barangnya dari Database. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
+      message: `PERINGATAN: Anda akan menghapus SELURUH (${documents.length}) dokumen Surat Jalan dan barangnya. Aksi ini tidak dapat dibatalkan. Lanjutkan?`,
       confirmText: 'Ya, Kosongkan Semua',
       cancelText: 'Batal',
       type: 'danger',
@@ -595,7 +595,7 @@ export function SuratJalanModule() {
         setDocuments([]);
         setSelectedDocIds([]);
         setLoading(false);
-        showToast('Dibersihkan', 'Seluruh dokumen Surat Jalan berhasil dikosongkan dari Database', 'info');
+        showToast('Dibersihkan', 'Seluruh dokumen Surat Jalan berhasil dikosongkan', 'info');
       }
     });
   };
@@ -609,7 +609,7 @@ export function SuratJalanModule() {
 
     showConfirm({
       title: 'Hapus Dokumen SJ (Admin)',
-      message: 'Yakin ingin menghapus dokumen Surat Jalan ini dari Database?',
+      message: 'Yakin ingin menghapus dokumen Surat Jalan ini?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       type: 'danger',
@@ -623,9 +623,9 @@ export function SuratJalanModule() {
           const { error: delErr } = await supabase.from('documents').delete().eq('id', id);
           if (delErr) {
             console.error('Database delete doc error:', delErr);
-            showToast('Gagal Hapus DB', delErr.message, 'danger');
+            showToast('Gagal Hapus', delErr.message, 'danger');
           } else {
-            showToast('Terhapus', 'Dokumen SJ beserta barangnya berhasil dihapus dari Database', 'success');
+            showToast('Terhapus', 'Dokumen SJ beserta barangnya berhasil dihapus', 'success');
             fetchAllData();
           }
         } catch (e) {
@@ -663,7 +663,7 @@ export function SuratJalanModule() {
         up: newTujuan.up,
         no_telpon: newTujuan.noTelpon
       }]);
-      showToast('Sukses', 'Tujuan baru berhasil ditambahkan ke Database', 'success');
+      showToast('Sukses', 'Tujuan baru berhasil ditambahkan', 'success');
     } catch (e) {
       showToast('Tersimpan Lokal', 'Tujuan ditambahkan ke lokal', 'info');
     }
@@ -738,7 +738,7 @@ export function SuratJalanModule() {
 
     showConfirm({
       title: 'Hapus Jenis Surat Jalan (Admin)',
-      message: 'Yakin ingin menghapus Jenis Surat Jalan ini dari Database?',
+      message: 'Yakin ingin menghapus Jenis Surat Jalan ini?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       type: 'danger',
@@ -749,9 +749,9 @@ export function SuratJalanModule() {
         try {
           const { error } = await supabase.from('jenis').delete().eq('id', id);
           if (error) {
-            showToast('Gagal Hapus DB', error.message, 'danger');
+            showToast('Gagal Hapus', error.message, 'danger');
           } else {
-            showToast('Berhasil', 'Jenis Surat Jalan terhapus dari Database', 'success');
+            showToast('Berhasil', 'Jenis Surat Jalan terhapus', 'success');
             fetchAllData();
           }
         } catch (e) {
@@ -839,7 +839,7 @@ export function SuratJalanModule() {
 
     showConfirm({
       title: 'Hapus Tujuan Pengiriman (Admin)',
-      message: 'Yakin ingin menghapus Tujuan Pengiriman ini dari Database?',
+      message: 'Yakin ingin menghapus Tujuan Pengiriman ini?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       type: 'danger',
@@ -850,9 +850,9 @@ export function SuratJalanModule() {
         try {
           const { error } = await supabase.from('tujuan').delete().eq('id', id);
           if (error) {
-            showToast('Gagal Hapus DB', error.message, 'danger');
+            showToast('Gagal Hapus', error.message, 'danger');
           } else {
-            showToast('Berhasil', 'Tujuan Pengiriman terhapus dari Database', 'success');
+            showToast('Berhasil', 'Tujuan Pengiriman terhapus', 'success');
             fetchAllData();
           }
         } catch (e) {
@@ -916,19 +916,19 @@ export function SuratJalanModule() {
             .eq('id', currentId);
 
           if (updateErr) {
-            showToast('Gagal Simpan Database', updateErr.message, 'danger');
+            showToast('Gagal Simpan', updateErr.message, 'danger');
           } else {
-            showToast('Sukses', 'Data Pengirim (Kop SJ) berhasil disimpan ke Database', 'success');
+            showToast('Sukses', 'Data Pengirim (Kop SJ) berhasil disimpan', 'success');
             fetchAllData();
           }
         } else {
-          showToast('Gagal Simpan Database', saveErr.message, 'danger');
+          showToast('Gagal Simpan', saveErr.message, 'danger');
         }
       } else {
         if (upsertData && upsertData.length > 0) {
           setPengirimId(upsertData[0].id);
         }
-        showToast('Sukses', 'Data Pengirim (Kop SJ) berhasil disimpan ke Database', 'success');
+        showToast('Sukses', 'Data Pengirim (Kop SJ) berhasil disimpan', 'success');
         fetchAllData();
       }
     } catch (e: any) {
@@ -1194,7 +1194,7 @@ export function SuratJalanModule() {
 
     showConfirm({
       title: 'Hapus Rekapan Tersimpan (Admin)',
-      message: `Yakin ingin menghapus rekapan "${judul}" dari Database?`,
+      message: `Yakin ingin menghapus rekapan "${judul}"?`,
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       type: 'danger',
@@ -1205,9 +1205,9 @@ export function SuratJalanModule() {
         try {
           const { error } = await supabase.from('rekapan_sj').delete().eq('id', id);
           if (error) {
-            showToast('Peringatan', `Terhapus lokal, catatan DB: ${error.message.replace(/supabase/gi, 'database')}`, 'info');
+            showToast('Peringatan', `Terhapus lokal: ${error.message}`, 'info');
           } else {
-            showToast('Terhapus', 'Data rekapan berhasil dihapus dari Database', 'success');
+            showToast('Terhapus', 'Data rekapan berhasil dihapus', 'success');
             fetchAllData();
           }
         } catch (e) {
@@ -1305,7 +1305,7 @@ export function SuratJalanModule() {
           onClick={fetchAllData}
           disabled={loading}
           className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-          title="Sinkronkan dengan Database"
+          title="Sinkronkan data"
         >
           <RefreshCw size={15} className={loading ? 'animate-spin text-blue-600' : ''} />
         </button>
@@ -2229,10 +2229,10 @@ export function SuratJalanModule() {
                   setShowSaveModal(true);
                 }}
                 className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
-                title="Simpan rekapan saat ini ke Database"
+                title="Simpan rekapan saat ini"
               >
-                <Database size={15} />
-                <span>Simpan Rekapan DB</span>
+                <Layers size={15} />
+                <span>Simpan Rekapan</span>
               </button>
 
               <button
@@ -2244,7 +2244,7 @@ export function SuratJalanModule() {
                 }`}
               >
                 <FolderCheck size={15} />
-                <span>Riwayat Rekapan DB ({savedRekapList.length})</span>
+                <span>Riwayat Rekapan ({savedRekapList.length})</span>
               </button>
 
               <button
@@ -2257,13 +2257,13 @@ export function SuratJalanModule() {
             </div>
           </div>
 
-          {/* RIWAYAT REKAPAN TER SIMPAN DI DATABASE SECTION */}
+          {/* RIWAYAT REKAPAN TER SIMPAN SECTION */}
           {showHistorySection && (
             <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-purple-900 font-extrabold text-sm">
-                  <Database size={16} className="text-purple-600" />
-                  <span>Daftar Rekapan Tersimpan di Database ({savedRekapList.length})</span>
+                  <Layers size={16} className="text-purple-600" />
+                  <span>Daftar Rekapan Tersimpan ({savedRekapList.length})</span>
                 </div>
                 <button
                   onClick={() => setShowHistorySection(false)}
@@ -2274,7 +2274,7 @@ export function SuratJalanModule() {
               </div>
 
               {savedRekapList.length === 0 ? (
-                <p className="text-xs text-purple-600 italic m-0">Belum ada rekapan yang tersimpan di database.</p>
+                <p className="text-xs text-purple-600 italic m-0">Belum ada rekapan yang tersimpan.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
                   {savedRekapList.map((rk) => (
@@ -2548,7 +2548,7 @@ export function SuratJalanModule() {
                   Daftar Tujuan Pengiriman ({tujuanList.length})
                 </h3>
                 <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
-                  Data tujuan pengiriman yang tersimpan di Database (`tujuan`)
+                  Data tujuan pengiriman yang terdaftar di sistem
                 </p>
               </div>
               <button
@@ -2676,7 +2676,7 @@ export function SuratJalanModule() {
                 className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Save size={15} />
-                <span>Simpan Ke Database</span>
+                <span>Simpan Data</span>
               </button>
             </div>
           </div>
@@ -2782,7 +2782,7 @@ export function SuratJalanModule() {
                 className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Save size={15} />
-                <span>Simpan Ke Database</span>
+                <span>Simpan Data</span>
               </button>
             </div>
           </div>
@@ -2790,7 +2790,7 @@ export function SuratJalanModule() {
       )}
 
       {/* ==================================================================== */}
-      {/* MODAL SIMPAN REKAPAN TO DATABASE */}
+      {/* MODAL SIMPAN REKAPAN */}
       {/* ==================================================================== */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -2798,10 +2798,10 @@ export function SuratJalanModule() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
-                  <Database size={20} />
+                  <Layers size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase m-0">Simpan Rekapan Ke Database</h3>
+                  <h3 className="text-sm font-black text-slate-900 uppercase m-0">Simpan Rekapan Baru</h3>
                   <p className="text-[11px] text-slate-500 font-medium m-0">Simpan laporan ringkasan barang saat ini</p>
                 </div>
               </div>
@@ -2858,7 +2858,7 @@ export function SuratJalanModule() {
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Save size={15} />
-                <span>{savingRekap ? 'Menyimpan...' : 'Simpan Ke Database'}</span>
+                <span>{savingRekap ? 'Menyimpan...' : 'Simpan Rekapan'}</span>
               </button>
             </div>
           </div>

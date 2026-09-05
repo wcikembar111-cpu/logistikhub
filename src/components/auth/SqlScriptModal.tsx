@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Database, Copy, Check, X, ShieldCheck, Terminal, Sparkles, ExternalLink } from 'lucide-react';
+import { Copy, Check, X, ShieldCheck, Terminal, Sparkles, ExternalLink } from 'lucide-react';
 
 interface SqlScriptModalProps {
   isOpen: boolean;
@@ -122,11 +122,11 @@ export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
         <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
-              <Database size={20} />
+              <Terminal size={20} />
             </div>
             <div>
               <div className="text-[10px] font-black tracking-widest text-emerald-400 uppercase">
-                Skrip SQL Tabel `users` (PostgreSQL / Supabase)
+                Skrip SQL Tabel `users` (Server Sistem)
               </div>
               <h3 className="text-base sm:text-lg font-black text-white m-0">
                 Setup Skema Autentikasi Baru
@@ -147,7 +147,7 @@ export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
         {/* Content */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
           <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-blue-900 leading-relaxed font-medium">
-            <span className="font-bold">Petunjuk:</span> Salin skrip SQL di bawah ini dan tempelkan ke <strong>SQL Editor</strong> pada dashboard Supabase Anda. Skrip ini membuat tabel <code>users</code> dengan trigger <code>updated_at</code>, indexing, permission JSONB, dan akun Admin default (<code>admin</code> / <code>123456</code>).
+            <span className="font-bold">Petunjuk:</span> Salin skrip SQL di bawah ini dan tempelkan ke <strong>SQL Editor</strong> pada dashboard Server Anda. Skrip ini membuat tabel <code>users</code> dengan trigger <code>updated_at</code>, indexing, permission JSONB, dan akun Admin default (<code>admin</code> / <code>123456</code>).
           </div>
 
           <div className="relative">

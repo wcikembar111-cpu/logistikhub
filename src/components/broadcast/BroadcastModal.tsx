@@ -17,7 +17,6 @@ import {
   Sparkles,
   Globe,
   Layers,
-  Database,
   Link2,
   RefreshCw,
   CheckCircle2,
@@ -198,7 +197,7 @@ export function BroadcastModal({
       }
 
       if (res?.delivery?.external && res?.delivery?.primary) {
-        showToast('Tersiar ke 2 Database!', 'Pesan berhasil dikirim ke Aplikasi Ini & Aplikasi Lain secara serentak.', 'success');
+        showToast('Tersiar ke 2 Server!', 'Pesan berhasil dikirim ke Aplikasi Ini & Aplikasi Lain secara serentak.', 'success');
       } else {
         showToast('Terkirim!', 'Robot kurir berhasil menyiarkan pesan Anda.', 'success');
       }
@@ -235,22 +234,22 @@ export function BroadcastModal({
 
   const handleClearHistory = () => {
     if (!onClearAll) {
-      showToast('Akses Terbatas', 'Hanya Admin yang dapat menghapus seluruh pesan di database.', 'warning');
+      showToast('Akses Terbatas', 'Hanya Admin yang dapat menghapus seluruh riwayat pesan.', 'warning');
       return;
     }
 
     showConfirm({
       title: 'Kosongkan Seluruh Pesan Siaran?',
-      message: 'Semua riwayat pesan siaran akan dihapus secara permanen dari database. Lanjutkan?',
+      message: 'Semua riwayat pesan siaran akan dihapus secara permanen. Lanjutkan?',
       confirmText: 'Ya, Hapus Semua',
       type: 'danger',
       onConfirm: async () => {
         setIsDeleting(true);
         try {
           await onClearAll();
-          showToast('Database Bersih', 'Seluruh riwayat pesan siaran di database berhasil dikosongkan.', 'success');
+          showToast('Riwayat Bersih', 'Seluruh riwayat pesan siaran berhasil dikosongkan.', 'success');
         } catch (e: any) {
-          showToast('Gagal', 'Terjadi kesalahan saat menghapus pesan di database.', 'error');
+          showToast('Gagal', 'Terjadi kesalahan saat menghapus pesan.', 'error');
         } finally {
           setIsDeleting(false);
         }
@@ -263,13 +262,13 @@ export function BroadcastModal({
 
     showConfirm({
       title: 'Hapus Pesan?',
-      message: `Hapus pesan siaran dari "${sender}" dari database?`,
+      message: `Hapus pesan siaran dari "${sender}"?`,
       confirmText: 'Hapus Pesan',
       type: 'danger',
       onConfirm: async () => {
         try {
           await onDeleteMessage(id);
-          showToast('Terhapus', 'Pesan siaran berhasil dihapus dari database.', 'success');
+          showToast('Terhapus', 'Pesan siaran berhasil dihapus.', 'success');
         } catch (e) {
           showToast('Gagal', 'Gagal menghapus pesan.', 'error');
         }
@@ -279,7 +278,7 @@ export function BroadcastModal({
 
   const handleTestConnection = async () => {
     if (!extUrl.trim() || !extKey.trim()) {
-      showToast('Data Belum Lengkap', 'Masukkan URL Server dan Kunci Akses database aplikasi lain untuk dites.', 'warning');
+      showToast('Data Belum Lengkap', 'Masukkan URL Server dan Kunci Akses server aplikasi lain untuk dites.', 'warning');
       return;
     }
 
@@ -298,7 +297,7 @@ export function BroadcastModal({
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.message || 'Gagal mengetes koneksi database.'
+        message: err.message || 'Gagal mengetes koneksi server.'
       });
       showToast('Error', 'Gagal mengetes koneksi.', 'error');
     } finally {
@@ -322,9 +321,9 @@ export function BroadcastModal({
     });
 
     if (isEnabled) {
-      showToast('Tersimpan & Terhubung!', 'Konfigurasi sinkronisasi database aplikasi lain berhasil disimpan dan tersambung.', 'success');
+      showToast('Tersimpan & Terhubung!', 'Konfigurasi sinkronisasi server aplikasi lain berhasil disimpan dan tersambung.', 'success');
     } else {
-      showToast('Disimpan', 'Koneksi database eksternal dimatikan.', 'info');
+      showToast('Disimpan', 'Koneksi server eksternal dimatikan.', 'info');
     }
   };
 
@@ -416,10 +415,10 @@ export function BroadcastModal({
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
-            title="Sinkronisasi Pesan Siaran 2 Aplikasi / Database Eksternal"
+            title="Sinkronisasi Pesan Siaran 2 Aplikasi / Server Eksternal"
           >
             <Globe size={13} />
-            <span>Database Lain</span>
+            <span>Server Lain</span>
             {isExternalConfigured ? (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Tersambung" />
             ) : (
@@ -691,9 +690,9 @@ export function BroadcastModal({
               {isAdmin && onClearAll && messages.length > 0 && (
                 <div className="p-2.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center justify-between gap-2 shadow-2xs">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Database size={14} className="text-red-700" />
+                    <Layers size={14} className="text-red-700" />
                     <span className="text-xs font-bold text-red-950 truncate">
-                      Database Siaran ({messages.length} pesan)
+                      Riwayat Siaran ({messages.length} pesan)
                     </span>
                   </div>
 
@@ -715,7 +714,7 @@ export function BroadcastModal({
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center py-8 px-4 rounded-xl bg-slate-50 border border-slate-100 text-slate-500">
-                  <p className="text-xs font-semibold m-0">Belum ada pesan siaran di database.</p>
+                  <p className="text-xs font-semibold m-0">Belum ada pesan siaran.</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-0.5">
@@ -783,10 +782,10 @@ export function BroadcastModal({
             </div>
           )}
 
-          {/* TAB 3: DATABASE LAIN */}
+          {/* TAB 3: SERVER LAIN */}
           {activeTab === 'database_sync' && (
             <div className="space-y-3">
-              <div className="space-y-3" role="region" aria-label="Konfigurasi Database Eksternal">
+              <div className="space-y-3" role="region" aria-label="Konfigurasi Server Eksternal">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
                     URL Server Aplikasi Lain
@@ -796,7 +795,7 @@ export function BroadcastModal({
                     autoComplete="off"
                     value={extUrl}
                     onChange={e => setExtUrl(e.target.value)}
-                    placeholder="https://xyzabcdefghijklmn.supabase.co"
+                    placeholder="https://server-aplikasi-lain.com"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all"
                   />
                 </div>

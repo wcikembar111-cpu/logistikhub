@@ -14,7 +14,6 @@ import {
   CheckCircle,
   HelpCircle,
   Layers,
-  Database,
   Table,
   Filter
 } from 'lucide-react';

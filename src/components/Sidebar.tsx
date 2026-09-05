@@ -15,7 +15,6 @@ import {
   FileText,
   Undo2,
   Flame,
-  Database,
   Truck,
   CheckCircle2,
   Sparkles,
@@ -53,11 +52,11 @@ export const TOOLS_LIST: ToolItemDef[] = [
     category: 'Buat, Cetak & Rekap SJ',
     group: 'doc',
     hasDatabase: true,
-    desc: 'Pembuatan surat jalan ekspedisi, cetak otomatis, dan rekapan tersimpan ke database',
-    keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman database supabase',
+    desc: 'Pembuatan surat jalan ekspedisi, cetak otomatis, dan rekapan tersimpan ke server',
+    keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman server online',
     icon: <FileText size={15} className="text-white" />,
     iconBg: 'bg-blue-700',
-    badge: 'Database',
+    badge: 'Online',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
   {
@@ -66,11 +65,11 @@ export const TOOLS_LIST: ToolItemDef[] = [
     category: 'Penerimaan Barang Promosi',
     group: 'doc',
     hasDatabase: true,
-    desc: 'Manajemen pencatatan & penerimaan barang promosi tersimpan di database',
-    keywords: 'promosi promo penerimaan barang bonus merchandise hadiah receiving logistik database supabase',
+    desc: 'Manajemen pencatatan & penerimaan barang promosi tersimpan di server',
+    keywords: 'promosi promo penerimaan barang bonus merchandise hadiah receiving logistik server online',
     icon: <PackageCheck size={15} className="text-white" />,
     iconBg: 'bg-teal-600',
-    badge: 'Database',
+    badge: 'Online',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
   {
@@ -79,24 +78,24 @@ export const TOOLS_LIST: ToolItemDef[] = [
     category: 'WH-CKB 27 Kolom Data',
     group: 'disposal',
     hasDatabase: true,
-    desc: 'Pipeline monitoring barang afkir/pemusnahan WH-CKB Z87 BAP & migo tersimpan di database',
-    keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir database supabase',
+    desc: 'Pipeline monitoring barang afkir/pemusnahan WH-CKB Z87 BAP & migo tersimpan di server',
+    keywords: 'monitoring pemusnahan ckb z87 bap ba migo sj kapsul disposal musnah barang afkir server online',
     icon: <Flame size={15} className="text-white" />,
     iconBg: 'bg-amber-600',
-    badge: 'Database',
+    badge: 'Online',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
   {
     id: 'data-pemusnahan',
     title: 'Data Pemusnahan',
-    category: 'Spreadsheet GAS & DB',
+    category: 'Spreadsheet GAS & Server',
     group: 'disposal',
     hasDatabase: true,
-    desc: 'Integrasi Google Apps Script 26 kolom penarikan data pemusnahan real-time & database',
-    keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan database supabase',
-    icon: <Database size={15} className="text-white" />,
+    desc: 'Integrasi Google Apps Script 26 kolom penarikan data pemusnahan real-time & server',
+    keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan server online',
+    icon: <Layers size={15} className="text-white" />,
     iconBg: 'bg-emerald-600',
-    badge: 'Live DB',
+    badge: 'Live',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
 
@@ -110,7 +109,7 @@ export const TOOLS_LIST: ToolItemDef[] = [
     group: 'barcode',
     hasDatabase: false,
     desc: 'Pembuat label QR code satuan & massal Honeywell, export PNG & PDF (Offline/Generator)',
-    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell offline tanpa database',
+    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell offline mandiri',
     icon: <QrCode size={15} className="text-white" />,
     iconBg: 'bg-blue-600',
     badge: 'Generator',
@@ -123,7 +122,7 @@ export const TOOLS_LIST: ToolItemDef[] = [
     group: 'barcode',
     hasDatabase: false,
     desc: 'Pembuat nomor seri unik anti duplikasi dengan format barcode kustom',
-    keywords: 'generator serial number sn no unique barcode anti duplicate acak urut offline tanpa database',
+    keywords: 'generator serial number sn no unique barcode anti duplicate acak urut offline mandiri',
     icon: <Barcode size={15} className="text-white" />,
     iconBg: 'bg-sky-600',
     badge: 'Generator',
@@ -184,15 +183,15 @@ export const TOOLS_LIST: ToolItemDef[] = [
   {
     id: 'retur-inventory',
     title: 'Retur Inventory',
-    category: 'Pengajuan & Tracking Retur',
-    group: 'doc',
-    hasDatabase: true,
-    desc: 'Sistem pengajuan retur barang near ED, rusak kemasan, COGS & database cloud inventori',
-    keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim database supabase',
+    category: 'Analisis & Generator Retur',
+    group: 'audit',
+    hasDatabase: false,
+    desc: 'Generator analisis retur, kalkulasi konversi CTN/PCS, breakdown ED & export Excel',
+    keywords: 'retur inventory generator analisis pengembalian barang cogs sku batch ed near rusak kemasan klaim offline mandiri',
     icon: <Undo2 size={15} className="text-white" />,
     iconBg: 'bg-rose-500',
-    badge: 'Database',
-    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    badge: 'Generator',
+    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200'
   }
 ];
 
@@ -406,20 +405,20 @@ export function Sidebar({
             </button>
           </div>
 
-          {/* 2. Menu Terhubung Database Section */}
+          {/* 2. Menu Terhubung Server Section */}
           <div className="space-y-1 pt-1">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1.5 min-w-0">
-                <Database size={12} className="text-emerald-600 shrink-0" />
+                <Layers size={12} className="text-emerald-600 shrink-0" />
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
-                  Terhubung Database ({dbTools.length})
+                  Modul Online ({dbTools.length})
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsDbExpanded(!isDbExpanded)}
                 className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
-                title={isDbExpanded ? 'Perkecil grup Database' : 'Bentangkan grup Database'}
+                title={isDbExpanded ? 'Perkecil grup Modul' : 'Bentangkan grup Modul'}
               >
                 <ChevronDown size={13} className={`transition-transform duration-200 ${isDbExpanded ? 'rotate-0' : '-rotate-90'}`} />
               </button>
@@ -429,7 +428,7 @@ export function Sidebar({
               <div className="space-y-1">
                 {dbTools.length === 0 ? (
                   <div className="text-center py-3 px-2 bg-white/70 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[10px] font-medium">
-                    Tidak ada menu database yang cocok
+                    Tidak ada menu yang cocok
                   </div>
                 ) : (
                   dbTools.map(renderToolButton)
@@ -438,7 +437,7 @@ export function Sidebar({
             )}
           </div>
 
-          {/* 3. Tools Generator Section (Tanpa Database) */}
+          {/* 3. Tools Generator Section (Offline / Standalone) */}
           <div className="space-y-1 pt-1">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1.5 min-w-0">

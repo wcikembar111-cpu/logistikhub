@@ -17,9 +17,8 @@ import {
   Box,
   Coins,
   Download,
-  UploadCloud,
+  Upload,
   ArrowUpDown,
-  Database,
   AlertCircle,
   AlertTriangle,
   Copy,
@@ -647,7 +646,7 @@ export function DataPemusnahanModule() {
         if (error) {
           console.warn('Supabase sync note:', error.message);
         } else if (notify) {
-          showToast('Tersimpan di Cloud', 'Data berhasil disinkronkan ke Supabase', 'success');
+          showToast('Tersimpan', 'Data berhasil disinkronkan ke server', 'success');
         }
       } catch (e) {
         console.error('Gagal sinkronisasi Supabase:', e);
@@ -660,7 +659,7 @@ export function DataPemusnahanModule() {
   // Full Push to Supabase
   const handleFullSyncToCloud = async () => {
     if (!supabase) {
-      showToast('Offline Mode', 'Supabase belum terkonfigurasi. Data tersimpan di penyimpanan lokal browser.', 'info');
+      showToast('Mode Lokal', 'Sistem berjalan dalam mode lokal. Data tersimpan di penyimpanan browser.', 'info');
       return;
     }
     setSyncingCloud(true);
@@ -670,9 +669,9 @@ export function DataPemusnahanModule() {
         .upsert(items, { onConflict: 'id' });
 
       if (error) {
-        showToast('Info Database', `Tabel belum ada atau akses terbatas: ${error.message}.`, 'warning');
+        showToast('Info Penyimpanan', `Tabel belum siap atau akses terbatas: ${error.message}.`, 'warning');
       } else {
-        showToast('Sinkronisasi Sukses', `${items.length} baris data berhasil disinkronkan ke tabel Supabase.`, 'success');
+        showToast('Sinkronisasi Sukses', `${items.length} baris data berhasil disinkronkan ke server.`, 'success');
       }
     } catch (err: any) {
       showToast('Gagal', err.message || 'Terjadi kesalahan sinkronisasi', 'danger');
@@ -896,7 +895,7 @@ export function DataPemusnahanModule() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Data Pemusnahan');
     XLSX.writeFile(wb, `Data_Pemusnahan_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast('Export Berhasil', `File Excel berisi ${filteredItems.length} baris telah diunduh dengan kolom database optimal.`, 'success');
+    showToast('Export Berhasil', `File Excel berisi ${filteredItems.length} baris telah diunduh.`, 'success');
   };
 
   // Open Form for Add / Edit
@@ -1250,11 +1249,11 @@ function handleRequest(e) {
                   26 Kolom Spreadsheet
                 </span>
                 <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
-                  <Database size={11} /> GAS Webhook Ready
+                  <Layers size={11} /> GAS Webhook Ready
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 m-0 mt-0.5 font-medium">
-                Pusat data detail barang pemusnahan, integrasi Google Sheet (GAS), dan sinkronisasi database cloud
+                Pusat data detail barang pemusnahan, integrasi Google Sheet (GAS), dan sinkronisasi server
               </p>
             </div>
           </div>
@@ -1298,12 +1297,12 @@ function handleRequest(e) {
               </span>
             </button>
 
-            {/* Cloud Sync Button */}
+            {/* Server Sync Button */}
             <button
               onClick={handleFullSyncToCloud}
               disabled={syncingCloud}
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer border border-slate-200"
-              title="Sinkronkan seluruh data ke database cloud"
+              title="Sinkronkan seluruh data ke server"
             >
               <RefreshCw size={15} className={syncingCloud ? 'animate-spin text-amber-500' : ''} />
             </button>
@@ -1483,7 +1482,7 @@ function handleRequest(e) {
 
             {/* Upload File Button */}
             <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200">
-              <UploadCloud size={13} className="text-slate-600" />
+              <Upload size={13} className="text-slate-600" />
               <span>Import Excel</span>
               <input
                 type="file"
@@ -1958,11 +1957,11 @@ function handleRequest(e) {
 
                   <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 space-y-1">
                     <div className="font-bold flex items-center gap-1.5">
-                      <Database size={13} className="text-blue-700" />
+                      <Layers size={13} className="text-blue-700" />
                       Informasi Integrasi Google Sheet
                     </div>
                     <p className="text-[11px] text-blue-800 m-0">
-                      Sistem akan menarik data secara otomatis dan memetakan 26 kolom (ID Pemusnahan, SKU, Qty, Batch, SLOC, Expired Date, Tujuan, dll.) langsung ke tabel dan database.
+                      Sistem akan menarik data secara otomatis dan memetakan 26 kolom (ID Pemusnahan, SKU, Qty, Batch, SLOC, Expired Date, Tujuan, dll.) langsung ke tabel.
                     </p>
                   </div>
                 </div>

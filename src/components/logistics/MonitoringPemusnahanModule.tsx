@@ -21,16 +21,14 @@ import {
   Check,
   Building,
   FileText,
-  UploadCloud,
+  Upload,
   Download,
   ArrowUpDown,
   CheckCheck,
-  Database,
   AlertCircle,
   AlertTriangle,
   FileCheck2,
   Server,
-  Cloud,
   Copy,
   HelpCircle,
   Code2
@@ -418,7 +416,7 @@ export function MonitoringPemusnahanModule() {
         showToast('Tersimpan Lokal', `Data tersimpan di tabel lokal. Server: ${error.message}`, 'warning');
       } else {
         await fetchMonitoringData();
-        showToast('Tersimpan di Cloud', 'Data monitoring pemusnahan berhasil tersimpan di database cloud!', 'success');
+        showToast('Tersimpan', 'Data monitoring pemusnahan berhasil tersimpan!', 'success');
       }
 
       setEditingRowId(null);
@@ -497,7 +495,7 @@ export function MonitoringPemusnahanModule() {
         showToast('Tersimpan Lokal', `Data tersimpan di tabel. Server: ${error.message}`, 'warning');
       } else {
         await fetchMonitoringData();
-        showToast('Sukses di Cloud', `Data pengajuan (${id}) tersimpan di database cloud!`, 'success');
+        showToast('Sukses', `Data pengajuan (${id}) berhasil tersimpan!`, 'success');
       }
 
       setFormModalOpen(false);
@@ -809,7 +807,7 @@ export function MonitoringPemusnahanModule() {
 
         setUploadPreview(parsed);
         setUploadModalOpen(true);
-        showToast('File Terbaca', `${parsed.length} baris data berhasil diparsing. Silakan tinjau dan simpan ke database.`, 'info');
+        showToast('File Terbaca', `${parsed.length} baris data berhasil diparsing. Silakan tinjau dan simpan data.`, 'info');
       } catch (err: any) {
         console.error('Error reading Excel:', err);
         showToast('Gagal Membaca File', err.message || 'Format file Excel tidak dapat dibaca.', 'danger');
@@ -851,7 +849,7 @@ export function MonitoringPemusnahanModule() {
     try {
       if (mode === 'replace') {
         setUploadProgress(25);
-        setUploadStageText('Membersihkan rekaman lama di database Supabase...');
+        setUploadStageText('Membersihkan rekaman lama di server...');
         const { error: delErr } = await supabase
           .from('monitoring_pemusnahan')
           .delete()
@@ -870,7 +868,7 @@ export function MonitoringPemusnahanModule() {
         const chunk = cleanRecords.slice(i, i + chunkSize);
         const currentChunkNum = Math.floor(i / chunkSize) + 1;
         
-        setUploadStageText(`Menyinkronkan batch ${currentChunkNum} dari ${totalChunks} (${Math.min(i + chunkSize, totalRecords)}/${totalRecords} baris) ke database Supabase...`);
+        setUploadStageText(`Menyinkronkan batch ${currentChunkNum} dari ${totalChunks} (${Math.min(i + chunkSize, totalRecords)}/${totalRecords} baris) ke server...`);
         
         let { error: insErr } = await supabase
           .from('monitoring_pemusnahan')
@@ -887,7 +885,7 @@ export function MonitoringPemusnahanModule() {
         if (insErr) {
           console.error('Batch upsert chunk error:', insErr);
           dbSuccess = false;
-          dbErrorMsg = insErr.message || 'Gagal menyimpan ke server database';
+          dbErrorMsg = insErr.message || 'Gagal menyimpan ke server';
           break;
         }
 
@@ -906,7 +904,7 @@ export function MonitoringPemusnahanModule() {
     } catch (e: any) {
       console.error('Supabase commit exception:', e);
       dbSuccess = false;
-      dbErrorMsg = e.message || 'Koneksi database terputus';
+      dbErrorMsg = e.message || 'Koneksi server terputus';
     } finally {
       setIsUploadingBatch(false);
     }
@@ -916,8 +914,8 @@ export function MonitoringPemusnahanModule() {
     if (dbSuccess) {
       setUploadResultStatus({
         type: 'success',
-        title: 'Berhasil Masuk ke Database Cloud',
-        message: `${totalRecords} baris data monitoring pemusnahan berhasil tersimpan permanen di cloud database (${mode === 'replace' ? 'Mode Replace Seluruh Data' : 'Mode Append Tambah Data'}).`,
+        title: 'Berhasil Masuk ke Server',
+        message: `${totalRecords} baris data monitoring pemusnahan berhasil tersimpan permanen (${mode === 'replace' ? 'Mode Gantikan Seluruh Data' : 'Mode Tambah Data'}).`,
         recordsCount: totalRecords,
         dbSynced: true,
         timestamp
@@ -925,14 +923,14 @@ export function MonitoringPemusnahanModule() {
 
       showToast(
         'Upload Berhasil',
-        `${totalRecords} data monitoring pemusnahan berhasil ${mode === 'replace' ? 'menggantikan seluruh database' : 'ditambahkan ke database dan tabel'}!`,
+        `${totalRecords} data monitoring pemusnahan berhasil ${mode === 'replace' ? 'menggantikan seluruh data' : 'ditambahkan ke tabel'}!`,
         'success'
       );
     } else {
       setUploadResultStatus({
         type: 'warning',
-        title: 'Data Masuk Tabel Lokal (Gagal Cloud Sync)',
-        message: `${totalRecords} data berhasil ditampilkan di tabel lokal & browser, namun gagal disinkronkan ke server database. Detail kendala: ${dbErrorMsg}`,
+        title: 'Data Masuk Tabel Lokal (Gagal Sinkron Server)',
+        message: `${totalRecords} data berhasil ditampilkan di tabel lokal & browser, namun gagal disinkronkan ke server. Detail kendala: ${dbErrorMsg}`,
         recordsCount: totalRecords,
         dbSynced: false,
         timestamp
@@ -954,7 +952,7 @@ export function MonitoringPemusnahanModule() {
   // Sync All Table Data to Supabase (One-Click Push)
   const handleSyncAllToSupabase = async () => {
     if (dataList.length === 0) {
-      showToast('Tabel Kosong', 'Tidak ada data di tabel untuk disinkronkan ke Supabase.', 'info');
+      showToast('Tabel Kosong', 'Tidak ada data di tabel untuk disinkronkan ke server.', 'info');
       return;
     }
 
@@ -969,7 +967,7 @@ export function MonitoringPemusnahanModule() {
 
     try {
       setUploadProgress(15);
-      setUploadStageText('Menghubungkan ke server database Supabase...');
+      setUploadStageText('Menghubungkan ke server...');
 
       const chunkSize = 25;
       const totalChunks = Math.ceil(totalRecords / chunkSize);
@@ -979,7 +977,7 @@ export function MonitoringPemusnahanModule() {
         const chunk = cleanRecords.slice(i, i + chunkSize);
         const currentChunkNum = Math.floor(i / chunkSize) + 1;
 
-        setUploadStageText(`Menyinkronkan batch ${currentChunkNum} dari ${totalChunks} (${Math.min(i + chunkSize, totalRecords)}/${totalRecords} baris) ke database Supabase...`);
+        setUploadStageText(`Menyinkronkan batch ${currentChunkNum} dari ${totalChunks} (${Math.min(i + chunkSize, totalRecords)}/${totalRecords} baris) ke server...`);
 
         let { error: insErr } = await supabase
           .from('monitoring_pemusnahan')
@@ -996,7 +994,7 @@ export function MonitoringPemusnahanModule() {
         if (insErr) {
           console.error('Batch sync error:', insErr);
           dbSuccess = false;
-          dbErrorMsg = insErr.message || 'Gagal menyimpan ke server database';
+          dbErrorMsg = insErr.message || 'Gagal menyimpan ke server';
           break;
         }
 
@@ -1007,14 +1005,14 @@ export function MonitoringPemusnahanModule() {
 
       if (dbSuccess) {
         setUploadProgress(100);
-        setUploadStageText('Verifikasi pembacaan dari cloud database...');
+        setUploadStageText('Verifikasi pembacaan dari server...');
         await fetchMonitoringData();
       }
       await new Promise(res => setTimeout(res, 300));
     } catch (e: any) {
       console.error('Sync exception:', e);
       dbSuccess = false;
-      dbErrorMsg = e.message || 'Koneksi database terputus';
+      dbErrorMsg = e.message || 'Koneksi server terputus';
     } finally {
       setIsUploadingBatch(false);
       setUploadProgress(0);
@@ -1026,8 +1024,8 @@ export function MonitoringPemusnahanModule() {
     if (dbSuccess) {
       setUploadResultStatus({
         type: 'success',
-        title: 'Database Cloud Terupdate',
-        message: `Seluruh ${totalRecords} data di tabel monitoring pemusnahan berhasil tersimpan secara permanen di cloud database!`,
+        title: 'Server Terupdate',
+        message: `Seluruh ${totalRecords} data di tabel monitoring pemusnahan berhasil tersimpan secara permanen!`,
         recordsCount: totalRecords,
         dbSynced: true,
         timestamp
@@ -1035,21 +1033,21 @@ export function MonitoringPemusnahanModule() {
 
       showToast(
         'Sinkronisasi Sukses',
-        `${totalRecords} data monitoring pemusnahan berhasil tersimpan di database!`,
+        `${totalRecords} data monitoring pemusnahan berhasil tersimpan!`,
         'success'
       );
     } else {
       setUploadResultStatus({
         type: 'warning',
-        title: 'Sinkronisasi Database Terkendala',
-        message: `Gagal mengirim ke database: ${dbErrorMsg}. Pastikan konfigurasi tabel database sudah sesuai.`,
+        title: 'Sinkronisasi Terkendala',
+        message: `Gagal mengirim ke server: ${dbErrorMsg}. Pastikan konfigurasi tabel sudah sesuai.`,
         recordsCount: totalRecords,
         dbSynced: false,
         timestamp
       });
 
       showToast(
-        'Gagal Sinkron DB',
+        'Gagal Sinkronisasi',
         `Pesan server: ${dbErrorMsg}`,
         'danger'
       );
@@ -1084,7 +1082,7 @@ export function MonitoringPemusnahanModule() {
 
     showConfirm({
       title: 'Konfirmasi Hapus Massal (Admin)',
-      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} data monitoring pemusnahan yang dipilih secara permanen dari database?`,
+      message: `Apakah Anda yakin ingin menghapus ${selectedIds.length} data monitoring pemusnahan yang dipilih secara permanen?`,
       confirmText: `Ya, Hapus ${selectedIds.length} Data`,
       cancelText: 'Batal',
       type: 'danger',
@@ -1098,9 +1096,9 @@ export function MonitoringPemusnahanModule() {
 
           if (error) {
             console.error('Bulk delete error:', error);
-            showToast('Gagal Hapus DB', error.message, 'danger');
+            showToast('Gagal Hapus', error.message, 'danger');
           } else {
-            showToast('Sukses Hapus Massal', `${selectedIds.length} data berhasil dihapus dari database!`, 'success');
+            showToast('Sukses Hapus Massal', `${selectedIds.length} data berhasil dihapus!`, 'success');
           }
         } catch (e: any) {
           console.error(e);
@@ -1128,7 +1126,7 @@ export function MonitoringPemusnahanModule() {
 
     showConfirm({
       title: 'Hapus SEMUA Data Monitoring Pemusnahan (Admin)',
-      message: `PERINGATAN: Aksi ini akan menghapus seluruh (${dataList.length}) data monitoring pemusnahan dari database. Aksi ini TIDAK DAPAT dibatalkan. Lanjutkan?`,
+      message: `PERINGATAN: Aksi ini akan menghapus seluruh (${dataList.length}) data monitoring pemusnahan. Aksi ini TIDAK DAPAT dibatalkan. Lanjutkan?`,
       confirmText: 'Ya, Kosongkan Semua',
       cancelText: 'Batal',
       type: 'danger',
@@ -1142,7 +1140,7 @@ export function MonitoringPemusnahanModule() {
             .in('id', allIds);
 
           if (error) {
-            showToast('Gagal Hapus DB', error.message, 'danger');
+            showToast('Gagal Hapus', error.message, 'danger');
           } else {
             showToast('Tabel Dikosongkan', 'Seluruh data monitoring pemusnahan berhasil dikosongkan.', 'success');
           }
@@ -1163,7 +1161,7 @@ export function MonitoringPemusnahanModule() {
     const target = dataList.find(d => d.id === id);
     showConfirm({
       title: 'Hapus Data Monitoring',
-      message: `Hapus pengajuan "${target?.bulan_pengajuan || id}" dari database?`,
+      message: `Hapus pengajuan "${target?.bulan_pengajuan || id}"?`,
       confirmText: 'Ya, Hapus',
       type: 'danger',
       onConfirm: async () => {
@@ -1290,9 +1288,9 @@ export function MonitoringPemusnahanModule() {
         {/* Top Row: Search & Filters */}
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            {/* Sort Mode Filter (Urutan Database Default) */}
+            {/* Sort Mode Filter */}
             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1">
-              <Database size={13} className="text-blue-900 shrink-0" />
+              <Layers size={13} className="text-blue-900 shrink-0" />
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Urutan:</span>
               <select
                 value={sortMode}
@@ -1300,7 +1298,7 @@ export function MonitoringPemusnahanModule() {
                 className="text-xs font-bold bg-transparent outline-none text-blue-950 cursor-pointer"
                 title="Urutan Tampilan Tabel"
               >
-                <option value="db">Urutan Database (Bulan Pengajuan Sesuai Baris Database)</option>
+                <option value="db">Urutan Asli (Sesuai Baris Tabel)</option>
                 <option value="year-desc">Tahun Terbaru</option>
                 <option value="qty-desc">Qty Terbanyak</option>
                 <option value="value-desc">Nilai (Value) Terbesar</option>
@@ -1386,17 +1384,17 @@ export function MonitoringPemusnahanModule() {
               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               title="Unggah Data dari File Excel (.xlsx / .xls / .csv)"
             >
-              <UploadCloud size={14} />
+              <Upload size={14} />
               <span>Upload Data Excel</span>
             </button>
 
-            {/* Sync All Local Table Data to Database */}
+            {/* Sync All Local Table Data */}
             <button
               type="button"
               onClick={handleSyncAllToSupabase}
               disabled={isUploadingBatch || dataList.length === 0}
               className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-              title="Kirim dan sinkronkan seluruh data di tabel ke database"
+              title="Kirim dan sinkronkan seluruh data di tabel ke server"
             >
               <Server size={14} className={isUploadingBatch ? 'animate-spin' : ''} />
               <span>Sinkronisasi</span>
@@ -1450,7 +1448,7 @@ export function MonitoringPemusnahanModule() {
               type="button"
               onClick={() => setSqlGuideModalOpen(true)}
               className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
-              title="Panduan Struktur Tabel Database"
+              title="Panduan Struktur Tabel"
             >
               <Code2 size={14} className="text-indigo-600" />
             </button>
@@ -1461,7 +1459,7 @@ export function MonitoringPemusnahanModule() {
                 onClick={handleDeleteAll}
                 disabled={loading || dataList.length === 0}
                 className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                title="Khusus Admin: Kosongkan seluruh data di database"
+                title="Khusus Admin: Kosongkan seluruh data tabel"
               >
                 <Trash2 size={13} />
                 <span>Reset</span>
@@ -1473,7 +1471,7 @@ export function MonitoringPemusnahanModule() {
               onClick={fetchMonitoringData}
               disabled={loading}
               className="p-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 shadow-2xs transition-all cursor-pointer"
-              title="Refresh data dari database"
+              title="Refresh data terbaru"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin text-blue-900' : ''} />
             </button>
@@ -1516,7 +1514,7 @@ export function MonitoringPemusnahanModule() {
                     ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
                     : 'bg-amber-200 text-amber-900 border border-amber-300'
                 }`}>
-                  {uploadResultStatus.dbSynced ? '● Database Synced' : '▲ Local Storage Only'}
+                  {uploadResultStatus.dbSynced ? '● Tersinkron' : '▲ Lokal Sahaja'}
                 </span>
                 <span className="text-[11px] text-slate-500 font-medium">
                   {uploadResultStatus.timestamp}
@@ -1533,10 +1531,10 @@ export function MonitoringPemusnahanModule() {
               type="button"
               onClick={fetchMonitoringData}
               className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Periksa sinkronisasi database terkini"
+              title="Periksa sinkronisasi data terkini"
             >
               <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-              <span>Verifikasi DB</span>
+              <span>Verifikasi Data</span>
             </button>
             <button
               type="button"
@@ -1556,7 +1554,7 @@ export function MonitoringPemusnahanModule() {
           <div className="flex justify-between items-center text-xs font-black text-blue-950">
             <span className="flex items-center gap-2">
               <Server size={16} className="animate-pulse text-blue-700" />
-              <span>{uploadStageText || 'Sedang mengirimkan data ke database cloud...'}</span>
+              <span>{uploadStageText || 'Sedang mengirimkan data ke server...'}</span>
             </span>
             <span className="font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md text-xs font-black">
               {uploadProgress}%
@@ -1581,7 +1579,7 @@ export function MonitoringPemusnahanModule() {
                 Mode Admin: {selectedIds.length} Dari {filteredRecords.length} Data Dipilih
               </span>
               <p className="text-[11px] text-red-700 font-medium m-0">
-                Pilih aksi massal untuk menghapus data terpilih sekaligus dari database.
+                Pilih aksi massal untuk menghapus data terpilih sekaligus.
               </p>
             </div>
           </div>
@@ -2332,7 +2330,7 @@ export function MonitoringPemusnahanModule() {
             <div className="px-6 py-4 bg-emerald-700 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-emerald-800 rounded-xl">
-                  <UploadCloud size={20} className="text-white" />
+                  <Upload size={20} className="text-white" />
                 </div>
                 <div>
                   <h3 className="font-black text-sm uppercase tracking-wide">
@@ -2390,7 +2388,7 @@ export function MonitoringPemusnahanModule() {
                   <div className="flex justify-between items-center text-xs font-black text-blue-950">
                     <span className="flex items-center gap-2">
                       <RefreshCw size={15} className="animate-spin text-blue-700 shrink-0" />
-                      <span>{uploadStageText || 'Sedang memproses dan menyimpan data ke database cloud...'}</span>
+                      <span>{uploadStageText || 'Sedang memproses dan menyimpan data ke server...'}</span>
                     </span>
                     <span className="font-mono bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md text-xs font-black">
                       {uploadProgress}%
@@ -2405,7 +2403,7 @@ export function MonitoringPemusnahanModule() {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-blue-800">
                     <span className="flex items-center gap-1.5">
                       <Server size={13} />
-                      Target: Cloud Database & Local Table State
+                      Target: Server & Tabel Lokal
                     </span>
                     <span>Harap tunggu, proses sedang berjalan...</span>
                   </div>
@@ -2468,7 +2466,7 @@ export function MonitoringPemusnahanModule() {
                 </div>
                 {uploadPreview.length > 10 && (
                   <p className="text-[11px] text-slate-400 text-right mt-1 font-medium">
-                    + {uploadPreview.length - 10} baris data lainnya akan ikut disimpan ke database.
+                    + {uploadPreview.length - 10} baris data lainnya akan ikut disimpan.
                   </p>
                 )}
               </div>
@@ -2495,7 +2493,7 @@ export function MonitoringPemusnahanModule() {
                     onClick={() => {
                       showConfirm({
                         title: 'Gantikan Seluruh Data? (Replace)',
-                        message: `PERINGATAN: Aksi ini akan menghapus data lama di database dan menggantikannya dengan ${uploadPreview.length} data baru dari file Excel. Lanjutkan?`,
+                        message: `PERINGATAN: Aksi ini akan menghapus data lama dan menggantikannya dengan ${uploadPreview.length} data baru dari file Excel. Lanjutkan?`,
                         confirmText: 'Ya, Gantikan Seluruh Data',
                         cancelText: 'Batal',
                         type: 'danger',
@@ -2518,7 +2516,7 @@ export function MonitoringPemusnahanModule() {
                   className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
                 >
                   <CheckCheck size={15} />
-                  <span>Tambahkan ke Database ({uploadPreview.length} Data)</span>
+                  <span>Simpan ke Server ({uploadPreview.length} Data)</span>
                 </button>
               </div>
             </div>
@@ -2533,11 +2531,11 @@ export function MonitoringPemusnahanModule() {
             <div className="px-6 py-4 bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-blue-800/80 border border-blue-700/50">
-                  <Database size={20} className="text-blue-300" />
+                  <Layers size={20} className="text-blue-300" />
                 </div>
                 <div>
                   <h3 className="font-black text-base tracking-tight">Skrip Struktur Tabel Monitoring Pemusnahan</h3>
-                  <p className="text-xs text-blue-200 font-medium">Jalankan di database server jika tabel belum dibuat atau ada kendala schema</p>
+                  <p className="text-xs text-blue-200 font-medium">Jalankan di server jika tabel belum dibuat atau ada kendala schema</p>
                 </div>
               </div>
               <button
@@ -2551,7 +2549,7 @@ export function MonitoringPemusnahanModule() {
 
             <div className="p-6 overflow-y-auto space-y-4 text-xs">
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-950 font-medium leading-relaxed">
-                💡 <span className="font-bold">Langkah Cepat:</span> Buka dashboard database Anda &gt; menu <b>Query / Database Editor</b> &gt; tempel (paste) skrip di bawah ini &gt; klik <b>Run / Eksekusi</b>.
+                💡 <span className="font-bold">Langkah Cepat:</span> Buka panel server Anda &gt; menu <b>Query / SQL Editor</b> &gt; tempel (paste) skrip di bawah ini &gt; klik <b>Run / Eksekusi</b>.
               </div>
 
               <div className="relative group">
@@ -2645,7 +2643,7 @@ GRANT ALL ON TABLE public.monitoring_pemusnahan TO anon, authenticated;`;
 
             <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
               <span className="text-[11px] text-slate-500 font-medium">
-                Setelah eksekusi struktur di database, klik tombol <b>Sinkronisasi</b> di toolbar.
+                Setelah eksekusi struktur di server, klik tombol <b>Sinkronisasi</b> di toolbar.
               </span>
               <button
                 type="button"

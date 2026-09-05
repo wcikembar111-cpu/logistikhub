@@ -8,7 +8,7 @@ import {
   RefreshCw, 
   Eraser, 
   FileSpreadsheet, 
-  UploadCloud, 
+  Upload, 
   Search, 
   Info,
   Sparkles,
@@ -537,7 +537,7 @@ export function SnGeneratorModule() {
           />
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-slate-600">
             <div className="w-10 h-10 rounded-xl bg-blue-100/80 text-blue-900 flex items-center justify-center shadow-2xs shrink-0">
-              <UploadCloud size={20} />
+              <Upload size={20} />
             </div>
             <div className="text-center sm:text-left">
               <p className="text-xs font-bold text-slate-800 m-0">

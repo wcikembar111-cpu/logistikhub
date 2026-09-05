@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Database, Truck } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -77,8 +77,8 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
     {
       id: 'retur-inventory',
       title: 'Retur Inventory',
-      category: 'Pengajuan & Tracking Retur',
-      keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim',
+      category: 'Analisis & Generator Retur',
+      keywords: 'retur inventory generator analisis pengembalian barang cogs sku batch ed near rusak kemasan excel konversi',
       icon: <Undo2 size={20} className="text-white" />,
       iconBg: 'bg-rose-500'
     },
@@ -95,7 +95,7 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
       title: 'Data Pemusnahan',
       category: 'Spreadsheet GAS 26 Kolom',
       keywords: 'data pemusnahan spreadsheet google sheet gas tarik data 26 kolom item code sku batch sloc tujuan',
-      icon: <Database size={20} className="text-white" />,
+      icon: <Layers size={20} className="text-white" />,
       iconBg: 'bg-emerald-600'
     },
     {

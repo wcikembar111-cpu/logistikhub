@@ -247,16 +247,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return {
               success: true,
               user: defaultAdminSession,
-              message: 'Selamat datang, Administrator Utama! (Mode Database Setup)'
+              message: 'Selamat datang, Administrator Utama! (Mode Setup Awal)'
             };
           }
           return {
             success: false,
-            message: 'Tabel "users" belum dibuat di Supabase. Silakan jalankan Skrip SQL Setup di menu SQL.'
+            message: 'Tabel pengguna belum siap di server. Silakan jalankan Skrip Konfigurasi di menu Sistem.'
           };
         }
 
-        return { success: false, message: 'Gagal menghubungi database: ' + error.message };
+        return { success: false, message: 'Gagal menghubungi server: ' + error.message };
       }
 
       if (!userRecord) {

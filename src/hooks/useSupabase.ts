@@ -49,7 +49,7 @@ export function useLinks() {
     setLinks(prev => [newLink, ...prev]);
     const { error } = await supabase.from('links').insert([link]);
     if (error) {
-      alert(`Gagal menyimpan ke database: ${error.message}\n\nSolusi: Pastikan tabel "links" sudah dibuat di database.`);
+      alert(`Gagal menyimpan data: ${error.message}\n\nSolusi: Pastikan tabel konfigurasi sudah siap.`);
       setLinks(prev => prev.filter(l => l.id !== tempId));
     } else {
       fetchLinks();
@@ -60,7 +60,7 @@ export function useLinks() {
     setLinks(prev => prev.map(l => l.id === id ? { ...l, ...link } : l));
     const { error } = await supabase.from('links').update(link).eq('id', id);
     if (error) {
-      alert(`Gagal memperbarui aplikasi di database: ${error.message}`);
+      alert(`Gagal memperbarui data: ${error.message}`);
       fetchLinks();
     } else {
       fetchLinks();
@@ -71,7 +71,7 @@ export function useLinks() {
     setLinks(prev => prev.filter(l => l.id !== id));
     const { error } = await supabase.from('links').delete().eq('id', id);
     if (error) {
-      alert(`Gagal menghapus aplikasi dari database: ${error.message}`);
+      alert(`Gagal menghapus data: ${error.message}`);
       fetchLinks();
     }
   };

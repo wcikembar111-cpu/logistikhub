@@ -12,8 +12,8 @@ interface LinkModalProps {
 
 const ICON_LIST = [
   'fas fa-link', 'fas fa-box', 'fas fa-truck', 'fas fa-file-invoice', 'fas fa-chart-line',
-  'fas fa-users', 'fas fa-cogs', 'fas fa-database', 'fas fa-shield-alt', 'fas fa-envelope',
-  'fas fa-calendar', 'fas fa-calculator', 'fas fa-camera', 'fas fa-clock', 'fas fa-cloud',
+  'fas fa-users', 'fas fa-cogs', 'fas fa-hdd', 'fas fa-shield-alt', 'fas fa-envelope',
+  'fas fa-calendar', 'fas fa-calculator', 'fas fa-camera', 'fas fa-clock', 'fas fa-bolt',
   'fas fa-comments', 'fas fa-credit-card', 'fas fa-desktop', 'fas fa-folder', 'fas fa-globe',
   'fas fa-heart', 'fas fa-home', 'fas fa-image', 'fas fa-key', 'fas fa-lock',
   'fas fa-map-marker-alt', 'fas fa-music', 'fas fa-paper-plane', 'fas fa-phone', 'fas fa-shopping-cart',
