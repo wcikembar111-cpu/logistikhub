@@ -186,13 +186,13 @@ export const TOOLS_LIST: ToolItemDef[] = [
     title: 'Retur Inventory',
     category: 'Pengajuan & Tracking Retur',
     group: 'doc',
-    hasDatabase: false,
-    desc: 'Sistem pengajuan retur barang near ED, rusak kemasan, COGS & tracking lokal browser',
-    keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim lokal',
+    hasDatabase: true,
+    desc: 'Sistem pengajuan retur barang near ED, rusak kemasan, COGS & database cloud inventori',
+    keywords: 'retur inventory return pengembalian barang cogs sku batch ed near rusak kemasan klaim database supabase',
     icon: <Undo2 size={15} className="text-white" />,
     iconBg: 'bg-rose-500',
-    badge: 'Lokal',
-    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200'
+    badge: 'Database',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   }
 ];
 
