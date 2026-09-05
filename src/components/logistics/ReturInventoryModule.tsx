@@ -339,7 +339,7 @@ export function mapReturItemForDb(item: Partial<ReturInventoryItem>, idx: number
     batch: String(item.batch || '').trim(),
     vendor_batch: String(item.vendor_batch || '').trim(),
     sloc: String(item.sloc || '8A04').trim().toUpperCase(),
-    expired: String(item.expired || isoDate).trim(),
+    expired: toValidIsoDate(item.expired || isoDate),
     destination_code: String(item.destination_code || '').trim(),
     qc_code: String(item.qc_code || 'PASS').trim(),
     user_tally: String(item.user_tally || '').trim(),
@@ -364,6 +364,7 @@ export function ReturInventoryModule() {
   const [isDbSynced, setIsDbSynced] = useState<boolean | null>(null);
   const [isLocalOnly, setIsLocalOnly] = useState(false);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
   const [dbRowCount, setDbRowCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [lastUpdated, setLastUpdated] = useState<string>('-');
@@ -496,17 +497,43 @@ export function ReturInventoryModule() {
     let loadedFromDb = false;
 
     try {
-      const { data, error } = await supabase
-        .from('retur_inventory')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let keepFetching = true;
+      let fetchError = null;
 
-      if (!error && data) {
-        setDbRowCount(data.length);
-        if (data.length > 0) {
+      while (keepFetching) {
+        const { data, error } = await supabase
+          .from('retur_inventory')
+          .select('*')
+          .range(from, from + pageSize - 1)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          fetchError = error;
+          keepFetching = false;
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          if (data.length < pageSize) {
+            keepFetching = false;
+          } else {
+            from += pageSize;
+          }
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      if (!fetchError) {
+        setDbRowCount(allData.length);
+        if (allData.length > 0) {
           // Cloud Supabase has real data!
-          setReturData(data as ReturInventoryItem[]);
-          localStorage.setItem('logistics_retur_inventory', JSON.stringify(data));
+          setReturData(allData as ReturInventoryItem[]);
+          localStorage.setItem('logistics_retur_inventory', JSON.stringify(allData));
           setIsDbSynced(true);
           setIsLocalOnly(false);
           loadedFromDb = true;
@@ -537,8 +564,8 @@ export function ReturInventoryModule() {
           }
           loadedFromDb = true;
         }
-      } else if (error) {
-        console.warn('Supabase fetch error:', error);
+      } else {
+        console.warn('Supabase fetch error:', fetchError);
       }
     } catch (e) {
       console.warn('Supabase fetch notice, using local cache:', e);
@@ -975,19 +1002,47 @@ export function ReturInventoryModule() {
       // 3. Try syncing to Supabase table
       let syncSuccess = false;
       try {
-        if (mode === 'replace') {
-          // Clear table first
-          const { error: delErr } = await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-          if (delErr) console.warn('Supabase delete table notice:', delErr);
-        }
+        // Insert in chunks of 50 rows with retry and upsert/insert fallback
+        const CHUNK_SIZE = 50;
+        for (let i = 0; i < rowsToInsert.length; i += CHUNK_SIZE) {
+          const chunk = rowsToInsert.slice(i, i + CHUNK_SIZE);
+          let lastErr: any = null;
 
-        // Insert in chunks of 100 rows
-        for (let i = 0; i < rowsToInsert.length; i += 100) {
-          const chunk = rowsToInsert.slice(i, i + 100);
-          const { error: insErr } = await supabase.from('retur_inventory').insert(chunk);
-          if (insErr) {
-            throw new Error(insErr.message);
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              let opErr: any = null;
+              // Try upsert first
+              const upsertRes = await supabase
+                .from('retur_inventory')
+                .upsert(chunk, { onConflict: 'id' });
+
+              if (upsertRes.error) {
+                // If upsert fails (e.g. no unique constraint on id), fallback to standard insert
+                const insertRes = await supabase
+                  .from('retur_inventory')
+                  .insert(chunk);
+                opErr = insertRes.error;
+              } else {
+                opErr = null;
+              }
+
+              if (opErr) throw new Error(opErr.message);
+              lastErr = null;
+              break;
+            } catch (err: any) {
+              lastErr = err;
+              if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 350 * attempt));
+              }
+            }
           }
+
+          if (lastErr) {
+            throw lastErr;
+          }
+
+          // Small throttle pause
+          await new Promise(r => setTimeout(r, 30));
         }
 
         syncSuccess = true;
@@ -1039,20 +1094,56 @@ export function ReturInventoryModule() {
     }
 
     setIsSyncingCloud(true);
+    setSyncProgress({ current: 0, total: returData.length });
+
     try {
       showToast('Menyinkronkan...', `Mengunggah ${returData.length} baris data ke Cloud Database Supabase...`, 'info');
 
-      // Clear existing records in cloud before full sync to avoid duplicates
-      await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
       const rowsToInsert = returData.map((item, idx) => mapReturItemForDb(item, idx));
+      const CHUNK_SIZE = 50;
 
-      for (let i = 0; i < rowsToInsert.length; i += 100) {
-        const chunk = rowsToInsert.slice(i, i + 100);
-        const { error: insErr } = await supabase.from('retur_inventory').insert(chunk);
-        if (insErr) {
-          throw new Error(insErr.message);
+      for (let i = 0; i < rowsToInsert.length; i += CHUNK_SIZE) {
+        const chunk = rowsToInsert.slice(i, i + CHUNK_SIZE);
+        
+        let lastErr: any = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            let opErr: any = null;
+            // Try upsert first
+            const upsertRes = await supabase
+              .from('retur_inventory')
+              .upsert(chunk, { onConflict: 'id' });
+
+            if (upsertRes.error) {
+              // Fallback to insert if upsert encounters conflict specification issue
+              const insertRes = await supabase
+                .from('retur_inventory')
+                .insert(chunk);
+              opErr = insertRes.error;
+            } else {
+              opErr = null;
+            }
+
+            if (opErr) throw new Error(opErr.message);
+            lastErr = null;
+            break;
+          } catch (err: any) {
+            lastErr = err;
+            if (attempt < 3) {
+              await new Promise(r => setTimeout(r, 350 * attempt));
+            }
+          }
         }
+
+        if (lastErr) {
+          throw new Error(`Gagal pada baris ${i + 1}-${Math.min(i + CHUNK_SIZE, rowsToInsert.length)}: ${lastErr.message || 'Koneksi terputus'}`);
+        }
+
+        const currentCount = Math.min(i + CHUNK_SIZE, rowsToInsert.length);
+        setSyncProgress({ current: currentCount, total: rowsToInsert.length });
+        
+        // Small throttle pause to prevent socket exhaustion
+        await new Promise(r => setTimeout(r, 30));
       }
 
       setIsDbSynced(true);
@@ -1069,6 +1160,7 @@ export function ReturInventoryModule() {
       showToast('Gagal Sinkronisasi Cloud', err.message || 'Terjadi kesalahan saat mengirim ke Supabase.', 'danger');
     } finally {
       setIsSyncingCloud(false);
+      setSyncProgress(null);
     }
   };
 
@@ -1253,7 +1345,11 @@ export function ReturInventoryModule() {
               title="Sinkronkan data ke Cloud Supabase"
             >
               <CloudUpload size={14} className={isSyncingCloud ? 'animate-spin' : ''} />
-              <span>{isSyncingCloud ? 'Menyinkronkan...' : 'Sinkronkan ke Cloud'}</span>
+              <span>
+                {isSyncingCloud
+                  ? (syncProgress ? `Sinkron (${syncProgress.current}/${syncProgress.total})...` : 'Menyinkronkan...')
+                  : 'Sinkronkan ke Cloud'}
+              </span>
             </button>
           )}
 
