@@ -17,9 +17,6 @@ import {
   X, 
   FileText, 
   PieChart as PieIcon, 
-  Mic, 
-  MicOff, 
-  QrCode, 
   Check, 
   ArrowUpDown, 
   Clock, 
@@ -32,7 +29,6 @@ import {
 } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
 import { ReturInventoryItem } from '../../types';
-import { InventoryQrScannerModal } from './InventoryQrScannerModal';
 import { 
   parseQuantity, 
   parseExcelDate, 
@@ -44,7 +40,7 @@ import {
 import { ReturProcessingModal, ProcessingStep } from './retur/ReturProcessingModal';
 
 export type DashboardDimension = 'by_ed' | 'category' | 'location' | 'sloc' | 'status_ed';
-export type FilterEdStatus = 'ALL' | 'EXPIRED' | 'NEAR_ED' | 'SAFE' | 'VARIANCE';
+export type FilterEdStatus = 'ALL' | 'EXPIRED' | 'NEAR_ED' | 'SAFE';
 
 export function ReturInventoryModule() {
   const { showToast, showConfirm } = useNotification();
@@ -81,11 +77,6 @@ export function ReturInventoryModule() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  // Voice Search & QR Scanner
-  const [isListeningVoice, setIsListeningVoice] = useState(false);
-  const [showQrScannerModal, setShowQrScannerModal] = useState(false);
-  const speechRecognitionRef = useRef<any>(null);
-
   const formatNumber = (num?: number | string | null, maxFraction = 2) => {
     if (num === undefined || num === null || num === '' || isNaN(Number(num))) return '0';
     return Number(num).toLocaleString('id-ID', { maximumFractionDigits: maxFraction });
@@ -112,73 +103,6 @@ export function ReturInventoryModule() {
     }
   };
 
-  // Voice Search Handler
-  const handleToggleVoiceSearch = () => {
-    const SpeechRec = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
-                      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
-
-    if (!SpeechRec) {
-      showToast('Tidak Didukung', 'Browser Anda belum mendukung input suara. Gunakan Chrome atau Edge.', 'warning');
-      return;
-    }
-
-    if (isListeningVoice) {
-      if (speechRecognitionRef.current) {
-        try { speechRecognitionRef.current.stop(); } catch {}
-      }
-      setIsListeningVoice(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRec();
-      recognition.lang = 'id-ID';
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        setIsListeningVoice(true);
-        playChime('start');
-        showToast('Mendengarkan...', 'Sebutkan kode SKU, nama barang, rak, atau batch...', 'info');
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0].transcript)
-          .join('');
-        if (transcript) {
-          setSearchQuery(transcript);
-          setCurrentPage(1);
-          if (activeTab !== 'data') setActiveTab('data');
-        }
-      };
-
-      recognition.onerror = () => {
-        setIsListeningVoice(false);
-      };
-
-      recognition.onend = () => {
-        setIsListeningVoice(false);
-        playChime('finish');
-      };
-
-      speechRecognitionRef.current = recognition;
-      recognition.start();
-    } catch {
-      setIsListeningVoice(false);
-    }
-  };
-
-  const handleQrScanHit = (code: string) => {
-    const clean = code.trim();
-    if (!clean) return;
-    setSearchQuery(clean);
-    setCurrentPage(1);
-    setActiveTab('data');
-    setShowQrScannerModal(false);
-    showToast('QR Terpindai', `Menampilkan data untuk: "${clean}"`, 'success');
-  };
-
   // ==========================================
   // EXCEL PARSING & GENERATOR PROCESSING
   // ==========================================
@@ -203,10 +127,10 @@ export function ReturInventoryModule() {
     });
     await new Promise(r => setTimeout(r, 220));
 
-    // Step 3: Conversions & Variance
+    // Step 3: Conversions
     setProcessStep({
       title: 'Kalkulasi Konversi CTN & PCS...',
-      desc: 'Memvalidasi kuantitas fisik dan selisih terhadap kuantitas awal',
+      desc: 'Menghitung total kuantitas fisik (Last Qty) dan rasio konversi karton',
       percent: 75
     });
     await new Promise(r => setTimeout(r, 200));
@@ -424,8 +348,6 @@ export function ReturInventoryModule() {
     dimensionList,
     grandTotalLastQtyPcs,
     grandTotalQtyConvertCtn,
-    grandTotalFirstQty,
-    grandTotalVariancePcs,
     topGroup,
     totalUniqueSKUs,
     totalUniqueBatches,
@@ -438,8 +360,6 @@ export function ReturInventoryModule() {
       key: string;
       lastQtyPcs: number;
       qtyConvertCtn: number;
-      firstQty: number;
-      variancePcs: number;
       count: number;
       expiredCount: number;
       nearEdCount: number;
@@ -448,8 +368,6 @@ export function ReturInventoryModule() {
 
     let totalPcs = 0;
     let totalCtn = 0;
-    let totalFirst = 0;
-    let totalVar = 0;
 
     const skuSet = new Set<string>();
     const batchSet = new Set<string>();
@@ -470,13 +388,9 @@ export function ReturInventoryModule() {
     returData.forEach(item => {
       const pcs = Number(item.last_qty_pcs) || 0;
       const ctn = Number(item.qty_convert_ctn) || 0;
-      const first = Number(item.first_qty) || 0;
-      const variance = pcs - first;
 
       totalPcs += pcs;
       totalCtn += ctn;
-      totalFirst += first;
-      totalVar += variance;
 
       if (item.item_code) skuSet.add(item.item_code.trim().toUpperCase());
       if (item.batch) batchSet.add(item.batch.trim().toUpperCase());
@@ -523,8 +437,6 @@ export function ReturInventoryModule() {
           key,
           lastQtyPcs: 0,
           qtyConvertCtn: 0,
-          firstQty: 0,
-          variancePcs: 0,
           count: 0,
           expiredCount: 0,
           nearEdCount: 0,
@@ -534,8 +446,6 @@ export function ReturInventoryModule() {
 
       map[key].lastQtyPcs += pcs;
       map[key].qtyConvertCtn += ctn;
-      map[key].firstQty += first;
-      map[key].variancePcs += variance;
       map[key].count += 1;
 
       if (expAnalysis.status === 'EXPIRED') map[key].expiredCount += 1;
@@ -561,8 +471,6 @@ export function ReturInventoryModule() {
       dimensionList: list,
       grandTotalLastQtyPcs: totalPcs,
       grandTotalQtyConvertCtn: totalCtn,
-      grandTotalFirstQty: totalFirst,
-      grandTotalVariancePcs: totalVar,
       topGroup: list.length > 0 ? list[0] : null,
       totalUniqueSKUs: skuSet.size,
       totalUniqueBatches: batchSet.size,
@@ -596,7 +504,6 @@ export function ReturInventoryModule() {
         if (statusFilter === 'EXPIRED') return exp.status === 'EXPIRED';
         if (statusFilter === 'NEAR_ED') return exp.status === 'CRITICAL' || exp.status === 'NEAR_ED';
         if (statusFilter === 'SAFE') return exp.status === 'SAFE' || exp.status === 'MEDIUM';
-        if (statusFilter === 'VARIANCE') return (Number(item.last_qty_pcs) || 0) !== (Number(item.first_qty) || 0);
         return true;
       });
     }
@@ -696,7 +603,6 @@ export function ReturInventoryModule() {
     // Sheet 1: Detailed Items
     const rows = returData.map((item, idx) => {
       const expAnalysis = calculateExpiryStatus(item.expired);
-      const first = Number(item.first_qty) || 0;
       const last = Number(item.last_qty_pcs) || 0;
       return {
         'No': item.no || idx + 1,
@@ -705,9 +611,7 @@ export function ReturInventoryModule() {
         'Category': item.category || '',
         'Location': item.location || '',
         'Location Type': item.location_type || '',
-        'First Qty': first,
         'Last Qty Pcs': last,
-        'Selisih Pcs': last - first,
         'Uom': item.uom || 'PCS',
         'Qty Convert Ctn': item.qty_convert_ctn || 0,
         'Uom Convert': item.uom_convert || 'CTN',
@@ -731,11 +635,8 @@ export function ReturInventoryModule() {
     const summaryRows = dimensionList.map((d, i) => ({
       'No': i + 1,
       'Grup': d.key,
-      'Jumlah Baris': d.count,
       'Last Qty Pcs': d.lastQtyPcs,
       'Qty Convert Ctn': d.qtyConvertCtn,
-      'First Qty': d.firstQty,
-      'Selisih Pcs': d.variancePcs,
       'Share Pcs (%)': Number(d.pctPcs.toFixed(2)),
       'Share Ctn (%)': Number(d.pctCtn.toFixed(2)),
       'Item Expired': d.expiredCount,
@@ -855,33 +756,6 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-start md:justify-end">
-          {/* Quick Voice & QR buttons */}
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onClick={handleToggleVoiceSearch}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                isListeningVoice
-                  ? 'bg-red-600 text-white animate-pulse shadow-md'
-                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs'
-              }`}
-              title="Cari dengan Suara (Voice)"
-            >
-              {isListeningVoice ? <MicOff size={14} className="animate-bounce" /> : <Mic size={14} className="text-rose-600" />}
-              <span className="hidden sm:inline">{isListeningVoice ? 'Mendengarkan...' : 'Suara'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowQrScannerModal(true)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Scan QR Code / Barcode Produk"
-            >
-              <QrCode size={14} className="text-emerald-700" />
-              <span className="hidden sm:inline">Scan QR</span>
-            </button>
-          </div>
-
           {/* View Tab Switcher */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
@@ -1049,8 +923,8 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
             </div>
           </div>
 
-          {/* TOP 5 ACCURATE SUMMARY CARDS */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
+          {/* TOP ACCURATE SUMMARY CARDS */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {/* Card 1: Total Last Qty Pcs */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center shrink-0 border border-blue-200">
@@ -1058,13 +932,13 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
-                  Total Fisik (PCS)
+                  Total Fisik (Last Qty)
                 </div>
                 <div className="text-base sm:text-lg font-black text-blue-950 leading-tight mt-0.5 truncate font-mono">
                   {formatNumber(grandTotalLastQtyPcs)} <span className="text-[10px] font-bold text-blue-700">PCS</span>
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium truncate">
-                  Awal: {formatNumber(grandTotalFirstQty)} PCS
+                  Kuantitas Fisik Bersih
                 </div>
               </div>
             </div>
@@ -1087,37 +961,7 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
               </div>
             </div>
 
-            {/* Card 3: Selisih / Variance */}
-            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
-                grandTotalVariancePcs === 0
-                  ? 'bg-slate-50 text-slate-700 border-slate-200'
-                  : grandTotalVariancePcs < 0
-                  ? 'bg-red-50 text-red-700 border-red-200'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              }`}>
-                <ArrowUpDown size={18} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
-                  Selisih Fisik vs Awal
-                </div>
-                <div className={`text-base sm:text-lg font-black leading-tight mt-0.5 truncate font-mono ${
-                  grandTotalVariancePcs === 0
-                    ? 'text-slate-800'
-                    : grandTotalVariancePcs < 0
-                    ? 'text-red-700'
-                    : 'text-emerald-700'
-                }`}>
-                  {grandTotalVariancePcs > 0 ? `+${formatNumber(grandTotalVariancePcs)}` : formatNumber(grandTotalVariancePcs)} <span className="text-[10px] font-bold">PCS</span>
-                </div>
-                <div className="text-[10px] text-slate-400 font-medium truncate">
-                  {grandTotalVariancePcs === 0 ? 'Kuantitas cocok (100%)' : 'Ada perbedaan kuantitas'}
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: SKU & Lokasi */}
+            {/* Card 3: SKU & Lokasi */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
                 <Tags size={18} />
@@ -1135,8 +979,8 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
               </div>
             </div>
 
-            {/* Card 5: Top Grup */}
-            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex items-center gap-3 col-span-2 lg:col-span-1">
+            {/* Card 4: Top Grup */}
+            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 border border-purple-200">
                 <Trophy size={18} />
               </div>
@@ -1351,7 +1195,7 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                   <h4 className="font-bold text-xs sm:text-sm text-slate-900 m-0 leading-tight">
                     Tabel Ringkasan Berdasarkan {analysisDimension === 'by_ed' ? 'By ED' : analysisDimension === 'category' ? 'Kategori' : analysisDimension === 'location' ? 'Lokasi Rak' : analysisDimension === 'sloc' ? 'SLOC' : 'Status ED'}
                   </h4>
-                  <p className="text-[11px] text-slate-500 m-0">Rekapitulasi total PCS, konversi karton, selisih, dan persentase</p>
+                  <p className="text-[11px] text-slate-500 m-0">Rekapitulasi total kuantitas fisik (PCS), konversi karton, dan persentase kontribusi</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1369,10 +1213,8 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                     <th className="py-2 px-3 min-w-[140px]">
                       {analysisDimension === 'by_ed' ? 'Grup By ED' : analysisDimension === 'category' ? 'Kategori Produk' : analysisDimension === 'location' ? 'Lokasi Rak' : analysisDimension === 'sloc' ? 'SLOC Gudang' : 'Status Kedaluwarsa'}
                     </th>
-                    <th className="py-2 px-3 text-right min-w-[80px]">Baris</th>
-                    <th className="py-2 px-3 text-right min-w-[100px]">Last Qty (PCS)</th>
-                    <th className="py-2 px-3 text-right min-w-[100px]">Konversi (CTN)</th>
-                    <th className="py-2 px-3 text-right min-w-[90px]">Selisih</th>
+                    <th className="py-2 px-3 text-right min-w-[110px]">Last Qty (PCS)</th>
+                    <th className="py-2 px-3 text-right min-w-[110px]">Konversi (CTN)</th>
                     <th className="py-2 px-3 min-w-[120px]">% Last Qty</th>
                     <th className="py-2 px-3 min-w-[120px]">% Convert CTN</th>
                   </tr>
@@ -1380,7 +1222,7 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-[11px]">
                   {dimensionList.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-6 text-center text-slate-400">
+                      <td colSpan={6} className="py-6 text-center text-slate-400">
                         Belum ada data di generator. Unggah file Excel atau klik "Coba Demo" di atas.
                       </td>
                     </tr>
@@ -1394,19 +1236,11 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                             <span>{item.key}</span>
                           </div>
                         </td>
-                        <td className="py-2 px-3 text-right font-mono text-slate-600">
-                          {item.count}
-                        </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-blue-950">
                           {formatNumber(item.lastQtyPcs)}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-emerald-800">
                           {formatNumber(item.qtyConvertCtn)}
-                        </td>
-                        <td className={`py-2 px-3 text-right font-mono font-bold ${
-                          item.variancePcs === 0 ? 'text-slate-500' : item.variancePcs < 0 ? 'text-red-600' : 'text-emerald-600'
-                        }`}>
-                          {item.variancePcs > 0 ? `+${formatNumber(item.variancePcs)}` : formatNumber(item.variancePcs)}
                         </td>
                         <td className="py-2 px-3">
                           <div className="flex items-center gap-2">
@@ -1444,19 +1278,11 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                       <td colSpan={2} className="py-2.5 px-3 uppercase tracking-wider text-[11px]">
                         GRAND TOTAL
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-700">
-                        {returData.length} baris
-                      </td>
                       <td className="py-2.5 px-3 text-right font-mono text-blue-950">
                         {formatNumber(grandTotalLastQtyPcs)}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-emerald-900">
                         {formatNumber(grandTotalQtyConvertCtn)}
-                      </td>
-                      <td className={`py-2.5 px-3 text-right font-mono font-bold ${
-                        grandTotalVariancePcs === 0 ? 'text-slate-700' : grandTotalVariancePcs < 0 ? 'text-red-700' : 'text-emerald-700'
-                      }`}>
-                        {grandTotalVariancePcs > 0 ? `+${formatNumber(grandTotalVariancePcs)}` : formatNumber(grandTotalVariancePcs)}
                       </td>
                       <td className="py-2.5 px-3 font-mono font-bold text-slate-800 text-[11px]">100.0%</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-slate-800 text-[11px]">100.0%</td>
@@ -1653,30 +1479,6 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                       </button>
                     )}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleToggleVoiceSearch}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                      isListeningVoice
-                        ? 'bg-red-600 text-white animate-pulse'
-                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs'
-                    }`}
-                    title="Cari Data dengan Suara"
-                  >
-                    {isListeningVoice ? <MicOff size={15} className="animate-bounce" /> : <Mic size={15} className="text-rose-600" />}
-                    <span className="hidden md:inline">{isListeningVoice ? 'Mendengarkan...' : 'Suara'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowQrScannerModal(true)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                    title="Scan QR Code / Barcode"
-                  >
-                    <QrCode size={15} />
-                    <span className="hidden md:inline">Scan QR</span>
-                  </button>
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-semibold text-slate-500">
@@ -1735,17 +1537,6 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                 >
                   Aman ({expiredStats.safeCount + expiredStats.mediumEdCount})
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('VARIANCE')}
-                  className={`px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    statusFilter === 'VARIANCE'
-                      ? 'bg-blue-700 text-white'
-                      : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
-                  }`}
-                >
-                  Ada Selisih Fisik
-                </button>
               </div>
             </div>
 
@@ -1785,7 +1576,6 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                         {sortField === 'qty_convert_ctn' && <ArrowUpDown size={11} />}
                       </div>
                     </th>
-                    <th className="py-2.5 px-3 text-right min-w-[90px]">Selisih</th>
                     <th className="py-2.5 px-3 min-w-[95px]">Batch</th>
                     <th 
                       onClick={() => handleSortToggle('diffDays')}
@@ -1802,7 +1592,7 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800 text-[11px]">
                   {paginatedData.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-10 text-center text-slate-400">
+                      <td colSpan={10} className="py-10 text-center text-slate-400">
                         {searchQuery || statusFilter !== 'ALL'
                           ? 'Tidak ada data retur yang cocok dengan filter.'
                           : 'Belum ada data retur. Unggah file Excel atau klik "Coba Demo" di atas.'}
@@ -1811,9 +1601,7 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                   ) : (
                     paginatedData.map((item, idx) => {
                       const expAnalysis = calculateExpiryStatus(item.expired);
-                      const first = Number(item.first_qty) || 0;
                       const last = Number(item.last_qty_pcs) || 0;
-                      const diff = last - first;
 
                       return (
                         <tr key={item.id || idx} className="hover:bg-slate-50 transition-colors">
@@ -1839,11 +1627,6 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-emerald-800 font-bold">
                             {formatNumber(item.qty_convert_ctn)}
-                          </td>
-                          <td className={`py-2.5 px-3 text-right font-mono font-bold ${
-                            diff === 0 ? 'text-slate-400' : diff < 0 ? 'text-red-600' : 'text-emerald-600'
-                          }`}>
-                            {diff > 0 ? `+${formatNumber(diff)}` : formatNumber(diff)}
                           </td>
                           <td className="py-2.5 px-3 font-mono text-[10.5px] text-slate-600">
                             {item.batch || '-'}
@@ -1901,13 +1684,6 @@ _Diproses otomatis melalui Tools Generator Retur WH-CKB_`;
           </div>
         </div>
       )}
-
-      {/* QR Scanner Modal */}
-      <InventoryQrScannerModal
-        isOpen={showQrScannerModal}
-        onClose={() => setShowQrScannerModal(false)}
-        onScanSuccess={handleQrScanHit}
-      />
     </div>
   );
 }
