@@ -140,6 +140,14 @@ export interface ReturInventoryItem {
   shelf_life?: string;
   source?: string;
   by_ed?: string;
+  no_pengajuan?: string;
+  tgl_pengajuan?: string;
+  customer_distributor?: string;
+  sku_code?: string;
+  material_desc?: string;
+  batch_number?: string;
+  alasan_retur?: string;
+  status?: string;
 }
 
 export type LogisticsTab = 

@@ -27,6 +27,7 @@ import {
   ScanLine,
   Database,
   Cloud,
+  CloudUpload,
   AlertCircle,
   Check,
   ArrowUpDown,
@@ -134,8 +135,8 @@ export function parseExcelDate(val: any): string {
       // fallback
     }
   }
-  // Check format DD/MM/YYYY or DD-MM-YYYY
-  const dmy = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  // Check format DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmy = str.match(/^(\d{1,2})[/\-. ](\d{1,2})[/\-. ](\d{4})/);
   if (dmy) {
     const day = dmy[1].padStart(2, '0');
     const month = dmy[2].padStart(2, '0');
@@ -147,6 +148,55 @@ export function parseExcelDate(val: any): string {
     return str.slice(0, 10);
   }
   return str;
+}
+
+/**
+ * Normalizes any date input into a valid Postgres DATE format YYYY-MM-DD.
+ * Converts DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, ISO, and Excel serial numbers safely.
+ */
+export function toValidIsoDate(val: any): string {
+  if (!val) return new Date().toISOString().slice(0, 10);
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return val.toISOString().slice(0, 10);
+  }
+  const str = String(val).trim();
+  if (!str) return new Date().toISOString().slice(0, 10);
+
+  // ISO format: YYYY-MM-DD
+  const isoMatch = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
+  }
+
+  // Indonesian/European format: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[/\-. ](\d{1,2})[/\-. ](\d{4})/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  // Excel 5-digit serial date number
+  if (/^\d{5}$/.test(str)) {
+    const num = parseInt(str, 10);
+    try {
+      const parsedDate = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toISOString().slice(0, 10);
+      }
+    } catch {}
+  }
+
+  // General Date parse
+  try {
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  } catch {}
+
+  return new Date().toISOString().slice(0, 10);
 }
 
 /**
@@ -254,6 +304,51 @@ function findHeaderRowAndMap(rows: any[][]): { headerIndex: number; columnMap: R
 
 export type DashboardDimension = 'by_ed' | 'category' | 'location' | 'sloc';
 
+export function mapReturItemForDb(item: Partial<ReturInventoryItem>, idx: number) {
+  const id = (item.id && typeof item.id === 'string' && item.id.length > 20) ? item.id : generateUUID();
+  const isoDate = toValidIsoDate(item.tgl_pengajuan || item.expired);
+  const itemCode = String(item.item_code || `SKU-${idx + 1}`).trim();
+  const itemName = String(item.item_name || 'BARANG RETUR').trim();
+  const batchVal = String(item.batch || item.vendor_batch || '-').trim();
+  const categoryVal = String(item.category || 'REGULER').trim();
+  const byEdVal = String(item.by_ed || 'Unassigned').trim();
+
+  return {
+    id,
+    no_pengajuan: item.no_pengajuan || `RET-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(idx + 1).padStart(4, '0')}`,
+    tgl_pengajuan: isoDate,
+    customer_distributor: item.customer_distributor || item.source || 'GUDANG RETUR UTAMA',
+    sku_code: item.sku_code || itemCode,
+    material_desc: item.material_desc || itemName,
+    batch_number: item.batch_number || batchVal,
+    alasan_retur: item.alasan_retur || byEdVal || 'Retur Inventory',
+    status: item.status || 'PROSES',
+    // 22 Excel columns:
+    no: String(item.no || (idx + 1)),
+    item_code: itemCode,
+    item_name: itemName,
+    category: categoryVal,
+    location: String(item.location || 'GUDANG').trim(),
+    location_type: String(item.location_type || 'RACK').trim(),
+    first_qty: Number(item.first_qty) || 0,
+    last_qty_pcs: Number(item.last_qty_pcs) || 0,
+    uom: String(item.uom || 'PCS').trim().toUpperCase(),
+    qty_convert_ctn: Number(item.qty_convert_ctn) || 0,
+    uom_convert: String(item.uom_convert || 'CTN').trim().toUpperCase(),
+    lpn_serial: String(item.lpn_serial || '').trim(),
+    batch: String(item.batch || '').trim(),
+    vendor_batch: String(item.vendor_batch || '').trim(),
+    sloc: String(item.sloc || '8A04').trim().toUpperCase(),
+    expired: String(item.expired || isoDate).trim(),
+    destination_code: String(item.destination_code || '').trim(),
+    qc_code: String(item.qc_code || 'PASS').trim(),
+    user_tally: String(item.user_tally || '').trim(),
+    shelf_life: String(item.shelf_life || '').trim(),
+    source: String(item.source || 'INBOUND').trim(),
+    by_ed: byEdVal
+  };
+}
+
 export function ReturInventoryModule() {
   const { showToast, showConfirm } = useNotification();
   const { isAdmin } = useAuth();
@@ -267,6 +362,9 @@ export function ReturInventoryModule() {
   const [returData, setReturData] = useState<ReturInventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDbSynced, setIsDbSynced] = useState<boolean | null>(null);
+  const [isLocalOnly, setIsLocalOnly] = useState(false);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [dbRowCount, setDbRowCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [lastUpdated, setLastUpdated] = useState<string>('-');
   
@@ -403,30 +501,44 @@ export function ReturInventoryModule() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        setReturData(data as ReturInventoryItem[]);
-        localStorage.setItem('logistics_retur_inventory', JSON.stringify(data));
-        setIsDbSynced(true);
-        loadedFromDb = true;
-      } else if (!error && data && data.length === 0) {
-        // Table exists but is empty, check localStorage
-        const local = localStorage.getItem('logistics_retur_inventory');
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setReturData(parsed);
-            } else {
-              setReturData([]);
-            }
-          } catch {
-            setReturData([]);
-          }
+      if (!error && data) {
+        setDbRowCount(data.length);
+        if (data.length > 0) {
+          // Cloud Supabase has real data!
+          setReturData(data as ReturInventoryItem[]);
+          localStorage.setItem('logistics_retur_inventory', JSON.stringify(data));
+          setIsDbSynced(true);
+          setIsLocalOnly(false);
+          loadedFromDb = true;
         } else {
-          setReturData([]);
+          // Cloud Supabase is 0 rows (empty)
+          const local = localStorage.getItem('logistics_retur_inventory');
+          if (local) {
+            try {
+              const parsed = JSON.parse(local);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setReturData(parsed);
+                setIsDbSynced(false); // Cloud is still empty!
+                setIsLocalOnly(true);  // Only in this browser
+              } else {
+                setReturData([]);
+                setIsDbSynced(true);
+                setIsLocalOnly(false);
+              }
+            } catch {
+              setReturData([]);
+              setIsDbSynced(true);
+              setIsLocalOnly(false);
+            }
+          } else {
+            setReturData([]);
+            setIsDbSynced(true);
+            setIsLocalOnly(false);
+          }
+          loadedFromDb = true;
         }
-        setIsDbSynced(true);
-        loadedFromDb = true;
+      } else if (error) {
+        console.warn('Supabase fetch error:', error);
       }
     } catch (e) {
       console.warn('Supabase fetch notice, using local cache:', e);
@@ -437,8 +549,9 @@ export function ReturInventoryModule() {
       if (local) {
         try {
           const parsed = JSON.parse(local);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setReturData(parsed);
+            setIsLocalOnly(true);
           }
         } catch {
           // ignore corrupted json
@@ -856,48 +969,36 @@ export function ReturInventoryModule() {
       localStorage.setItem('logistics_retur_inventory', JSON.stringify(nextData));
       setReturData(nextData);
 
-      // 2. Try syncing to Supabase table
+      // 2. Map rows to satisfy all database columns & NOT NULL constraints
+      const rowsToInsert = uploadPreview.map((item, idx) => mapReturItemForDb(item, idx));
+
+      // 3. Try syncing to Supabase table
+      let syncSuccess = false;
       try {
         if (mode === 'replace') {
           // Clear table first
-          await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          const { error: delErr } = await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          if (delErr) console.warn('Supabase delete table notice:', delErr);
         }
 
         // Insert in chunks of 100 rows
-        const rowsToInsert = uploadPreview.map(item => ({
-          no: String(item.no || ''),
-          item_code: item.item_code || '',
-          item_name: item.item_name || '',
-          category: item.category || '',
-          location: item.location || '',
-          location_type: item.location_type || '',
-          first_qty: item.first_qty || 0,
-          last_qty_pcs: item.last_qty_pcs || 0,
-          uom: item.uom || 'PCS',
-          qty_convert_ctn: item.qty_convert_ctn || 0,
-          uom_convert: item.uom_convert || 'CTN',
-          lpn_serial: item.lpn_serial || '',
-          batch: item.batch || '',
-          vendor_batch: item.vendor_batch || '',
-          sloc: item.sloc || '8A04',
-          expired: item.expired || '',
-          destination_code: item.destination_code || '',
-          qc_code: item.qc_code || '',
-          user_tally: item.user_tally || '',
-          shelf_life: item.shelf_life || '',
-          source: item.source || '',
-          by_ed: item.by_ed || ''
-        }));
-
         for (let i = 0; i < rowsToInsert.length; i += 100) {
           const chunk = rowsToInsert.slice(i, i + 100);
-          await supabase.from('retur_inventory').insert(chunk);
+          const { error: insErr } = await supabase.from('retur_inventory').insert(chunk);
+          if (insErr) {
+            throw new Error(insErr.message);
+          }
         }
 
+        syncSuccess = true;
         setIsDbSynced(true);
-      } catch (dbErr) {
+        setIsLocalOnly(false);
+        setDbRowCount(nextData.length);
+      } catch (dbErr: any) {
         console.warn('Database sync notice (saved locally):', dbErr);
+        syncSuccess = false;
         setIsDbSynced(false);
+        setIsLocalOnly(true);
       }
 
       const now = new Date();
@@ -906,11 +1007,20 @@ export function ReturInventoryModule() {
         hour: '2-digit', minute: '2-digit'
       }));
 
-      showToast(
-        'Upload Berhasil Disimpan', 
-        `${uploadPreview.length} baris data retur berhasil ${mode === 'replace' ? 'menggantikan data lama' : 'ditambahkan'}!`, 
-        'success'
-      );
+      if (syncSuccess) {
+        showToast(
+          'Upload Berhasil ke Cloud Supabase!', 
+          `${uploadPreview.length} baris data retur berhasil disimpan ke Cloud Database Supabase & langsung aktif di semua perangkat/aplikasi!`, 
+          'success'
+        );
+      } else {
+        showToast(
+          'Tersimpan di Browser Lokal', 
+          `${uploadPreview.length} baris data disimpan di browser ini. Klik tombol "Sinkronkan ke Cloud" untuk mengunggah ke database online.`, 
+          'warning'
+        );
+      }
+
       setUploadPreview(null);
       setUploadFileName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -918,6 +1028,47 @@ export function ReturInventoryModule() {
       showToast('Gagal Menyimpan', e.message || 'Terjadi kesalahan saat menyimpan data.', 'danger');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Manual Sync from LocalStorage to Supabase Cloud
+  const handleSyncLocalToCloud = async () => {
+    if (returData.length === 0) {
+      showToast('Tidak Ada Data', 'Tidak ada data lokal untuk disinkronkan ke Cloud Supabase.', 'info');
+      return;
+    }
+
+    setIsSyncingCloud(true);
+    try {
+      showToast('Menyinkronkan...', `Mengunggah ${returData.length} baris data ke Cloud Database Supabase...`, 'info');
+
+      // Clear existing records in cloud before full sync to avoid duplicates
+      await supabase.from('retur_inventory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      const rowsToInsert = returData.map((item, idx) => mapReturItemForDb(item, idx));
+
+      for (let i = 0; i < rowsToInsert.length; i += 100) {
+        const chunk = rowsToInsert.slice(i, i + 100);
+        const { error: insErr } = await supabase.from('retur_inventory').insert(chunk);
+        if (insErr) {
+          throw new Error(insErr.message);
+        }
+      }
+
+      setIsDbSynced(true);
+      setIsLocalOnly(false);
+      setDbRowCount(rowsToInsert.length);
+
+      showToast(
+        'Sinkronisasi Cloud Berhasil! 🎉',
+        `Seluruh ${rowsToInsert.length} data retur berhasil diunggah ke Cloud Database Supabase. Sekarang data ini bisa dibuka dari semua aplikasi & perangkat lain.`,
+        'success'
+      );
+    } catch (err: any) {
+      console.error('Manual sync error:', err);
+      showToast('Gagal Sinkronisasi Cloud', err.message || 'Terjadi kesalahan saat mengirim ke Supabase.', 'danger');
+    } finally {
+      setIsSyncingCloud(false);
     }
   };
 
@@ -1063,30 +1214,49 @@ export function ReturInventoryModule() {
             <BarChart3 size={20} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base font-bold text-slate-900 m-0 leading-tight">
                 Retur Inventory Suite
               </h3>
-              {isDbSynced === true ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10.5px] font-bold" title="Data tersinkronisasi dengan Database Cloud">
-                  <Database size={11} />
+              {isDbSynced === true && !isLocalOnly ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium" title="Tersinkronisasi dengan Database Cloud">
+                  <Database size={11} className="text-emerald-600" />
                   <span>Cloud DB</span>
                 </span>
+              ) : isLocalOnly ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-medium" title="Data tersimpan di perangkat ini">
+                  <Clock size={11} className="text-amber-600" />
+                  <span>Lokal</span>
+                </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[10.5px] font-bold" title="Data tersimpan di Browser Cache">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-medium">
                   <Clock size={11} />
-                  <span>Lokal Cache</span>
+                  <span>Memeriksa...</span>
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 font-medium m-0 mt-0.5">
-              Dashboard Analisis Kategori By ED, Status Kedaluwarsa & Upload Excel 22 Kolom
+              Dashboard Analisis Kategori By ED, Status Kedaluwarsa & Upload Excel
             </p>
           </div>
         </div>
 
-        {/* Tab Buttons, QR Scan, Voice & Refresh */}
+        {/* Tab Buttons, QR Scan, Voice, Sync & Refresh */}
         <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+          {/* Sync Button if local data exists */}
+          {returData.length > 0 && isLocalOnly && (
+            <button
+              type="button"
+              onClick={handleSyncLocalToCloud}
+              disabled={isSyncingCloud}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-900 hover:bg-blue-800 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0 disabled:opacity-50"
+              title="Sinkronkan data ke Cloud Supabase"
+            >
+              <CloudUpload size={14} className={isSyncingCloud ? 'animate-spin' : ''} />
+              <span>{isSyncingCloud ? 'Menyinkronkan...' : 'Sinkronkan ke Cloud'}</span>
+            </button>
+          )}
+
           {/* Quick Voice & QR buttons in header */}
           <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
             <button
@@ -1153,6 +1323,7 @@ export function ReturInventoryModule() {
           </button>
         </div>
       </div>
+
 
       {/* ========================================================= */}
       {/* VIEW A: DASHBOARD ANALISIS DENGAN DIMENSION SELECTOR      */}
