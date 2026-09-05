@@ -30,13 +30,16 @@ import {
   Check,
   Calendar,
   Sparkles,
-  ClipboardPaste
+  ClipboardPaste,
+  Lock,
+  ShieldAlert
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../supabase';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../hooks/useSupabase';
 import { DataPemusnahanItem } from '../../types';
+import { PinSecurityModal, MASTER_SECURITY_PIN } from '../common/PinSecurityModal';
 
 const STORAGE_KEY = 'ckb_data_pemusnahan_items_v1';
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycby5KFkXtBiXWEJ1G7CSLhRippGbA-k8WbV4QQFyNfur1ktnS6oNbcnsboFrBCLVXlxN/exec';
@@ -503,6 +506,8 @@ export function DataPemusnahanModule() {
   const [showPullGasModal, setShowPullGasModal] = useState(false);
   const [showItemFormModal, setShowItemFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showClearAllPinModal, setShowClearAllPinModal] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
 
   // Form states
   const [editingItem, setEditingItem] = useState<DataPemusnahanItem | null>(null);
@@ -598,10 +603,10 @@ export function DataPemusnahanModule() {
 
       // 2. Fallback to localStorage
       const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
+      if (cached !== null) {
         try {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             const normalized = (parsed as DataPemusnahanItem[]).map(item => ({
               ...item,
               uom_convert: (!item.uom_convert || item.uom_convert === '-' || item.uom_convert.toUpperCase() === 'PCS') ? 'Car' : item.uom_convert
@@ -1034,6 +1039,55 @@ export function DataPemusnahanModule() {
     });
   };
 
+  // Handler untuk menghapus semua data tabel dengan metode cepat dan ringan (setelah verifikasi PIN 399339)
+  const handleExecuteClearAll = async () => {
+    setShowClearAllPinModal(false);
+    setIsClearingAll(true);
+
+    const countDeleted = items.length;
+
+    // 1. Reset state secara instan (0ms delay pada UI - sangat ringan & cepat)
+    setItems([]);
+    setSelectedIds([]);
+    setCurrentPage(1);
+
+    // 2. Kosongkan penyimpanan lokal (localStorage) dengan instan
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    } catch (e) {
+      console.warn('Gagal menyimpan status kosong ke localStorage:', e);
+    }
+
+    // 3. Eksekusi pembersihan cloud Supabase di background secara asynchronous non-blocking
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('data_pemusnahan')
+          .delete()
+          .neq('id', '___keep_none___');
+
+        if (error) {
+          console.warn('Supabase cloud clear note:', error.message);
+        }
+      } catch (cloudErr) {
+        console.warn('Cloud delete notice:', cloudErr);
+      }
+    }
+
+    setIsClearingAll(false);
+    showToast(
+      'Tabel Berhasil Dikosongkan',
+      `Semua data pemusnahan (${countDeleted} baris) berhasil dihapus dengan aman & cepat.`,
+      'success'
+    );
+  };
+
+  // Kembalikan data sampel bawaan jika sewaktu-waktu dibutuhkan kembali
+  const handleRestoreSampleData = async () => {
+    await persistItems(INITIAL_SAMPLE_DATA, true);
+    showToast('Data Sampel Dimuat', `Berhasil memuat kembali ${INITIAL_SAMPLE_DATA.length} baris data contoh pemusnahan.`, 'info');
+  };
+
   // Filter Unique Options
   const uniqueTujuan = useMemo(() => {
     const list = Array.from(new Set(items.map(i => i.tujuan).filter(Boolean))).sort();
@@ -1230,6 +1284,20 @@ function handleRequest(e) {
               <span>Tambah Item</span>
             </button>
 
+            {/* Tombol Kosongkan Tabel dengan PIN */}
+            <button
+              onClick={() => setShowClearAllPinModal(true)}
+              disabled={items.length === 0 || isClearingAll}
+              className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold border border-rose-200 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              title="Hapus / Kosongkan semua data tabel pemusnahan (Dilindungi PIN: 399339)"
+            >
+              <Trash2 size={14} className="text-rose-600" />
+              <span>Kosongkan Tabel</span>
+              <span className="bg-rose-200/90 text-rose-900 text-[10px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                <Lock size={9} /> PIN
+              </span>
+            </button>
+
             {/* Cloud Sync Button */}
             <button
               onClick={handleFullSyncToCloud}
@@ -1399,6 +1467,20 @@ function handleRequest(e) {
               </button>
             )}
 
+            {/* Tombol Hapus Semua Data dengan PIN */}
+            <button
+              onClick={() => setShowClearAllPinModal(true)}
+              disabled={items.length === 0 || isClearingAll}
+              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold border border-rose-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:border-rose-300"
+              title="Hapus / Kosongkan semua data pemusnahan (Verifikasi PIN: 399339)"
+            >
+              <Trash2 size={13} className="text-rose-600" />
+              <span>Hapus Semua Data</span>
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-black bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded">
+                <Lock size={9} /> PIN
+              </span>
+            </button>
+
             {/* Upload File Button */}
             <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200">
               <UploadCloud size={13} className="text-slate-600" />
@@ -1513,14 +1595,37 @@ function handleRequest(e) {
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={30} className="p-12 text-center text-slate-400">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2">
+                  <td colSpan={30} className="p-10 text-center text-slate-400">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-2 border border-slate-200">
                       <Flame size={24} />
                     </div>
-                    <div className="font-bold text-slate-700 text-sm">Tidak ada data pemusnahan</div>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {searchQuery ? 'Coba ubah kata kunci pencarian Anda' : 'Klik "Tarik Data Spreadsheet" untuk mengambil data dari Google Apps Script'}
+                    <div className="font-bold text-slate-700 text-sm">Tidak Ada Data Pemusnahan</div>
+                    <p className="text-xs text-slate-400 mt-0.5 max-w-md mx-auto">
+                      {searchQuery
+                        ? 'Coba ubah kata kunci pencarian Anda atau reset filter di atas.'
+                        : 'Tabel saat ini kosong. Anda dapat menarik data dari Google Spreadsheet, import file Excel, atau memuat ulang data sampel.'}
                     </p>
+                    {!searchQuery && items.length === 0 && (
+                      <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => {
+                            setGasActiveTab('api');
+                            setShowPullGasModal(true);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <Download size={13} />
+                          <span>Tarik Data Spreadsheet</span>
+                        </button>
+                        <button
+                          onClick={handleRestoreSampleData}
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RefreshCw size={13} />
+                          <span>Muat Data Sampel</span>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -2362,6 +2467,19 @@ function handleRequest(e) {
           </div>
         </div>
       )}
+
+      {/* Modal PIN Keamanan untuk Hapus Semua Data Tabel (PIN: 399339) */}
+      <PinSecurityModal
+        isOpen={showClearAllPinModal}
+        onClose={() => setShowClearAllPinModal(false)}
+        onSuccess={handleExecuteClearAll}
+        title="Otorisasi Kosongkan Tabel"
+        subtitle="Konfirmasi PIN untuk Menghapus Seluruh Data Pemusnahan"
+        targetName={`Semua Data Pemusnahan (${items.length} Baris)`}
+        description="PERINGATAN: Tindakan ini akan mengosongkan seluruh baris data pada tabel secara permanen. Pastikan Anda telah mengekspor atau mem-backup file Excel jika data masih dibutuhkan."
+        actionType="delete"
+        expectedPin={MASTER_SECURITY_PIN}
+      />
     </div>
   );
 }

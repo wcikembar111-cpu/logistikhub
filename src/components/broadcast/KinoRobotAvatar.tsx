@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import { InitialDLogo } from '../common/InitialDLogo';
 
 export interface KinoRobotAvatarProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -14,54 +15,13 @@ export interface KinoRobotAvatarProps {
 }
 
 /**
- * Kino Emblem SVG Component
- * Accurately represents the official PT KINO INDONESIA brand symbol:
- * - Royal Blue dynamic chevron/wing (#0060A9)
- * - Golden Yellow/Amber upward curved aerodynamic swoosh (#F7A81B)
+ * Modern High-Tech Monogram "D" Logo (DDS / Logistik Tools)
  */
 export function KinoEmblemSvg({ className = "w-5 h-5", glow = false }: { className?: string; glow?: boolean }) {
-  return (
-    <svg 
-      viewBox="0 0 48 48" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg"
-      className={`${className} ${glow ? 'drop-shadow-[0_0_6px_rgba(247,168,27,0.8)]' : ''}`}
-    >
-      <defs>
-        <linearGradient id="kinoBlueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0072C6" />
-          <stop offset="100%" stopColor="#004D8C" />
-        </linearGradient>
-        <linearGradient id="kinoGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFC837" />
-          <stop offset="50%" stopColor="#F7A81B" />
-          <stop offset="100%" stopColor="#E67E00" />
-        </linearGradient>
-      </defs>
-
-      {/* Royal Blue Left-Back Wing Chevron */}
-      <path 
-        d="M6 10 L28 26 L12 40 L6 38 L16 26 L6 16 Z" 
-        fill="url(#kinoBlueGrad)" 
-      />
-
-      {/* Royal Blue Bottom Chevron Flare */}
-      <path 
-        d="M16 26 L42 38 L22 44 L16 38 Z" 
-        fill="#005B9E" 
-      />
-
-      {/* Golden-Yellow Curved Upward Dynamic Arrow / Swoosh */}
-      <path 
-        d="M4 36 C8 32, 14 26, 20 20 C26 14, 34 8, 44 4 C38 12, 30 22, 24 30 C18 38, 10 44, 4 46 C5 42, 4 38, 4 36 Z" 
-        fill="url(#kinoGoldGrad)" 
-      />
-
-      {/* Bright Core Star Highlight */}
-      <circle cx="28" cy="18" r="2" fill="#FFF8E7" opacity="0.9" />
-    </svg>
-  );
+  return <InitialDLogo className={className} glow={glow} />;
 }
+
+export const DdsEmblemSvg = InitialDLogo;
 
 /**
  * Robot Maskot Resmi PT KINO INDONESIA (KinoBot)
@@ -273,9 +233,9 @@ export function KinoRobotAvatar({
               <KinoEmblemSvg className="w-3 h-3" />
             </div>
 
-            {/* "KINO" Micro Typography Badge */}
+            {/* "DDS" Micro Typography Badge */}
             <span className="text-[6.5px] font-black tracking-wider text-amber-300 drop-shadow-xs">
-              KINO
+              DDS
             </span>
           </div>
         </div>

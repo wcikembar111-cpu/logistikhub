@@ -1,69 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="50%" stop-color="#1e3a8a"/>
-      <stop offset="100%" stop-color="#0284c7"/>
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="50%" stop-color="#0f1f3d"/>
+      <stop offset="100%" stop-color="#172554"/>
     </linearGradient>
-    <linearGradient id="boxTop" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="favSpineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#0284c7"/>
+      <stop offset="40%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
     </linearGradient>
-    <linearGradient id="boxLeft" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#1e40af"/>
+    <linearGradient id="favLoopGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="45%" stop-color="#2563eb"/>
+      <stop offset="85%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#0f172a"/>
     </linearGradient>
-    <linearGradient id="boxRight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#1d4ed8"/>
+    <linearGradient id="favGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
-    <linearGradient id="accentGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#818cf8"/>
+    <linearGradient id="favEdgeBevel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="12" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
   </defs>
-
-  <!-- Background with rounded corners -->
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
-  
-  <!-- Outer glowing ring accent -->
-  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="url(#accentGlow)" stroke-width="4" opacity="0.35"/>
-
-  <!-- Isometric 3D Logistics Box Icon -->
-  <g transform="translate(256, 230)" filter="url(#glow)">
-    <!-- Top Face -->
-    <polygon points="0,-90 120,-30 0,30 -120,-30" fill="url(#boxTop)"/>
-    
-    <!-- Left Face -->
-    <polygon points="-120,-30 0,30 0,140 -120,80" fill="url(#boxLeft)"/>
-    
-    <!-- Right Face -->
-    <polygon points="0,30 120,-30 120,80 0,140" fill="url(#boxRight)"/>
-    
-    <!-- Box Inner Tape / Logistics Ribbon -->
-    <path d="M-60,-60 L-30,-45 L90,15 L60,0 Z" fill="#ffffff" opacity="0.25"/>
-    <path d="M-15,-22.5 L15,-7.5 L15,147.5 L-15,132.5 Z" fill="#ffffff" opacity="0.18"/>
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)"/>
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="none" stroke="#38bdf8" stroke-width="6" stroke-opacity="0.3"/>
+  <g transform="translate(68, 68) scale(7.8)">
+    <path d="M8 12 L13 7 L18 7 L18 41 L13 41 L8 36 Z" fill="url(#favSpineGrad)"/>
+    <path d="M8 12 L13 7 L18 7" stroke="url(#favEdgeBevel)" stroke-width="1" stroke-linecap="round"/>
+    <path d="M21 7 L28 7 C37.5 7 43 13.5 43 24 C43 34.5 37.5 41 28 41 L21 41 L21 33 L27 33 C32.5 33 35.5 29 35.5 24 C35.5 19 32.5 15 27 15 L21 15 Z" fill="url(#favLoopGrad)"/>
+    <path d="M21 7 L28 7 C35 7 40 12 41.5 19" stroke="url(#favEdgeBevel)" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M17 21 L25 21 L29 24 L25 27 L17 27 L20 24 Z" fill="url(#favGoldGrad)"/>
+    <circle cx="34" cy="11" r="1.5" fill="#ffffff" opacity="0.95"/>
+    <path d="M34 8.5 V13.5 M31.5 11 H36.5" stroke="#ffffff" stroke-width="0.75" stroke-linecap="round" opacity="0.9"/>
   </g>
-
-  <!-- Digital Hub Spark / Lightning Accent -->
-  <g transform="translate(256, 210)" fill="#ffffff">
-    <!-- QR / Barcode / Smart Logistics Nodes -->
-    <circle cx="-50" cy="-25" r="7" fill="#38bdf8" />
-    <circle cx="50" cy="-25" r="7" fill="#38bdf8" />
-    <circle cx="0" cy="5" r="9" fill="#ffffff" />
-    <line x1="-50" y1="-25" x2="0" y2="5" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
-    <line x1="50" y1="-25" x2="0" y2="5" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
-  </g>
-
-  <!-- Bottom Brand Text -->
-  <text x="256" y="442" text-anchor="middle" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="900" letter-spacing="4">
-    CKBLOGISTIC
-  </text>
-  <text x="256" y="472" text-anchor="middle" fill="#93c5fd" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" letter-spacing="6">
-    DIGITAL HUB
+  <text x="256" y="468" text-anchor="middle" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" letter-spacing="4">
+    LOGISTIK TOOLS
   </text>
 </svg>

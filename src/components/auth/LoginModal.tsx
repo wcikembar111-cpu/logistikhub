@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
 import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
+import { InitialDLogo } from '../common/InitialDLogo';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -153,13 +154,13 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
           )}
 
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner shrink-0 text-amber-400">
-              <Lock size={24} />
+            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner shrink-0 p-1.5">
+              <InitialDLogo className="w-8 h-8" glow />
             </div>
             <div>
               <div className="flex items-center gap-1 text-[10px] uppercase font-black tracking-widest text-amber-300">
                 <ShieldCheck size={12} />
-                <span>Kino Logistics Studio</span>
+                <span>Logistik Tools</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white m-0 tracking-tight leading-tight">
                 {user ? 'Ganti Akun Pengguna' : 'Masuk ke Sistem'}

@@ -16,6 +16,7 @@ import { InactivityWarningModal } from './components/auth/InactivityWarningModal
 import { UserManagementModal } from './components/auth/UserManagementModal';
 import { SqlScriptModal } from './components/auth/SqlScriptModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { InitialDLogo } from './components/common/InitialDLogo';
 import { LinkData, MainToolTab } from './types';
 import { Warehouse, Loader2, PanelLeftOpen } from 'lucide-react';
 
@@ -115,11 +116,11 @@ export default function App() {
     return (
       <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center p-6 text-white select-none">
         <div className="relative flex flex-col items-center gap-5 max-w-sm text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-800 border border-blue-400/30 flex items-center justify-center shadow-2xl shadow-blue-900/50 text-amber-300 animate-pulse">
-            <Warehouse size={32} />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 border border-blue-400/40 flex items-center justify-center shadow-2xl shadow-blue-900/60 p-2.5 animate-pulse">
+            <InitialDLogo className="w-11 h-11" glow />
           </div>
           <div className="space-y-1">
-            <h2 className="text-lg font-extrabold text-white tracking-tight">Kino Logistics Studio</h2>
+            <h2 className="text-lg font-extrabold text-white tracking-tight">Logistik Tools</h2>
             <p className="text-xs text-slate-400 font-medium">Memeriksa status sesi & keamanan pengguna...</p>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 bg-blue-950/60 border border-blue-800/40 px-3.5 py-1.5 rounded-full mt-2">

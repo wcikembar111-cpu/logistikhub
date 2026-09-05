@@ -216,7 +216,7 @@ export function FloatingRobotCompanion({
           onClick={() => setIsOpen(true)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          title="Robot Maskot Kino (Klik untuk kirim pesan siaran)"
+          title="Robot Maskot DDS (Klik untuk kirim pesan siaran)"
         >
           <KinoRobotAvatar
             size={mode === 'profile-avatar' ? 'sm' : 'md'}
@@ -252,7 +252,7 @@ export function FloatingRobotCompanion({
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] uppercase font-black tracking-widest text-amber-300">
-                      Robot Komunikator Kino
+                      Robot Komunikator DDS
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   </div>

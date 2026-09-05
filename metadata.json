@@ -1,5 +1,5 @@
 {
-  "name": "Kino Logistics & Public Todo Studio",
+  "name": "Logistik Tools",
   "description": "Aplikasi Logistics Studio, Data Pemusnahan (26 Kolom GAS Spreadsheet), Monitoring Pemusnahan (WH-CKB), Retur Inventory, Surat Jalan, QR Generator, Public Todo, dan Siaran Pesan Broadcast Realtime.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

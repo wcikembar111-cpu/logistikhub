@@ -632,7 +632,7 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                     autoComplete="off"
                     value={formEmailGoogle}
                     onChange={e => setFormEmailGoogle(e.target.value)}
-                    placeholder="misal: user@kino.co.id"
+                    placeholder="misal: user@logistiktools.com"
                     className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 outline-none"
                   />
                 </div>

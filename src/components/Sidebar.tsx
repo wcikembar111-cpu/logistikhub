@@ -27,6 +27,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { MainToolTab } from '../types';
+import { InitialDLogo } from './common/InitialDLogo';
 
 export interface ToolItemDef {
   id: MainToolTab;
@@ -323,8 +324,8 @@ export function Sidebar({
             className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
             title="Kembali ke Beranda Dashboard"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-              <Wrench size={16} />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 border border-blue-400/30 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform p-1">
+              <InitialDLogo className="w-5.5 h-5.5" glow />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">

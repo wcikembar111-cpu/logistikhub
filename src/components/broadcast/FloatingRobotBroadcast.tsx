@@ -49,11 +49,11 @@ export function FloatingRobotBroadcast({
             <Sparkles size={14} className="text-sky-400 fill-sky-300" />
           </div>
 
-          {/* Kino Robot Avatar Body */}
+          {/* DDS Robot Avatar Body */}
           <div 
             className="cursor-pointer group flex flex-col items-center transition-transform active:scale-95" 
             onClick={() => playBroadcastSound('info')}
-            title="Klik untuk bunyikan nada siaran Kino"
+            title="Klik untuk bunyikan nada siaran"
           >
             <KinoRobotAvatar 
               size="lg"

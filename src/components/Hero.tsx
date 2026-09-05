@@ -128,10 +128,10 @@ export function Hero({
 
   // Resolved email
   const resolvedEmail = user?.email || (
-    isSuperAdminUser ? 'superadmin@kino.co.id' :
-    isDedeUser ? 'dede.suparman@kino.co.id' :
-    isAdminUser ? 'admin@kino.co.id' :
-    user?.username ? `${user.username}@kino.co.id` : 'user@kino.co.id'
+    isSuperAdminUser ? 'superadmin@logistiktools.com' :
+    isDedeUser ? 'dede.suparman@logistiktools.com' :
+    isAdminUser ? 'admin@logistiktools.com' :
+    user?.username ? `${user.username}@logistiktools.com` : 'user@logistiktools.com'
   );
 
   // Dynamic role title and badge
@@ -927,7 +927,7 @@ export function Hero({
                 </div>
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase">Lokasi / Divisi</div>
-                  <div className="font-extrabold text-slate-800 text-xs">Kino Logistics Center, Sukabumi</div>
+                  <div className="font-extrabold text-slate-800 text-xs">Logistik Tools Center, Sukabumi</div>
                 </div>
               </div>
             </div>

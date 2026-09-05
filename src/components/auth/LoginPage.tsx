@@ -24,6 +24,7 @@ import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
 import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
 import { KinoEmblemSvg } from '../broadcast/KinoRobotAvatar';
+import { InitialDLogo } from '../common/InitialDLogo';
 import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 
@@ -212,12 +213,12 @@ export function LoginPage({
       {/* Top Header Bar */}
       <header className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/40 flex items-center justify-center shadow-md shadow-blue-500/20 text-white">
-            <Warehouse size={22} />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 border border-blue-400/40 flex items-center justify-center shadow-md shadow-blue-500/25 p-1.5 shrink-0">
+            <InitialDLogo className="w-7 h-7" glow />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black tracking-widest text-blue-600 uppercase">PT Kino Indonesia Tbk</span>
+              <span className="text-xs font-black tracking-widest text-blue-600 uppercase">Logistik Tools</span>
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
             <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
@@ -302,7 +303,7 @@ export function LoginPage({
             {/* Notice Footer Note */}
             <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
               <Building2 size={14} className="text-slate-400" />
-              <span>Gudang WH-CKB &bull; PT Kino Indonesia Tbk &bull; Sistem Terlindungi</span>
+              <span>Gudang WH-CKB &bull; Logistik Tools &bull; Sistem Terlindungi</span>
             </div>
           </div>
 
@@ -316,7 +317,7 @@ export function LoginPage({
                 <div className="mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 bg-white/95 border border-blue-200 text-slate-700 hover:border-blue-400">
                   <KinoEmblemSvg className="w-4 h-4" />
                   <span className="font-black bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
-                    KinoBot • PT Kino Indonesia
+                    DDS Bot • Logistik Tools
                   </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
@@ -610,7 +611,7 @@ export function LoginPage({
       {/* Footer */}
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-slate-500 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">
         <div>
-          &copy; {new Date().getFullYear()} PT Kino Indonesia Tbk &bull; Warehouse Cikembar Logistics Studio
+          &copy; {new Date().getFullYear()} Logistik Tools &bull; Warehouse Cikembar Logistics Studio
         </div>
         <div className="flex items-center gap-4 text-slate-500 text-[11px]">
           <span>Enkripsi Sesi Aktif</span>
