@@ -1108,10 +1108,10 @@ export function Hero({
                 type="button"
                 onClick={onOpenSidebar}
                 className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Buka / Tutup Sidebar Kiri (Tools & Utilitas)"
+                title="Buka / Tutup Sidebar Tools & Utilitas"
               >
                 <Wrench size={12} className="text-blue-300" />
-                <span>Tools Sidebar</span>
+                <span>Tools & Utilitas</span>
               </button>
             )}
 

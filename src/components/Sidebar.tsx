@@ -415,8 +415,23 @@ export function Sidebar({
             </button>
           </div>
 
-          {/* 2. Menu Terhubung Server Section */}
-          <div className="space-y-1 pt-1">
+          {/* 2. Daftar Tools & Utilitas Header */}
+          <div className="pt-2 border-t border-slate-200/60">
+            <div className="flex items-center justify-between px-2 mb-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Wrench size={12} className="text-blue-600 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 truncate">
+                  Daftar Tools & Utilitas
+                </span>
+              </div>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60 shrink-0">
+                {totalMatches} Alat
+              </span>
+            </div>
+          </div>
+
+          {/* 2a. Menu Terhubung Server Section */}
+          <div className="space-y-1">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <Layers size={12} className="text-emerald-600 shrink-0" />

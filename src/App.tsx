@@ -5,7 +5,6 @@ import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroa
 import { FloatingTodoBroadcast } from './components/todo/FloatingTodoBroadcast';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
-import { ToolsGrid } from './components/ToolsGrid';
 import { ToolWorkspacePage } from './components/tools/ToolWorkspacePage';
 import { QrItem } from './components/BatchQrSection';
 import { Sidebar } from './components/Sidebar';
@@ -228,10 +227,10 @@ export default function App() {
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
                 className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-bold shadow-2xs border border-slate-200 flex items-center gap-2 transition-all cursor-pointer hover:shadow-xs"
-                title="Buka Sidebar Navigasi & Tools"
+                title="Buka Sidebar Tools & Utilitas"
               >
                 <PanelLeftOpen size={15} className="text-blue-600" />
-                <span>Buka Sidebar Tools</span>
+                <span>Buka Sidebar Tools & Utilitas</span>
               </button>
             </div>
           )}
@@ -284,17 +283,6 @@ export default function App() {
                 hiddenMenuIds={hiddenMenuIds}
                 onHideMenu={(id) => hideMenu(id)}
                 onUnhideMenu={(id) => unhideMenu(id)}
-                onOpenMenuVisibility={handleOpenMenuVisibility}
-              />
-
-              {/* 3. Daftar Tools & Utilitas Grid */}
-              <ToolsGrid 
-                activeTool={activeWorkspaceTool}
-                onSelectTool={(tool) => {
-                  setActiveWorkspaceTool(tool);
-                  setCurrentView('tool-workspace');
-                }}
-                hiddenMenuIds={hiddenMenuIds}
                 onOpenMenuVisibility={handleOpenMenuVisibility}
               />
             </ErrorBoundary>
