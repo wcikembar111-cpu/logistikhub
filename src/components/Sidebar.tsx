@@ -26,7 +26,8 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
-  Lock
+  Lock,
+  FileSpreadsheet
 } from 'lucide-react';
 import { MainToolTab } from '../types';
 import { InitialDLogo } from './common/InitialDLogo';
@@ -195,6 +196,19 @@ export const TOOLS_LIST: ToolItemDef[] = [
     iconBg: 'bg-rose-500',
     badge: 'Generator',
     badgeColor: 'bg-rose-50 text-rose-700 border-rose-200'
+  },
+  {
+    id: 'match-grfg-repack',
+    title: 'Match GRFG Repack',
+    category: 'Cek Selisih MB51 Order',
+    group: 'audit',
+    hasDatabase: false,
+    desc: 'Rekonsiliasi pergerakan stok SAP MB51 per nomor order repack (101, 102, 261, 262, 531, 532), filter FG & kalkulasi konversi CAR/PCS',
+    keywords: 'match grfg repack cek selisih order mb51 sap rekonsiliasi total pcs seimbang movement type 101 261 262 531 konversi offline generator',
+    icon: <FileSpreadsheet size={15} className="text-white" />,
+    iconBg: 'bg-emerald-600',
+    badge: 'Generator',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   }
 ];
 

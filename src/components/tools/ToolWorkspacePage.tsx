@@ -10,7 +10,8 @@ import {
   FileText, 
   Undo2,
   Flame,
-  Truck
+  Truck,
+  FileSpreadsheet
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
@@ -90,6 +91,12 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'Template Transfer SAP 1200/1800',
     icon: <Truck size={18} className="text-white" />,
     iconBg: 'bg-blue-600'
+  },
+  'match-grfg-repack': {
+    title: 'Match GRFG Repack',
+    category: 'Cek Selisih MB51 Order',
+    icon: <FileSpreadsheet size={18} className="text-white" />,
+    iconBg: 'bg-emerald-600'
   }
 };
 

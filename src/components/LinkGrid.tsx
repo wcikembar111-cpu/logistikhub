@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, DragEvent } from 'react';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, List, Sparkles, X, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { useMenuOrder } from '../hooks/useSupabase';
@@ -48,6 +48,23 @@ export function LinkGrid({
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [isReordering, setIsReordering] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem('linkgrid_view_mode');
+      return saved === 'list' ? 'list' : 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+
+  const handleToggleViewMode = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('linkgrid_view_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
 
   // PIN Security Modal State for Add, Edit, Delete, and Hide/Unhide Actions (PIN: 399339)
   const [pinModalConfig, setPinModalConfig] = useState<{
@@ -298,6 +315,36 @@ export function LinkGrid({
             <span>{filteredLinks.length} / {links.length} Aplikasi</span>
           </div>
 
+          {/* Opsi Toggle Layout Grid vs List (Daftar Ringkas untuk hemat ruang layar pada desktop) */}
+          <div className="flex items-center bg-white border border-slate-200 shadow-2xs rounded-xl p-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode('grid')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'grid' 
+                  ? 'bg-blue-600 text-white shadow-xs' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title="Tampilan Grid (Kotak)"
+            >
+              <LayoutGrid size={13} />
+              <span className="hidden sm:inline text-[11px]">Grid</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode('list')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'list' 
+                  ? 'bg-blue-600 text-white shadow-xs' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title="Tampilan Daftar Ringkas (List View - Hemat Ruang Layar Desktop)"
+            >
+              <List size={13} />
+              <span className="hidden sm:inline text-[11px]">Daftar Ringkas</span>
+            </button>
+          </div>
+
           {/* Admin & Super Admin Actions */}
           {(isAdmin || isSuperAdmin) && (
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
@@ -392,7 +439,7 @@ export function LinkGrid({
             Reset Pencarian
           </button>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-3.5 pb-2">
           {filteredLinks.map((l, index) => {
             const isEmoji = l.icon && !l.icon.startsWith('fa');
@@ -530,6 +577,140 @@ export function LinkGrid({
                     {l.title}
                   </h4>
                 </div>
+              </a>
+            );
+          })}
+        </div>
+      ) : (
+        /* List View (Tampilan Daftar Ringkas - Hemat Ruang Layar Desktop) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-2 pb-2">
+          {filteredLinks.map((l, index) => {
+            const isEmoji = l.icon && !l.icon.startsWith('fa');
+            const nativeStyle = NATIVE_ICON_STYLES[index % NATIVE_ICON_STYLES.length];
+            const targetUrl = l.url ? (l.url.startsWith('http://') || l.url.startsWith('https://') ? l.url : `https://${l.url}`) : '#';
+            const isItemHidden = hiddenMenuIds.includes(l.id);
+            
+            const isDraggingThis = draggedId === l.id;
+            const isDragOverThis = dragOverId === l.id;
+
+            return (
+              <a 
+                key={l.id} 
+                href={isReordering ? undefined : targetUrl}
+                target={isReordering ? undefined : "_blank"}
+                rel={isReordering ? undefined : "noopener noreferrer"}
+                title={`${l.title} - ${l.category || ''}${isItemHidden ? ' (Status: Disembunyikan)' : ''}`}
+                draggable={isReordering}
+                onDragStart={(e) => handleDragStart(e, l.id)}
+                onDragOver={(e) => handleDragOver(e, l.id)}
+                onDragLeave={(e) => handleDragLeave(e, l.id)}
+                onDrop={(e) => handleDrop(e, l.id)}
+                onClick={(e) => {
+                  if (isReordering) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
+                className={`bg-white border shadow-2xs px-3 py-2 flex items-center gap-2.5 relative min-h-[46px] transition-all duration-150 ease-out group overflow-hidden no-underline text-slate-800 rounded-xl ${
+                  isItemHidden 
+                    ? 'border-dashed !border-amber-400 !bg-amber-50/40 opacity-80' 
+                    : 'border-slate-200/90 hover:shadow-xs hover:border-blue-300 hover:bg-slate-50/80'
+                } ${
+                  isReordering ? 'ring-2 ring-blue-400 bg-blue-50/50 cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
+                  isDragOverThis ? '!ring-2 !ring-blue-500 !bg-blue-100/50 scale-[1.02] shadow-md' : ''
+                }`}
+              >
+                {/* Mini Icon Tile */}
+                <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${nativeStyle} border border-white/40 overflow-hidden`}>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent pointer-events-none" />
+                  <span className="relative z-10 flex items-center justify-center">
+                    {isEmoji ? (
+                      <span className="text-base leading-none">{l.icon || '📱'}</span>
+                    ) : (
+                      <i className={`${l.icon || 'fas fa-cubes'} text-white text-xs`} />
+                    )}
+                  </span>
+                </div>
+
+                {/* Title and Category */}
+                <div className="flex-1 min-w-0 pr-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-bold text-xs text-slate-800 tracking-tight truncate group-hover:text-blue-600 transition-colors capitalize">
+                      {l.title}
+                    </h4>
+                    {isItemHidden && (
+                      <span className="bg-amber-500 text-white text-[8px] font-black px-1 py-0.2 rounded uppercase shrink-0">
+                        Hide
+                      </span>
+                    )}
+                  </div>
+                  {l.category && (
+                    <p className="text-[10px] text-slate-400 font-medium truncate m-0 leading-tight">
+                      {l.category}
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions / Controls */}
+                {isReordering ? (
+                  <div className="flex items-center gap-0.5 shrink-0 pointer-events-auto">
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveLinkPosition(l.id, 'prev'); }}
+                      disabled={index === 0}
+                      className="p-1 hover:bg-slate-200 text-slate-600 rounded disabled:opacity-20 transition-all cursor-pointer"
+                      title="Geser Sebelum"
+                    >
+                      <ChevronLeft size={12} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveLinkPosition(l.id, 'next'); }}
+                      disabled={index === filteredLinks.length - 1}
+                      className="p-1 hover:bg-slate-200 text-slate-600 rounded disabled:opacity-20 transition-all cursor-pointer"
+                      title="Geser Sesudah"
+                    >
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-auto">
+                    {isSuperAdmin ? (
+                      <>
+                        <button 
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRequestToggleHide(l); }} 
+                          className={`p-1 rounded transition-all cursor-pointer ${
+                            isItemHidden 
+                              ? 'bg-emerald-100 hover:bg-emerald-600 hover:text-white text-emerald-700' 
+                              : 'bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-600'
+                          }`}
+                          title={isItemHidden ? "Tampilkan Menu Ini" : "Sembunyikan Menu Ini"}
+                        >
+                          {isItemHidden ? <Eye size={11} /> : <EyeOff size={11} />}
+                        </button>
+                        <button 
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRequestEdit(l); }} 
+                          className="p-1 rounded bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 transition-all cursor-pointer"
+                          title="Edit Aplikasi"
+                        >
+                          <Edit2 size={11} />
+                        </button>
+                        <button 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            handleRequestDelete(l);
+                          }} 
+                          className="p-1 rounded bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 transition-all cursor-pointer"
+                          title="Hapus Aplikasi"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </>
+                    ) : (
+                      <ExternalLink size={12} className="text-slate-400 group-hover:text-blue-600" />
+                    )}
+                  </div>
+                )}
               </a>
             );
           })}

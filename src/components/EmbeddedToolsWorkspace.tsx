@@ -13,6 +13,7 @@ import { ReturInventoryModule } from './logistics/ReturInventoryModule';
 import { MonitoringPemusnahanModule } from './logistics/MonitoringPemusnahanModule';
 import { DataPemusnahanModule } from './logistics/DataPemusnahanModule';
 import { OutboundLrgModule } from './logistics/OutboundLrgModule';
+import { MatchGrfgRepackModule } from './logistics/MatchGrfgRepackModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -50,6 +51,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'monitoring-pemusnahan' && <MonitoringPemusnahanModule />}
             {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}
             {activeTool === 'outbound-lrg' && <OutboundLrgModule />}
+            {activeTool === 'match-grfg-repack' && <MatchGrfgRepackModule />}
           </ErrorBoundary>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -112,6 +112,14 @@ export function ToolsGrid({
       keywords: 'outbound lrg outboundlrg sap transfer 1200 1800 to plant sloc distribusi sukabumi m081',
       icon: <Truck size={20} className="text-white" />,
       iconBg: 'bg-blue-600'
+    },
+    {
+      id: 'match-grfg-repack',
+      title: 'Match GRFG Repack',
+      category: 'Cek Selisih MB51 Order',
+      keywords: 'match grfg repack cek selisih order mb51 sap rekonsiliasi total pcs seimbang movement type 101 261 262 531 konversi offline generator',
+      icon: <FileSpreadsheet size={20} className="text-white" />,
+      iconBg: 'bg-emerald-600'
     }
   ];
 

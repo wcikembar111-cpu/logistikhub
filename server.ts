@@ -84,6 +84,65 @@ async function startServer() {
     }
   });
 
+  // Google Sheets Proxy for Match GRFG Repack Master Konversi
+  let cachedKonversiCsv: string | null = null;
+  let cachedKonversiTime = 0;
+
+  app.get("/api/match-grfg/fetch-konversi", async (req, res) => {
+    try {
+      const sheetId = (req.query.sheetId as string) || "1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4";
+      const gid = (req.query.gid as string) || "901676227";
+      const forceRefresh = req.query.refresh === "true";
+
+      const now = Date.now();
+      // Cache for 30 minutes unless forceRefresh
+      if (!forceRefresh && cachedKonversiCsv && (now - cachedKonversiTime < 30 * 60 * 1000)) {
+        return res.json({
+          success: true,
+          fromCache: true,
+          cachedAt: new Date(cachedKonversiTime).toISOString(),
+          csv: cachedKonversiCsv
+        });
+      }
+
+      const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+      const response = await fetch(gvizUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google Sheets status ${response.status}: ${response.statusText}`);
+      }
+
+      const csvText = await response.text();
+      cachedKonversiCsv = csvText;
+      cachedKonversiTime = now;
+
+      return res.json({
+        success: true,
+        fromCache: false,
+        cachedAt: new Date(now).toISOString(),
+        csv: csvText
+      });
+    } catch (err: any) {
+      console.error("[Match GRFG Konversi Error]:", err);
+      if (cachedKonversiCsv) {
+        return res.json({
+          success: true,
+          fromCache: true,
+          warning: "Menggunakan cache lokal karena Google Sheets tidak merespon.",
+          csv: cachedKonversiCsv
+        });
+      }
+      return res.status(500).json({
+        success: false,
+        message: err?.message || "Gagal mengambil data sheet KONVERSI dari Google Spreadsheet."
+      });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

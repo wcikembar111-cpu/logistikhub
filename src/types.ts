@@ -160,9 +160,36 @@ export type LogisticsTab =
   | 'retur-inventory' 
   | 'monitoring-pemusnahan'
   | 'data-pemusnahan'
-  | 'outbound-lrg';
+  | 'outbound-lrg'
+  | 'match-grfg-repack';
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
+
+export interface MatchGrfgDetailRow {
+  no: number;
+  order: string;
+  material: string;
+  deskripsi: string;
+  movementType: string;
+  qty: number;
+  unit: string;
+  konversi: number;
+  totalPcs: number;
+  dokumen: string;
+  posting: string;
+  batch: string;
+  teks: string;
+  included: boolean;
+  reason: string;
+}
+
+export interface MatchGrfgOrderSummary {
+  order: string;
+  count: number;
+  total: number;
+  status: 'OK' | 'SELISIH';
+  rows: MatchGrfgDetailRow[];
+}
 
 export interface OutboundLrgSourceItem {
   item_code?: string;
