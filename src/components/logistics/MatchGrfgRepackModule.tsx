@@ -479,21 +479,68 @@ export function MatchGrfgRepackModule() {
   };
 
   /* =========================================================
+     FETCH GOOGLE SPREADSHEET CSV (KOMPATIBEL CLOUDFLARE / SPA)
+     ========================================================= */
+  const fetchKonversiCsv = async (sheetId: string, gid: string, forceRefresh: boolean): Promise<string> => {
+    const cacheBuster = forceRefresh ? `&_t=${Date.now()}` : '';
+
+    // 1. Direct fetch Google Sheets GViz CSV (Respon Google mendukung CORS langsung di browser Cloudflare / static SPA)
+    try {
+      const directGvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}${cacheBuster}`;
+      const res = await fetch(directGvizUrl, { method: 'GET', mode: 'cors' });
+      if (res.ok) {
+        const text = await res.text();
+        const trimmed = text.trim();
+        if (trimmed && !trimmed.toLowerCase().startsWith('<!doctype') && !trimmed.toLowerCase().startsWith('<html')) {
+          return text;
+        }
+      }
+    } catch (err) {
+      console.warn('Direct GViz fetch error, mencoba metode fallback...', err);
+    }
+
+    // 2. Direct fetch Google Sheets Export CSV
+    try {
+      const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}${cacheBuster}`;
+      const res = await fetch(exportUrl, { method: 'GET', mode: 'cors' });
+      if (res.ok) {
+        const text = await res.text();
+        const trimmed = text.trim();
+        if (trimmed && !trimmed.toLowerCase().startsWith('<!doctype') && !trimmed.toLowerCase().startsWith('<html')) {
+          return text;
+        }
+      }
+    } catch (err) {
+      console.warn('Export fetch error...', err);
+    }
+
+    // 3. Fallback Backend Proxy (Hanya jika dijalankan di environment dengan Express backend)
+    try {
+      const proxyRes = await fetch(`/api/match-grfg/fetch-konversi?sheetId=${sheetId}&gid=${gid}&refresh=${forceRefresh ? 'true' : 'false'}`);
+      const contentType = proxyRes.headers.get('content-type') || '';
+      // Cegah crash JSON jika di-deploy ke Cloudflare static hosting yang mengembalikan index.html (<!doctype html>)
+      if (proxyRes.ok && contentType.includes('application/json')) {
+        const json = await proxyRes.json();
+        if (json && json.success && json.csv) {
+          return json.csv;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend proxy tidak tersedia:', err);
+    }
+
+    throw new Error('Tidak dapat mengunduh data CSV dari Google Spreadsheet. Pastikan akses spreadsheet berstatus publik atau koneksi internet stabil.');
+  };
+
+  /* =========================================================
      SINKRONISASI KONVERSI DARI GOOGLE SPREADSHEET (ONLINE)
      ========================================================= */
   const syncKonversiFromGoogleSheets = async (forceRefresh = false) => {
     setIsSyncingKonversi(true);
     try {
-      const res = await fetch(`/api/match-grfg/fetch-konversi?sheetId=${DEFAULT_SHEET_ID}&gid=${DEFAULT_GID}&refresh=${forceRefresh ? 'true' : 'false'}`);
-      if (!res.ok) {
-        throw new Error(`Server status ${res.status}: ${res.statusText}`);
-      }
-      const json = await res.json();
-      if (!json.success || !json.csv) {
-        throw new Error(json.message || 'Gagal menerima CSV dari Google Spreadsheet.');
-      }
+      const csvText = await fetchKonversiCsv(DEFAULT_SHEET_ID, DEFAULT_GID, forceRefresh);
 
-      const workbook = XLSX.read(json.csv, { type: 'string' });
+      const workbook = XLSX.read(csvText, { type: 'string' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const parsed = sheetToAOA(firstSheet);
       const extracted = extractKonversiFromSheet(parsed.rows);
