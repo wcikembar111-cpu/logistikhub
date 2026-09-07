@@ -48,7 +48,6 @@ export function LinkGrid({
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [isReordering, setIsReordering] = useState(false);
-  const [showHiddenMode, setShowHiddenMode] = useState(false);
 
   // PIN Security Modal State for Add, Edit, Delete, and Hide/Unhide Actions (PIN: 399339)
   const [pinModalConfig, setPinModalConfig] = useState<{
@@ -137,51 +136,11 @@ export function LinkGrid({
     });
   };
 
-  // Handler for Opening Full Menu Visibility Modal
-  const handleRequestVisibility = () => {
-    if (!onOpenMenuVisibility) return;
-    setPinModalConfig({
-      isOpen: true,
-      actionType: 'visibility',
-      title: 'Otorisasi Kelola Visibilitas Menu',
-      subtitle: 'Masukkan PIN Keamanan untuk membuka manajemen menu hide & unhide.',
-      description: 'PIN Keamanan ( 399339 ) diperlukan untuk mengakses pengaturan visibilitas menu.',
-      onSuccess: () => {
-        setPinModalConfig(prev => ({ ...prev, isOpen: false }));
-        onOpenMenuVisibility();
-      }
-    });
-  };
-
-  // Toggle Show Hidden Cards in dashboard (requires PIN verification)
-  const handleToggleShowHidden = () => {
-    if (!showHiddenMode) {
-      setPinModalConfig({
-        isOpen: true,
-        actionType: 'visibility',
-        title: 'Buka Mode Tampilkan Menu Tersembunyi',
-        subtitle: 'Masukkan PIN Keamanan untuk melihat menu-menu yang disembunyikan.',
-        description: 'PIN Keamanan ( 399339 ) diperlukan untuk melihat item tersembunyi.',
-        onSuccess: () => {
-          setPinModalConfig(prev => ({ ...prev, isOpen: false }));
-          setShowHiddenMode(true);
-          showToast('Mode Tersembunyi Aktif', 'Menampilkan item yang disembunyikan dengan label khusus', 'info');
-        }
-      });
-    } else {
-      setShowHiddenMode(false);
-    }
-  };
-
-  const hiddenGridLinksCount = useMemo(() => {
-    return links.filter(l => hiddenMenuIds.includes(l.id)).length;
-  }, [links, hiddenMenuIds]);
-
   const categories = useMemo(() => {
     const cats = new Set<string>();
     links.forEach(l => {
-      // Don't register categories of hidden items if showHiddenMode is false
-      if (!showHiddenMode && hiddenMenuIds.includes(l.id)) return;
+      // Don't register categories of hidden items
+      if (hiddenMenuIds.includes(l.id)) return;
       if (l.category) {
         // Format to Title Case
         const formatted = l.category.charAt(0).toUpperCase() + l.category.slice(1).toLowerCase();
@@ -189,7 +148,7 @@ export function LinkGrid({
       }
     });
     return ['Semua', ...Array.from(cats)];
-  }, [links, hiddenMenuIds, showHiddenMode]);
+  }, [links, hiddenMenuIds]);
 
   const orderedLinks = useMemo(() => {
     if (menuOrder.length === 0) return links;
@@ -211,8 +170,8 @@ export function LinkGrid({
 
   const filteredLinks = useMemo(() => {
     return orderedLinks.filter(l => {
-      // Exclude hidden links unless showHiddenMode is enabled
-      if (!showHiddenMode && hiddenMenuIds.includes(l.id)) {
+      // Exclude hidden links
+      if (hiddenMenuIds.includes(l.id)) {
         return false;
       }
       const catMatch = category === 'Semua' || category === 'All' || 
@@ -221,7 +180,7 @@ export function LinkGrid({
                           (l.category || '').toLowerCase().includes(search.toLowerCase());
       return catMatch && searchMatch;
     });
-  }, [orderedLinks, category, search, showHiddenMode, hiddenMenuIds]);
+  }, [orderedLinks, category, search, hiddenMenuIds]);
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -342,41 +301,6 @@ export function LinkGrid({
           {/* Admin & Super Admin Actions */}
           {(isAdmin || isSuperAdmin) && (
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {/* Toggle Mode Tampilkan Tersembunyi jika ada item yang di-hide */}
-              {hiddenGridLinksCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleToggleShowHidden}
-                  className={`px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs ${
-                    showHiddenMode
-                      ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
-                  }`}
-                  title="Lihat aplikasi yang sedang disembunyikan di grid ini (Wajib PIN 399339)"
-                >
-                  {showHiddenMode ? <Eye size={13} /> : <EyeOff size={13} />}
-                  <span>{showHiddenMode ? 'Tutup Item Tersembunyi' : `Lihat Tersembunyi (${hiddenGridLinksCount})`}</span>
-                </button>
-              )}
-
-              {/* Tombol Kelola Hide & Unhide Menu Modal */}
-              {onOpenMenuVisibility && (
-                <button 
-                  type="button"
-                  onClick={handleRequestVisibility} 
-                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-50/80 text-indigo-900 border border-slate-300 hover:border-indigo-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Kelola Hide & Unhide Menu Sidebar & Grid (Wajib PIN 399339)"
-                >
-                  <EyeOff size={13} className="text-indigo-600" />
-                  <span>Hide & Unhide</span>
-                  {hiddenGridLinksCount > 0 && (
-                    <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-300">
-                      {hiddenGridLinksCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
               {/* Kelola Daftar Aplikasi & Sistem (Hanya Super Admin) */}
               {isSuperAdmin && (
                 <>

@@ -251,6 +251,8 @@ export default function App() {
                 onOpenLogin={() => setShowLoginModal(true)}
                 onOpenUserManagement={() => setShowUserManagementModal(true)}
                 onLogout={() => logout('manual')}
+                onOpenMenuVisibility={handleOpenMenuVisibility}
+                hiddenMenuCount={hiddenMenuIds.length}
                 renderAvatarSlot={(isSpeaking) => (
                   <FloatingRobotCompanion 
                     onSendBroadcast={sendBroadcast}

@@ -25,7 +25,8 @@ import {
   KeyRound,
   UserCheck,
   Wrench,
-  Mic
+  Mic,
+  Eye
 } from 'lucide-react';
 import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
@@ -55,6 +56,8 @@ interface HeroProps {
   onOpenSqlScript?: () => void;
   onLogout?: () => void;
   renderAvatarSlot?: ((isSpeaking: boolean) => React.ReactNode) | React.ReactNode;
+  onOpenMenuVisibility?: () => void;
+  hiddenMenuCount?: number;
 }
 
 interface PrayerJadwal {
@@ -78,7 +81,9 @@ export function Hero({
   onOpenUserManagement,
   onOpenSqlScript,
   onLogout,
-  renderAvatarSlot
+  renderAvatarSlot,
+  onOpenMenuVisibility,
+  hiddenMenuCount = 0
 }: HeroProps) {
   // Dynamic user profile resolution
   const currentUsername = (user?.username || '').toLowerCase();
@@ -1170,6 +1175,22 @@ export function Hero({
             <div className="font-bold text-[10px] sm:text-[11px] text-slate-700 tracking-wider border border-slate-200 px-2.5 py-1.5 bg-white rounded-xl shadow-2xs whitespace-nowrap">
               {dateStr || 'Memuat...'}
             </div>
+
+            {/* Tombol Halus: Visibilitas Menu (Icon Mata) */}
+            {onOpenMenuVisibility && (
+              <button 
+                type="button"
+                onClick={onOpenMenuVisibility}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 active:scale-95 transition-all cursor-pointer relative"
+                title="Visibilitas Menu"
+                aria-label="Pengaturan Visibilitas Menu"
+              >
+                <Eye size={15} />
+                {hiddenMenuCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 ring-2 ring-white" />
+                )}
+              </button>
+            )}
 
             {/* Tombol Install PWA jika belum terinstall */}
             <InstallPwaButton variant="header" />
