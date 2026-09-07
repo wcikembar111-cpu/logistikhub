@@ -519,4 +519,5 @@ export function useMenuOrder() {
 
 export { useAuthContext as useAuth } from '../context/AuthContext';
 export { useBroadcast } from './useBroadcast';
+export { useMenuVisibility } from './useMenuVisibility';
 

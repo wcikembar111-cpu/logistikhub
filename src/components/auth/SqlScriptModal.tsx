@@ -95,16 +95,42 @@ SET
     pin = EXCLUDED.pin,
     role = EXCLUDED.role,
     status = EXCLUDED.status,
-    permissions = EXCLUDED.permissions;
+        permissions = EXCLUDED.permissions;
+`;
+
+export const MENU_VISIBILITY_TABLE_SQL = `-- =================================================================
+-- Tabel Khusus Visibilitas Menu (Hide / Unhide Sidebar & Grid)
+-- Tabel terpisah ini agar TIDAK bentrok dengan tabel 'setting' / 'settings' yang sudah ada
+-- =================================================================
+CREATE TABLE IF NOT EXISTS public.menu_visibility (
+    id TEXT PRIMARY KEY DEFAULT 'hidden_menus',
+    hidden_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Matikan RLS agar dapat dibaca dan disimpan oleh aplikasi
+ALTER TABLE public.menu_visibility DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.menu_visibility TO anon, authenticated;
+
+-- Aktifkan Realtime Replication untuk sinkronisasi seketika antar perangkat
+ALTER PUBLICATION supabase_realtime ADD TABLE public.menu_visibility;
+
+-- Baris inisialisasi awal untuk daftar menu tersembunyi
+INSERT INTO public.menu_visibility (id, hidden_ids)
+VALUES ('hidden_menus', '[]'::jsonb)
+ON CONFLICT (id) DO NOTHING;
 `;
 
 export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
+  const [activeTab, setActiveTab] = useState<'visibility' | 'users'>('visibility');
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
+  const currentSql = activeTab === 'visibility' ? MENU_VISIBILITY_TABLE_SQL : USERS_TABLE_SQL;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(USERS_TABLE_SQL);
+    navigator.clipboard.writeText(currentSql);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -126,10 +152,10 @@ export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
             </div>
             <div>
               <div className="text-[10px] font-black tracking-widest text-emerald-400 uppercase">
-                Skrip SQL Tabel `users` (Server Sistem)
+                Skrip SQL Supabase Server
               </div>
               <h3 className="text-base sm:text-lg font-black text-white m-0">
-                Setup Skema Autentikasi Baru
+                Setup Skema Database Supabase
               </h3>
             </div>
           </div>
@@ -144,17 +170,52 @@ export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
           </button>
         </div>
 
+        {/* Tab Selection */}
+        <div className="px-5 sm:px-6 pt-4 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('visibility'); setCopied(false); }}
+            className={`px-3.5 py-2 font-bold text-xs rounded-t-xl transition-all border-b-2 cursor-pointer ${
+              activeTab === 'visibility'
+                ? 'bg-white text-indigo-700 border-indigo-600 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 border-transparent'
+            }`}
+          >
+            Tabel menu_visibility (Hide/Unhide Menu)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('users'); setCopied(false); }}
+            className={`px-3.5 py-2 font-bold text-xs rounded-t-xl transition-all border-b-2 cursor-pointer ${
+              activeTab === 'users'
+                ? 'bg-white text-emerald-700 border-emerald-600 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 border-transparent'
+            }`}
+          >
+            Tabel users (Akun Pengguna)
+          </button>
+        </div>
+
         {/* Content */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
           <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-blue-900 leading-relaxed font-medium">
-            <span className="font-bold">Petunjuk:</span> Salin skrip SQL di bawah ini dan tempelkan ke <strong>SQL Editor</strong> pada dashboard Server Anda. Skrip ini membuat tabel <code>users</code> dengan trigger <code>updated_at</code>, indexing, permission JSONB, dan akun Admin default (<code>admin</code> / <code>123456</code>).
+            {activeTab === 'visibility' ? (
+              <>
+                <span className="font-bold">Info:</span> Tabel <code>menu_visibility</code> dibuat khusus berdiri sendiri sehingga <strong>TIDAK AKAN mengganggu atau bentrok dengan tabel <code>settings</code> Anda yang sudah ada</strong>. Skrip ini hanya perlu dijalankan sekali di SQL Editor Supabase agar status hide/unhide menu tersimpan permanen di cloud.
+              </>
+            ) : (
+              <>
+                <span className="font-bold">Info:</span> Skrip untuk tabel <code>users</code> membuat struktur tabel autentikasi dengan akun default <code>admin</code> / <code>123456</code>.
+              </>
+            )}
           </div>
 
           <div className="relative">
             <div className="flex items-center justify-between bg-slate-800 text-slate-300 px-4 py-2 rounded-t-xl text-[11px] font-mono border-b border-slate-700">
               <div className="flex items-center gap-1.5 font-bold text-emerald-400">
                 <Terminal size={13} />
-                <span>users_schema.sql</span>
+                <span>{activeTab === 'visibility' ? 'menu_visibility_schema.sql' : 'users_schema.sql'}</span>
               </div>
 
               <button 
@@ -172,7 +233,7 @@ export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
             </div>
 
             <pre className="p-4 bg-slate-950 text-slate-200 rounded-b-xl overflow-x-auto text-[11px] font-mono leading-relaxed max-h-72 custom-scrollbar select-all">
-              {USERS_TABLE_SQL}
+              {currentSql}
             </pre>
           </div>
         </div>
@@ -180,7 +241,11 @@ export function SqlScriptModal({ isOpen, onClose }: SqlScriptModalProps) {
         {/* Footer */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
           <div className="text-[11px] text-slate-500 font-semibold">
-            Admin default: <span className="font-bold text-slate-800">admin</span> / <span className="font-bold text-slate-800">123456</span>
+            {activeTab === 'visibility' ? (
+              <span>Tabel terpisah: <strong className="text-slate-800">public.menu_visibility</strong></span>
+            ) : (
+              <span>Admin default: <strong className="text-slate-800">admin</strong> / <strong className="text-slate-800">123456</strong></span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

@@ -1,13 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
   activeTool?: MainToolTab | null;
   onSelectTool: (tool: MainToolTab) => void;
+  hiddenMenuIds?: string[];
+  onOpenMenuVisibility?: () => void;
 }
 
-export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
+export function ToolsGrid({ 
+  activeTool, 
+  onSelectTool,
+  hiddenMenuIds = [],
+  onOpenMenuVisibility
+}: ToolsGridProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const tools: {
@@ -110,14 +117,21 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
 
   const filteredTools = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return tools;
-    return tools.filter(
-      (t) =>
+    return tools.filter((t) => {
+      // Exclude hidden tools
+      if (hiddenMenuIds.includes(t.id)) return false;
+      if (!q) return true;
+      return (
         t.title.toLowerCase().includes(q) ||
         t.category.toLowerCase().includes(q) ||
         t.keywords.toLowerCase().includes(q)
-    );
-  }, [tools, searchQuery]);
+      );
+    });
+  }, [tools, searchQuery, hiddenMenuIds]);
+
+  const hiddenToolsCount = useMemo(() => {
+    return tools.filter(t => hiddenMenuIds.includes(t.id)).length;
+  }, [tools, hiddenMenuIds]);
 
   return (
     <div className="mt-8 pt-6 border-t border-slate-200">
@@ -163,6 +177,24 @@ export function ToolsGrid({ activeTool, onSelectTool }: ToolsGridProps) {
             <span className="w-2 h-2 rounded-full bg-blue-500" />
             <span>{filteredTools.length} / {tools.length} Tools</span>
           </div>
+
+          {/* Visibility management button if provided */}
+          {onOpenMenuVisibility && (
+            <button
+              type="button"
+              onClick={onOpenMenuVisibility}
+              className="bg-white hover:bg-indigo-50/80 text-indigo-900 border border-slate-200 hover:border-indigo-300 shadow-2xs rounded-xl px-2.5 py-1.5 font-bold text-[11px] flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
+              title="Kelola Hide & Unhide Menu (Wajib PIN 399339)"
+            >
+              <EyeOff size={12} className="text-indigo-600" />
+              <span>Hide & Unhide</span>
+              {hiddenToolsCount > 0 && (
+                <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-300">
+                  {hiddenToolsCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

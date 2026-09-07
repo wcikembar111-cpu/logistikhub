@@ -24,7 +24,7 @@ interface PinSecurityModalProps {
   title?: string;
   subtitle?: string;
   description?: string;
-  actionType?: 'add' | 'edit' | 'delete' | 'manage_users' | 'default';
+  actionType?: 'add' | 'edit' | 'delete' | 'manage_users' | 'hide' | 'unhide' | 'visibility' | 'default';
   targetName?: string;
   onSuccess: () => void;
   onClose: () => void;
@@ -160,6 +160,36 @@ export function PinSecurityModal({
           headerBg: 'bg-gradient-to-r from-purple-700 to-indigo-800',
           defaultTitle: 'Otorisasi Kelola Pengguna (RBAC)',
           defaultSubtitle: 'Konfirmasi PIN untuk membuka hak akses pengguna'
+        };
+      case 'hide':
+        return {
+          icon: <EyeOff size={22} className="text-amber-500" />,
+          badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+          btnClass: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500',
+          accentColor: 'text-amber-600',
+          headerBg: 'bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900',
+          defaultTitle: 'Otorisasi Sembunyikan Menu (Hide)',
+          defaultSubtitle: 'Konfirmasi PIN untuk menyembunyikan menu ini'
+        };
+      case 'unhide':
+        return {
+          icon: <Eye size={22} className="text-emerald-500" />,
+          badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+          btnClass: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500',
+          accentColor: 'text-emerald-600',
+          headerBg: 'bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900',
+          defaultTitle: 'Otorisasi Tampilkan Menu (Unhide)',
+          defaultSubtitle: 'Konfirmasi PIN untuk memunculkan kembali menu ini'
+        };
+      case 'visibility':
+        return {
+          icon: <ShieldCheck size={22} className="text-indigo-400" />,
+          badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+          btnClass: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500',
+          accentColor: 'text-indigo-600',
+          headerBg: 'bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900',
+          defaultTitle: 'Otorisasi Kelola Visibilitas Menu',
+          defaultSubtitle: 'Konfirmasi PIN ( 399339 ) untuk mengelola status hide/unhide'
         };
       default:
         return {

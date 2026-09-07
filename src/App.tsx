@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useLinks, useTodos, useAuth, useBroadcast } from './hooks/useSupabase';
+import { useLinks, useTodos, useAuth, useBroadcast, useMenuVisibility } from './hooks/useSupabase';
 import { FloatingRobotCompanion } from './components/broadcast/FloatingRobotCompanion';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
 import { FloatingTodoBroadcast } from './components/todo/FloatingTodoBroadcast';
@@ -15,6 +15,8 @@ import { LoginModal } from './components/auth/LoginModal';
 import { InactivityWarningModal } from './components/auth/InactivityWarningModal';
 import { UserManagementModal } from './components/auth/UserManagementModal';
 import { SqlScriptModal } from './components/auth/SqlScriptModal';
+import { MenuVisibilityModal } from './components/common/MenuVisibilityModal';
+import { PinSecurityModal } from './components/common/PinSecurityModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { InitialDLogo } from './components/common/InitialDLogo';
 import { LinkData, MainToolTab } from './types';
@@ -40,6 +42,47 @@ export default function App() {
     incomingNewTodo,
     dismissIncomingTodo
   } = useTodos();
+
+  // Menu Visibility Hook (Realtime Supabase + PIN 399339)
+  const {
+    hiddenMenuIds,
+    hideMenu,
+    unhideMenu,
+    toggleMenuVisibility,
+    unhideAllMenus,
+    isRealtimeConnected: isMenuRealtimeConnected
+  } = useMenuVisibility();
+
+  const [showMenuVisibilityModal, setShowMenuVisibilityModal] = useState(false);
+  const [pinSecurityModalConfig, setPinSecurityModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    description?: string;
+    actionType: 'visibility' | 'hide' | 'unhide' | 'default';
+    targetName?: string;
+    onSuccess: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    actionType: 'visibility',
+    onSuccess: () => {}
+  });
+
+  const handleOpenMenuVisibility = () => {
+    setPinSecurityModalConfig({
+      isOpen: true,
+      actionType: 'visibility',
+      title: 'Otorisasi Kelola Visibilitas Menu',
+      subtitle: 'Masukkan PIN Keamanan untuk membuka manajemen hide & unhide menu.',
+      description: 'PIN Keamanan ( 399339 ) diperlukan untuk mengatur menu yang tampil pada Sidebar & Grid.',
+      onSuccess: () => {
+        setPinSecurityModalConfig(prev => ({ ...prev, isOpen: false }));
+        setShowMenuVisibilityModal(true);
+      }
+    });
+  };
 
   // Auth Modals State
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -171,6 +214,8 @@ export default function App() {
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           currentUser={user}
           isAdmin={isAdmin}
+          hiddenMenuIds={hiddenMenuIds}
+          onOpenMenuVisibility={handleOpenMenuVisibility}
         />
 
         {/* Main Content Area (Bergeser mulus saat Sidebar Kiri terbuka) */}
@@ -234,6 +279,21 @@ export default function App() {
                 onDelete={(id) => {
                   deleteLink(id);
                 }}
+                hiddenMenuIds={hiddenMenuIds}
+                onHideMenu={(id) => hideMenu(id)}
+                onUnhideMenu={(id) => unhideMenu(id)}
+                onOpenMenuVisibility={handleOpenMenuVisibility}
+              />
+
+              {/* 3. Daftar Tools & Utilitas Grid */}
+              <ToolsGrid 
+                activeTool={activeWorkspaceTool}
+                onSelectTool={(tool) => {
+                  setActiveWorkspaceTool(tool);
+                  setCurrentView('tool-workspace');
+                }}
+                hiddenMenuIds={hiddenMenuIds}
+                onOpenMenuVisibility={handleOpenMenuVisibility}
               />
             </ErrorBoundary>
           ) : (
@@ -349,6 +409,33 @@ export default function App() {
             onSave={handleSaveLink}
           />
         )}
+
+        {/* Modal Manajemen Hide & Unhide Menu Realtime (PIN: 399339) */}
+        {showMenuVisibilityModal && (
+          <MenuVisibilityModal
+            isOpen={showMenuVisibilityModal}
+            onClose={() => setShowMenuVisibilityModal(false)}
+            links={links}
+            hiddenMenuIds={hiddenMenuIds}
+            onToggleMenu={(id, _title, _isCurrentlyHidden) => {
+              toggleMenuVisibility(id);
+            }}
+            onUnhideAll={unhideAllMenus}
+            isRealtimeConnected={isMenuRealtimeConnected}
+          />
+        )}
+
+        {/* PIN Security Modal untuk Otorisasi Menu & Fitur Sensitif (PIN: 399339) */}
+        <PinSecurityModal 
+          isOpen={pinSecurityModalConfig.isOpen}
+          onClose={() => setPinSecurityModalConfig(prev => ({ ...prev, isOpen: false }))}
+          onSuccess={pinSecurityModalConfig.onSuccess}
+          title={pinSecurityModalConfig.title}
+          subtitle={pinSecurityModalConfig.subtitle}
+          description={pinSecurityModalConfig.description}
+          targetName={pinSecurityModalConfig.targetName}
+          actionType={pinSecurityModalConfig.actionType}
+        />
       </ErrorBoundary>
     </>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, DragEvent } from 'react';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Move, ChevronLeft, ChevronRight, Check, LayoutGrid, Sparkles, X, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { LinkData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { useMenuOrder } from '../hooks/useSupabase';
@@ -13,6 +13,10 @@ interface LinkGridProps {
   onAdd: () => void;
   onEdit: (link: LinkData) => void;
   onDelete: (id: string) => void;
+  hiddenMenuIds?: string[];
+  onHideMenu?: (id: string, title: string) => void;
+  onUnhideMenu?: (id: string, title: string) => void;
+  onOpenMenuVisibility?: () => void;
 }
 
 const NATIVE_ICON_STYLES = [
@@ -26,17 +30,30 @@ const NATIVE_ICON_STYLES = [
   'bg-gradient-to-br from-cyan-400 via-teal-500 to-blue-700 text-white shadow-cyan-500/35 ring-1 ring-cyan-400/30',
 ];
 
-export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, onAdd, onEdit, onDelete }: LinkGridProps) {
+export function LinkGrid({ 
+  links, 
+  loading, 
+  isAdmin = true, 
+  isSuperAdmin = true, 
+  onAdd, 
+  onEdit, 
+  onDelete,
+  hiddenMenuIds = [],
+  onHideMenu,
+  onUnhideMenu,
+  onOpenMenuVisibility
+}: LinkGridProps) {
   const { showConfirm, showToast } = useNotification();
   const { menuOrder, saveMenuOrder } = useMenuOrder();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [isReordering, setIsReordering] = useState(false);
+  const [showHiddenMode, setShowHiddenMode] = useState(false);
 
-  // PIN Security Modal State for Add, Edit, and Delete Actions (PIN: 399339)
+  // PIN Security Modal State for Add, Edit, Delete, and Hide/Unhide Actions (PIN: 399339)
   const [pinModalConfig, setPinModalConfig] = useState<{
     isOpen: boolean;
-    actionType: 'add' | 'edit' | 'delete' | 'default';
+    actionType: 'add' | 'edit' | 'delete' | 'hide' | 'unhide' | 'visibility' | 'default';
     title: string;
     subtitle: string;
     description?: string;
@@ -95,9 +112,76 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
     });
   };
 
+  // Handler for Hiding / Unhiding an individual link card
+  const handleRequestToggleHide = (linkItem: LinkData) => {
+    const isHidden = hiddenMenuIds.includes(linkItem.id);
+    setPinModalConfig({
+      isOpen: true,
+      actionType: isHidden ? 'unhide' : 'hide',
+      title: isHidden ? 'Otorisasi Tampilkan Menu' : 'Otorisasi Sembunyikan Menu',
+      subtitle: isHidden 
+        ? 'Masukkan PIN Keamanan untuk memunculkan kembali aplikasi ini di dashboard.' 
+        : 'Masukkan PIN Keamanan untuk menyembunyikan aplikasi ini dari dashboard.',
+      targetName: linkItem.title,
+      description: `PIN Keamanan ( 399339 ) diperlukan untuk mengubah visibilitas menu "${linkItem.title}".`,
+      onSuccess: () => {
+        setPinModalConfig(prev => ({ ...prev, isOpen: false }));
+        if (isHidden) {
+          if (onUnhideMenu) onUnhideMenu(linkItem.id, linkItem.title);
+          showToast('Menu Ditampilkan', `Aplikasi "${linkItem.title}" kembali ditampilkan di dashboard`, 'success');
+        } else {
+          if (onHideMenu) onHideMenu(linkItem.id, linkItem.title);
+          showToast('Menu Disembunyikan', `Aplikasi "${linkItem.title}" telah disembunyikan`, 'info');
+        }
+      }
+    });
+  };
+
+  // Handler for Opening Full Menu Visibility Modal
+  const handleRequestVisibility = () => {
+    if (!onOpenMenuVisibility) return;
+    setPinModalConfig({
+      isOpen: true,
+      actionType: 'visibility',
+      title: 'Otorisasi Kelola Visibilitas Menu',
+      subtitle: 'Masukkan PIN Keamanan untuk membuka manajemen menu hide & unhide.',
+      description: 'PIN Keamanan ( 399339 ) diperlukan untuk mengakses pengaturan visibilitas menu.',
+      onSuccess: () => {
+        setPinModalConfig(prev => ({ ...prev, isOpen: false }));
+        onOpenMenuVisibility();
+      }
+    });
+  };
+
+  // Toggle Show Hidden Cards in dashboard (requires PIN verification)
+  const handleToggleShowHidden = () => {
+    if (!showHiddenMode) {
+      setPinModalConfig({
+        isOpen: true,
+        actionType: 'visibility',
+        title: 'Buka Mode Tampilkan Menu Tersembunyi',
+        subtitle: 'Masukkan PIN Keamanan untuk melihat menu-menu yang disembunyikan.',
+        description: 'PIN Keamanan ( 399339 ) diperlukan untuk melihat item tersembunyi.',
+        onSuccess: () => {
+          setPinModalConfig(prev => ({ ...prev, isOpen: false }));
+          setShowHiddenMode(true);
+          showToast('Mode Tersembunyi Aktif', 'Menampilkan item yang disembunyikan dengan label khusus', 'info');
+        }
+      });
+    } else {
+      setShowHiddenMode(false);
+    }
+  };
+
+  const hiddenGridLinksCount = useMemo(() => {
+    return links.filter(l => hiddenMenuIds.includes(l.id)).length;
+  }, [links, hiddenMenuIds]);
+
   const categories = useMemo(() => {
     const cats = new Set<string>();
     links.forEach(l => {
+      // Don't register categories of hidden items if showHiddenMode is false
+      if (!showHiddenMode && hiddenMenuIds.includes(l.id)) return;
       if (l.category) {
         // Format to Title Case
         const formatted = l.category.charAt(0).toUpperCase() + l.category.slice(1).toLowerCase();
@@ -105,7 +189,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
       }
     });
     return ['Semua', ...Array.from(cats)];
-  }, [links]);
+  }, [links, hiddenMenuIds, showHiddenMode]);
 
   const orderedLinks = useMemo(() => {
     if (menuOrder.length === 0) return links;
@@ -127,13 +211,17 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
 
   const filteredLinks = useMemo(() => {
     return orderedLinks.filter(l => {
+      // Exclude hidden links unless showHiddenMode is enabled
+      if (!showHiddenMode && hiddenMenuIds.includes(l.id)) {
+        return false;
+      }
       const catMatch = category === 'Semua' || category === 'All' || 
                        (l.category || '').toLowerCase() === category.toLowerCase();
       const searchMatch = l.title.toLowerCase().includes(search.toLowerCase()) || 
                           (l.category || '').toLowerCase().includes(search.toLowerCase());
       return catMatch && searchMatch;
     });
-  }, [orderedLinks, category, search]);
+  }, [orderedLinks, category, search, showHiddenMode, hiddenMenuIds]);
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -253,7 +341,42 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
 
           {/* Admin & Super Admin Actions */}
           {(isAdmin || isSuperAdmin) && (
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {/* Toggle Mode Tampilkan Tersembunyi jika ada item yang di-hide */}
+              {hiddenGridLinksCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleShowHidden}
+                  className={`px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs ${
+                    showHiddenMode
+                      ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
+                  }`}
+                  title="Lihat aplikasi yang sedang disembunyikan di grid ini (Wajib PIN 399339)"
+                >
+                  {showHiddenMode ? <Eye size={13} /> : <EyeOff size={13} />}
+                  <span>{showHiddenMode ? 'Tutup Item Tersembunyi' : `Lihat Tersembunyi (${hiddenGridLinksCount})`}</span>
+                </button>
+              )}
+
+              {/* Tombol Kelola Hide & Unhide Menu Modal */}
+              {onOpenMenuVisibility && (
+                <button 
+                  type="button"
+                  onClick={handleRequestVisibility} 
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-50/80 text-indigo-900 border border-slate-300 hover:border-indigo-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Kelola Hide & Unhide Menu Sidebar & Grid (Wajib PIN 399339)"
+                >
+                  <EyeOff size={13} className="text-indigo-600" />
+                  <span>Hide & Unhide</span>
+                  {hiddenGridLinksCount > 0 && (
+                    <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full border border-amber-300">
+                      {hiddenGridLinksCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {/* Kelola Daftar Aplikasi & Sistem (Hanya Super Admin) */}
               {isSuperAdmin && (
                 <>
@@ -351,6 +474,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
             const isEmoji = l.icon && !l.icon.startsWith('fa');
             const nativeStyle = NATIVE_ICON_STYLES[index % NATIVE_ICON_STYLES.length];
             const targetUrl = l.url ? (l.url.startsWith('http://') || l.url.startsWith('https://') ? l.url : `https://${l.url}`) : '#';
+            const isItemHidden = hiddenMenuIds.includes(l.id);
             
             const isDraggingThis = draggedId === l.id;
             const isDragOverThis = dragOverId === l.id;
@@ -361,7 +485,7 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                 href={isReordering ? undefined : targetUrl}
                 target={isReordering ? undefined : "_blank"}
                 rel={isReordering ? undefined : "noopener noreferrer"}
-                title={`${l.title} - ${l.category || ''}`}
+                title={`${l.title} - ${l.category || ''}${isItemHidden ? ' (Status: Disembunyikan)' : ''}`}
                 draggable={isReordering}
                 onDragStart={(e) => handleDragStart(e, l.id)}
                 onDragOver={(e) => handleDragOver(e, l.id)}
@@ -373,12 +497,24 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                     e.stopPropagation();
                   }
                 }}
-                className={`bg-white border border-slate-200/80 shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
-                  isReordering ? 'ring-2 ring-blue-400 bg-blue-50/50 cursor-grab active:cursor-grabbing' : 'hover:-translate-y-1 hover:shadow-md hover:border-blue-300 hover:bg-slate-50/70 cursor-pointer'
+                className={`bg-white border shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
+                  isItemHidden 
+                    ? 'border-dashed !border-amber-400 !bg-amber-50/40 opacity-80' 
+                    : 'border-slate-200/80 hover:-translate-y-1 hover:shadow-md hover:border-blue-300 hover:bg-slate-50/70'
+                } ${
+                  isReordering ? 'ring-2 ring-blue-400 bg-blue-50/50 cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
                   isDragOverThis ? '!ring-4 !ring-blue-500 !bg-blue-100/50 scale-105 shadow-lg' : ''
                 }`}
               >
+                {/* Badge if item is currently hidden */}
+                {isItemHidden && (
+                  <div className="absolute top-1.5 left-1.5 z-20 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shadow-2xs flex items-center gap-0.5">
+                    <EyeOff size={9} />
+                    <span>Hide</span>
+                  </div>
+                )}
+
                 {/* Control bar for Reordering */}
                 {isReordering && (
                   <div className="absolute top-1.5 left-1.5 right-1.5 z-30 flex justify-between items-center pointer-events-auto bg-slate-800 rounded-xl px-1 py-0.5 text-white shadow-md">
@@ -413,6 +549,17 @@ export function LinkGrid({ links, loading, isAdmin = true, isSuperAdmin = true, 
                     
                     {isSuperAdmin && (
                       <div className="flex gap-1">
+                        <button 
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRequestToggleHide(l); }} 
+                          className={`p-1 rounded-lg transition-all cursor-pointer ${
+                            isItemHidden 
+                              ? 'bg-emerald-100 hover:bg-emerald-600 hover:text-white text-emerald-700' 
+                              : 'bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-600'
+                          }`}
+                          title={isItemHidden ? "Tampilkan Menu Ini (Unhide - PIN 399339)" : "Sembunyikan Menu Ini (Hide - PIN 399339)"}
+                        >
+                          {isItemHidden ? <Eye size={12} /> : <EyeOff size={12} />}
+                        </button>
                         <button 
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRequestEdit(l); }} 
                           className="p-1 rounded-lg bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 transition-all cursor-pointer"
