@@ -456,7 +456,8 @@ export function useTodos() {
     deleteTodo, 
     deleteCompletedTodos,
     incomingNewTodo,
-    dismissIncomingTodo
+    dismissIncomingTodo,
+    refreshTodos: fetchTodos
   };
 }
 

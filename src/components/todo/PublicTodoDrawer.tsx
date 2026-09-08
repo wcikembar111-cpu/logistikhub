@@ -13,7 +13,9 @@ import {
   Sparkles, 
   Flame, 
   Zap, 
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { TodoData, TodoPriority } from '../../types';
 import { useNotification } from '../../context/NotificationContext';
@@ -21,6 +23,7 @@ import { useNotification } from '../../context/NotificationContext';
 interface PublicTodoDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onToggle?: () => void;
   todos: TodoData[];
   loading: boolean;
   isAdmin: boolean;
@@ -36,6 +39,7 @@ interface PublicTodoDrawerProps {
 export function PublicTodoDrawer({
   isOpen,
   onClose,
+  onToggle,
   todos,
   loading,
   isAdmin,
@@ -194,19 +198,57 @@ export function PublicTodoDrawer({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* 1. Tombol Buka di Kanan Layar (Saat Public Todo Tertutup) */}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={onToggle || onClose}
+          className="fixed right-0 top-32 sm:top-36 z-[90] bg-gradient-to-b from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-xl rounded-l-2xl py-3 px-2 sm:px-2.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all border-l-2 border-t border-b border-orange-300 active:scale-95 group hover:pl-3"
+          title="Buka Public Todo (Tugas Tim Logistik)"
+        >
+          <div className="flex items-center gap-0.5 text-white/90">
+            <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+          </div>
+          <ListTodo size={18} className="drop-shadow-xs" />
+          <span className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-black tracking-wider uppercase py-1 select-none">
+            Public Todo
+          </span>
+          {pendingCount > 0 && (
+            <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shadow-xs ${
+              priorityCount > 0 ? 'bg-red-600 text-white animate-badge-blink' : 'bg-white text-orange-600'
+            }`}>
+              {priorityCount > 0 ? priorityCount : pendingCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* 2. Backdrop Overlay (Hanya di Layar Mobile < sm agar di Desktop tidak mengunci dashboard) */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-slate-950/60 z-[95] transition-opacity duration-200 cursor-pointer backdrop-blur-xs"
+          className="sm:hidden fixed inset-0 bg-slate-950/50 z-[95] transition-opacity duration-200 cursor-pointer backdrop-blur-xs"
           onClick={onClose}
           title="Klik untuk menutup Public Todo"
         />
       )}
 
-      {/* Slide-over Drawer on Right Side */}
+      {/* 3. Panel Public Todo di Kanan Layar (Docked Right Panel) */}
       <div 
-        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[400px] bg-white border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out z-[100] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[390px] md:w-[410px] bg-white border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out z-[100] shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
+        {/* Tombol Tutup Tab di Samping Kiri Panel (Tampil saat terbuka) */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="hidden sm:flex absolute -left-9 top-32 sm:top-36 z-[101] bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 shadow-xl rounded-l-xl py-3 px-1.5 flex-col items-center justify-center border-l-2 border-t border-b border-slate-300 hover:border-orange-400 transition-all cursor-pointer group"
+          title="Tutup / Sembunyikan Public Todo"
+        >
+          <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform text-slate-600 group-hover:text-orange-600" />
+          <span className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black uppercase text-slate-500 group-hover:text-orange-600 mt-1 select-none">
+            Tutup
+          </span>
+        </button>
+
         {/* Top Header */}
         <div className="p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50/95 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -250,10 +292,11 @@ export function PublicTodoDrawer({
 
             <button 
               onClick={onClose} 
-              className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 border border-slate-200 shadow-2xs transition-all cursor-pointer"
-              title="Tutup Panel Todo"
+              className="px-2 py-1.5 rounded-xl bg-white hover:bg-slate-100 flex items-center gap-1 text-slate-600 hover:text-slate-900 border border-slate-200 shadow-2xs transition-all cursor-pointer text-xs font-bold"
+              title="Tutup / Sembunyikan Panel Todo"
             >
-              <X size={18} />
+              <ChevronRight size={15} />
+              <span className="hidden sm:inline">Tutup</span>
             </button>
           </div>
         </div>

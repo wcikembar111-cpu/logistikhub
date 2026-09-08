@@ -43,6 +43,8 @@ export interface TodoData {
   status: 'no' | 'onproses' | 'close';
   priority?: TodoPriority;
   is_blinking?: boolean;
+  sender_name?: string;
+  created_at?: string;
 }
 
 export interface ParsedTodoTask {

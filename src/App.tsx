@@ -39,7 +39,8 @@ export default function App() {
     deleteTodo, 
     deleteCompletedTodos,
     incomingNewTodo,
-    dismissIncomingTodo
+    dismissIncomingTodo,
+    refreshTodos
   } = useTodos();
 
   // Menu Visibility Hook (Realtime Supabase + PIN 399339)
@@ -119,7 +120,7 @@ export default function App() {
 
   // Modern Navigation & Drawer States
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(false);
+  const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(true);
 
   const existingCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -217,8 +218,12 @@ export default function App() {
           onOpenMenuVisibility={handleOpenMenuVisibility}
         />
 
-        {/* Main Content Area (Bergeser mulus saat Sidebar Kiri terbuka) */}
-        <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-200 no-scrollbar min-w-0 ${isSidebarOpen ? 'lg:ml-[270px] xl:ml-[280px]' : 'lg:ml-0'}`}>
+        {/* Main Content Area (Bergeser mulus saat Sidebar Kiri terbuka dan Todo Kanan aktif) */}
+        <div className={`flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 transition-all duration-300 no-scrollbar min-w-0 ${
+          isSidebarOpen ? 'lg:ml-[270px] xl:ml-[280px]' : 'lg:ml-0'
+        } ${
+          isTodoDrawerOpen ? '2xl:mr-[410px]' : '2xl:mr-0'
+        }`}>
           
           {/* Floating Reopen Button if Sidebar is Closed */}
           {!isSidebarOpen && (
@@ -245,7 +250,7 @@ export default function App() {
                 isSuperAdmin={isAdmin}
                 isOperator={!isAdmin}
                 todos={todos}
-                onOpenTodo={() => setIsTodoDrawerOpen(true)}
+                onOpenTodo={() => setIsTodoDrawerOpen(prev => !prev)}
                 onOpenSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 onOpenLogin={() => setShowLoginModal(true)}
                 onOpenUserManagement={() => setShowUserManagementModal(true)}
@@ -269,7 +274,7 @@ export default function App() {
                 )}
               />
 
-              {/* 2. Daftar Aplikasi & Sistem (Menu Grid Tetap di Halaman Utama) */}
+              {/* 2. Daftar Aplikasi & Sistem (Menu Grid di Halaman Utama) */}
               <LinkGrid 
                 links={links} 
                 loading={linksLoading}
@@ -303,10 +308,11 @@ export default function App() {
           )}
         </div>
 
-        {/* Public Todo Drawer (Slide-over di Kanan - Terpisah Bersih dari Sidebar Kiri) */}
+        {/* Public Todo di Kanan Layar (Docked Right Panel dengan Tombol Buka/Tutup) */}
         <PublicTodoDrawer 
           isOpen={isTodoDrawerOpen}
           onClose={() => setIsTodoDrawerOpen(false)}
+          onToggle={() => setIsTodoDrawerOpen(prev => !prev)}
           todos={todos}
           loading={todosLoading}
           isAdmin={isAdmin}
@@ -316,7 +322,7 @@ export default function App() {
           onUpdateTodo={updateTodo}
           onDeleteTodo={deleteTodo}
           onDeleteCompletedTodos={deleteCompletedTodos}
-          onRefresh={() => {}} 
+          onRefresh={refreshTodos} 
         />
       </div>
 
