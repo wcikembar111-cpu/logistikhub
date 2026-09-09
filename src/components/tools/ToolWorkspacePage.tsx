@@ -11,11 +11,15 @@ import {
   Undo2,
   Flame,
   Truck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Radio,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
-import { MainToolTab } from '../../types';
+import { MainToolTab, BroadcastMessage } from '../../types';
+import { BroadcastBar } from '../broadcast/BroadcastBar';
 
 interface ToolWorkspacePageProps {
   activeTool: MainToolTab;
@@ -23,6 +27,15 @@ interface ToolWorkspacePageProps {
   onBackToHome: () => void;
   batchQrItems: QrItem[];
   onSetBatchQrItems: (items: QrItem[]) => void;
+  latestBroadcast?: BroadcastMessage | null;
+  broadcastCount?: number;
+  soundEnabled?: boolean;
+  onToggleSound?: () => void;
+  onOpenBroadcast?: () => void;
+  onShowBroadcastPopup?: () => void;
+  notificationPermission?: NotificationPermission;
+  onRequestNotificationPermission?: () => Promise<any>;
+  isNotificationSupported?: boolean;
 }
 
 const toolMetadata: Record<MainToolTab, { title: string; category: string; icon: React.ReactNode; iconBg: string }> = {
@@ -105,14 +118,23 @@ export function ToolWorkspacePage({
   onSelectTool,
   onBackToHome,
   batchQrItems,
-  onSetBatchQrItems
+  onSetBatchQrItems,
+  latestBroadcast,
+  broadcastCount = 0,
+  soundEnabled = true,
+  onToggleSound,
+  onOpenBroadcast,
+  onShowBroadcastPopup,
+  notificationPermission,
+  onRequestNotificationPermission,
+  isNotificationSupported
 }: ToolWorkspacePageProps) {
   const currentMeta = toolMetadata[activeTool] || toolMetadata['qr-generator'];
 
   return (
     <div className="w-full pb-16 animate-fade-in">
       {/* Top Dedicated Navigation Bar - Minimalist Blue, Orange, White */}
-      <div className="bg-white p-3 sm:p-3.5 mb-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
+      <div className="bg-white p-3 sm:p-3.5 mb-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
         
         {/* Left: HOME Icon-Only Button */}
         <div className="flex items-center gap-2.5">
@@ -142,9 +164,54 @@ export function ToolWorkspacePage({
           </div>
         </div>
 
-        {/* Active Application Info on Right as well if needed */}
+        {/* Right: Quick Broadcast Intercom Button & Sound Controls */}
         <div className="flex items-center gap-2">
+          {onOpenBroadcast && (
+            <button
+              type="button"
+              onClick={onOpenBroadcast}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 border border-blue-500/50"
+              title="Kirim / Buka Pesan Siaran Intercom"
+            >
+              <Radio size={14} className="text-amber-300 animate-pulse shrink-0" />
+              <span className="hidden sm:inline">Pesan Siaran</span>
+              {broadcastCount > 0 && (
+                <span className="bg-amber-400 text-slate-900 px-1.5 py-0.2 rounded-full text-[10px] font-black">
+                  {broadcastCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {onToggleSound && (
+            <button
+              type="button"
+              onClick={onToggleSound}
+              className={`p-2 rounded-xl border text-xs font-bold flex items-center transition-all cursor-pointer ${
+                soundEnabled
+                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
+              }`}
+              title={soundEnabled ? 'Suara Siaran Aktif' : 'Suara Siaran Mute'}
+            >
+              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Broadcast Intercom Bar - Muncul di semua posisi tools workspace */}
+      <div className="mb-4">
+        <BroadcastBar
+          onOpenBroadcastModal={onOpenBroadcast || (() => {})}
+          latestBroadcast={latestBroadcast || null}
+          messageCount={broadcastCount}
+          soundEnabled={soundEnabled}
+          onToggleSound={onToggleSound || (() => {})}
+          notificationPermission={notificationPermission}
+          onRequestNotificationPermission={onRequestNotificationPermission}
+          isNotificationSupported={isNotificationSupported}
+        />
       </div>
 
       {/* Main Workspace Container - Purely focused on the single selected tool */}

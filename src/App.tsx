@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useLinks, useTodos, useAuth, useBroadcast, useMenuVisibility } from './hooks/useSupabase';
 import { FloatingRobotCompanion } from './components/broadcast/FloatingRobotCompanion';
 import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroadcast';
@@ -18,11 +18,13 @@ import { MenuVisibilityModal } from './components/common/MenuVisibilityModal';
 import { PinSecurityModal } from './components/common/PinSecurityModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { InitialDLogo } from './components/common/InitialDLogo';
-import { LinkData, MainToolTab } from './types';
+import { LinkData, MainToolTab, BroadcastMessage } from './types';
 import { Warehouse, Loader2, PanelLeftOpen } from 'lucide-react';
 
+import { BroadcastBar } from './components/broadcast/BroadcastBar';
 import { BroadcastModal } from './components/broadcast/BroadcastModal';
 import { LinkModal } from './components/LinkModal';
+import { playBroadcastSound } from './utils/broadcastSound';
 
 export default function App() {
   // Page View Routing State: 'home' (Halaman Utama) or 'tool-workspace' (Halaman Khusus Tools & Utilitas)
@@ -122,6 +124,21 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(true);
 
+  const handleReplyPopupBroadcast = (senderName: string) => {
+    dismissIncomingBroadcast();
+    setReplyRecipient(senderName);
+    setShowBroadcastModal(true);
+  };
+
+  const handleOpenTool = (tool: MainToolTab) => {
+    setActiveWorkspaceTool(tool);
+    setCurrentView('tool-workspace');
+  };
+
+  const handleNavigateHome = () => {
+    setCurrentView('home');
+  };
+
   const existingCategories = useMemo(() => {
     const cats = new Set<string>();
     links.forEach(l => {
@@ -204,18 +221,20 @@ export default function App() {
         {/* Modern Left Sidebar (Tools & Utilitas + Navigasi Utama) */}
         <Sidebar 
           activeTool={activeWorkspaceTool}
-          onSelectTool={(tool) => {
-            setActiveWorkspaceTool(tool);
-            setCurrentView('tool-workspace');
-          }}
+          onSelectTool={(tool) => handleOpenTool(tool)}
           currentView={currentView}
-          onNavigateHome={() => setCurrentView('home')}
+          onNavigateHome={handleNavigateHome}
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           currentUser={user}
           isAdmin={isAdmin}
           hiddenMenuIds={hiddenMenuIds}
           onOpenMenuVisibility={handleOpenMenuVisibility}
+          latestBroadcast={broadcastMessages[0] || null}
+          broadcastCount={broadcastMessages.length}
+          onOpenBroadcast={() => setShowBroadcastModal(true)}
+          onMenuSelectWithBroadcast={(toolId) => handleOpenTool(toolId)}
+          onNavigateHomeWithBroadcast={handleNavigateHome}
         />
 
         {/* Main Content Area (Bergeser mulus saat Sidebar Kiri terbuka dan Todo Kanan aktif) */}
@@ -274,6 +293,20 @@ export default function App() {
                 )}
               />
 
+              {/* Pesan Siaran Intercom Bar di Halaman Utama */}
+              <div className="mb-4">
+                <BroadcastBar 
+                  onOpenBroadcastModal={() => setShowBroadcastModal(true)}
+                  latestBroadcast={broadcastMessages[0] || null}
+                  messageCount={broadcastMessages.length}
+                  soundEnabled={broadcastSoundEnabled}
+                  onToggleSound={toggleBroadcastSound}
+                  notificationPermission={notificationPermission}
+                  onRequestNotificationPermission={requestNotificationPermission}
+                  isNotificationSupported={isNotificationSupported}
+                />
+              </div>
+
               {/* 2. Daftar Aplikasi & Sistem (Menu Grid di Halaman Utama) */}
               <LinkGrid 
                 links={links} 
@@ -295,14 +328,22 @@ export default function App() {
             /* VIEW 2: HALAMAN KHUSUS TOOLS & UTILITAS (Dedicated Workspace Page) */
             <ErrorBoundary 
               fallbackTitle="Gagal Membuka Workspace Modul" 
-              onReset={() => setCurrentView('home')}
+              onReset={() => handleNavigateHome()}
             >
               <ToolWorkspacePage
                 activeTool={activeWorkspaceTool}
-                onSelectTool={(tool) => setActiveWorkspaceTool(tool)}
-                onBackToHome={() => setCurrentView('home')}
+                onSelectTool={(tool) => handleOpenTool(tool)}
+                onBackToHome={handleNavigateHome}
                 batchQrItems={batchQrItems}
                 onSetBatchQrItems={setBatchQrItems}
+                latestBroadcast={broadcastMessages[0] || null}
+                broadcastCount={broadcastMessages.length}
+                soundEnabled={broadcastSoundEnabled}
+                onToggleSound={toggleBroadcastSound}
+                onOpenBroadcast={() => setShowBroadcastModal(true)}
+                notificationPermission={notificationPermission}
+                onRequestNotificationPermission={requestNotificationPermission}
+                isNotificationSupported={isNotificationSupported}
               />
             </ErrorBoundary>
           )}
@@ -326,29 +367,40 @@ export default function App() {
         />
       </div>
 
-      {/* Robot Popups & Broadcast Notifiers - Hanya Tampil di Halaman Utama */}
-      {currentView === 'home' && (
-        <>
-          {/* Robot Melayang Pembawa Pesan Siaran Masuk */}
-          <FloatingRobotBroadcast
-            broadcast={incomingBroadcast}
-            onClose={dismissIncomingBroadcast}
-            onReply={handleReplyBroadcast}
-            soundEnabled={broadcastSoundEnabled}
-          />
-
-          {/* Siaran Popup Tugas Baru Public Todo ke Semua Perangkat */}
-          <FloatingTodoBroadcast
-            incomingTodo={incomingNewTodo}
-            onClose={dismissIncomingTodo}
-            onOpenTodo={() => {
-              dismissIncomingTodo();
-              setIsTodoDrawerOpen(true);
-            }}
-            soundEnabled={broadcastSoundEnabled}
-          />
-        </>
+      {/* Floating Robot Companion saat di Tool Workspace */}
+      {currentView === 'tool-workspace' && (
+        <FloatingRobotCompanion 
+          onSendBroadcast={sendBroadcast}
+          latestBroadcast={broadcastMessages[0] || null}
+          recentMessages={broadcastMessages}
+          soundEnabled={broadcastSoundEnabled}
+          onToggleSound={toggleBroadcastSound}
+          currentUser={user}
+          isAdmin={isAdmin}
+          onDeleteMessage={deleteBroadcastMessage}
+          isSidebarOpen={isSidebarOpen}
+          mode="floating-bottom"
+        />
       )}
+
+      {/* Robot Popups & Broadcast Notifiers - Hanya Tampil Saat Ada Pesan Masuk Realtime */}
+      <FloatingRobotBroadcast
+        broadcast={incomingBroadcast}
+        onClose={dismissIncomingBroadcast}
+        onReply={handleReplyPopupBroadcast}
+        soundEnabled={broadcastSoundEnabled}
+      />
+
+      {/* Siaran Popup Tugas Baru Public Todo ke Semua Perangkat */}
+      <FloatingTodoBroadcast
+        incomingTodo={incomingNewTodo}
+        onClose={dismissIncomingTodo}
+        onOpenTodo={() => {
+          dismissIncomingTodo();
+          setIsTodoDrawerOpen(true);
+        }}
+        soundEnabled={broadcastSoundEnabled}
+      />
 
       {/* Auth Modals & Inactivity Warning */}
       <ErrorBoundary fallbackTitle="Gagal Membuka Modal Autentikasi">

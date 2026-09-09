@@ -31,6 +31,8 @@ import {
 import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
 import { playWelcomeVoice, stopWelcomeVoice, getWelcomeGreetingText } from '../utils/welcomeVoice';
+import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import { OnlineUsersModal } from './auth/OnlineUsersModal';
 
 interface HeroProps {
   user?: {
@@ -441,6 +443,10 @@ export function Hero({
   const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false);
   const isVoiceSpeakingRef = useRef(false);
   isVoiceSpeakingRef.current = isVoiceSpeaking;
+
+  // Realtime Active Online Users
+  const { onlineUsers, onlineCount, refreshOnlineUsers } = useOnlineUsers();
+  const [showOnlineUsersModal, setShowOnlineUsersModal] = useState(false);
 
   const resolvedFullNameRef = useRef(resolvedFullName);
   resolvedFullNameRef.current = resolvedFullName;
@@ -1133,6 +1139,21 @@ export function Hero({
               </button>
             )}
 
+            {/* Tombol Pantau Pengguna Online (Admin & Tim) */}
+            <button 
+              type="button"
+              onClick={() => setShowOnlineUsersModal(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-800 border border-emerald-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Lihat Siapa Saja yang Sedang Online / Login ke Aplikasi"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Users size={12} className="text-emerald-700" />
+              <span>{onlineCount} Online</span>
+            </button>
+
             {/* Login / Switch Account Button */}
             {onOpenLogin && (
               <button 
@@ -1353,6 +1374,17 @@ export function Hero({
           </div>
         </div>
       </div>
+
+      {/* Modal Daftar Pengguna Sedang Online (Live) */}
+      <OnlineUsersModal 
+        isOpen={showOnlineUsersModal}
+        onClose={() => setShowOnlineUsersModal(false)}
+        onlineUsers={onlineUsers}
+        onlineCount={onlineCount}
+        onRefresh={refreshOnlineUsers}
+        onOpenUserManagement={onOpenUserManagement}
+        isAdmin={isAdmin}
+      />
     </>
   );
 }

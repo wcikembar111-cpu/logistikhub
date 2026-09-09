@@ -21,6 +21,24 @@ const SESSION_CLIENT_ID = typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID() 
   : 'client-' + Math.random().toString(36).substring(2, 9);
 
+const DISMISSED_BROADCAST_IDS_KEY = 'ckb_dismissed_broadcast_ids_v1';
+
+function getDismissedBroadcastIds(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(DISMISSED_BROADCAST_IDS_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function saveDismissedBroadcastId(id: string) {
+  try {
+    const set = getDismissedBroadcastIds();
+    set.add(id);
+    sessionStorage.setItem(DISMISSED_BROADCAST_IDS_KEY, JSON.stringify(Array.from(set).slice(-100)));
+  } catch {}
+}
+
 export function useBroadcast() {
   const [messages, setMessages] = useState<BroadcastMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -42,6 +60,7 @@ export function useBroadcast() {
   const soundEnabledRef = useRef(soundEnabled);
   const seenMessageIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef<boolean>(true);
+  const hookMountTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
@@ -153,8 +172,15 @@ export function useBroadcast() {
       const latest = allMessages[0];
       const now = Date.now();
       const messageTime = new Date(latest.created_at).getTime();
-      // If message arrived in the last 90 seconds and hasn't been shown in this tab yet
-      if (!seenMessageIdsRef.current.has(latest.id) && (now - messageTime < 90000)) {
+      const dismissedIds = getDismissedBroadcastIds();
+      // Only pop up if message arrived while this tab was active (after hook mounted),
+      // hasn't been shown in this tab yet, not dismissed by user, and fresh within 45s
+      if (
+        !seenMessageIdsRef.current.has(latest.id) && 
+        !dismissedIds.has(latest.id) &&
+        messageTime >= hookMountTimeRef.current &&
+        (now - messageTime < 45000)
+      ) {
         seenMessageIdsRef.current.add(latest.id);
         handleIncomingBroadcast(latest, latest.origin || 'primary');
       }
@@ -174,6 +200,13 @@ export function useBroadcast() {
   const handleIncomingBroadcast = useCallback((item: BroadcastMessage & { sessionId?: string }, source: 'primary' | 'external' | 'dual' = 'primary') => {
     if (!item || !item.id) return;
 
+    // Check if user has already dismissed this message
+    const dismissedIds = getDismissedBroadcastIds();
+    if (dismissedIds.has(item.id)) {
+      seenMessageIdsRef.current.add(item.id);
+      return;
+    }
+
     seenMessageIdsRef.current.add(item.id);
 
     setMessages(prev => {
@@ -181,7 +214,7 @@ export function useBroadcast() {
       return [{ ...item, origin: source }, ...prev];
     });
 
-    // Trigger popup & OS notification if sent by another device or session
+    // Trigger popup & OS notification ONLY if sent by another device or session
     if (item.sessionId !== SESSION_CLIENT_ID) {
       setIncomingBroadcast(item);
       if (soundEnabledRef.current) {
@@ -507,10 +540,14 @@ export function useBroadcast() {
     return await testExternalSupabaseConnection(url, anonKey);
   };
 
-  const dismissIncomingBroadcast = () => {
+  const dismissIncomingBroadcast = useCallback(() => {
+    if (incomingBroadcast?.id) {
+      saveDismissedBroadcastId(incomingBroadcast.id);
+      seenMessageIdsRef.current.add(incomingBroadcast.id);
+    }
     setIncomingBroadcast(null);
     stopTabAlert();
-  };
+  }, [incomingBroadcast]);
 
   const toggleSound = () => {
     setSoundEnabled(prev => !prev);

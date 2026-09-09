@@ -27,10 +27,12 @@ import {
   Eye,
   EyeOff,
   Lock,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Radio
 } from 'lucide-react';
-import { MainToolTab } from '../types';
+import { MainToolTab, BroadcastMessage } from '../types';
 import { InitialDLogo } from './common/InitialDLogo';
+import { useOnlineUsers } from '../hooks/useOnlineUsers';
 
 export interface ToolItemDef {
   id: MainToolTab;
@@ -230,6 +232,11 @@ interface SidebarProps {
   isAdmin?: boolean;
   hiddenMenuIds?: string[];
   onOpenMenuVisibility?: () => void;
+  latestBroadcast?: BroadcastMessage | null;
+  broadcastCount?: number;
+  onOpenBroadcast?: () => void;
+  onMenuSelectWithBroadcast?: (toolId: MainToolTab, toolTitle: string) => void;
+  onNavigateHomeWithBroadcast?: () => void;
 }
 
 export function Sidebar({
@@ -242,8 +249,14 @@ export function Sidebar({
   currentUser,
   isAdmin = false,
   hiddenMenuIds = [],
-  onOpenMenuVisibility
+  onOpenMenuVisibility,
+  latestBroadcast,
+  broadcastCount = 0,
+  onOpenBroadcast,
+  onMenuSelectWithBroadcast,
+  onNavigateHomeWithBroadcast
 }: SidebarProps) {
+  const { onlineCount } = useOnlineUsers();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDbExpanded, setIsDbExpanded] = useState(true);
   const [isToolsExpanded, setIsToolsExpanded] = useState(true);
@@ -274,9 +287,11 @@ export function Sidebar({
     };
   }, [searchQuery, hiddenMenuIds]);
 
-  const handleToolClick = (toolId: MainToolTab) => {
-    if (onSelectTool) {
-      onSelectTool(toolId);
+  const handleToolClick = (tool: ToolItemDef) => {
+    if (onMenuSelectWithBroadcast) {
+      onMenuSelectWithBroadcast(tool.id, tool.title);
+    } else if (onSelectTool) {
+      onSelectTool(tool.id);
     }
     // On mobile screens, auto-close sidebar on item selection
     if (window.innerWidth < 1024) {
@@ -285,7 +300,9 @@ export function Sidebar({
   };
 
   const handleHomeClick = () => {
-    if (onNavigateHome) {
+    if (onNavigateHomeWithBroadcast) {
+      onNavigateHomeWithBroadcast();
+    } else if (onNavigateHome) {
       onNavigateHome();
     }
     if (window.innerWidth < 1024) {
@@ -300,7 +317,7 @@ export function Sidebar({
     return (
       <button
         key={tool.id}
-        onClick={() => handleToolClick(tool.id)}
+        onClick={() => handleToolClick(tool)}
         className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group border ${
           isActive
             ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
@@ -427,6 +444,41 @@ export function Sidebar({
                 <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
               )}
             </button>
+
+            {/* Pesan Siaran Realtime Nav Item */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenBroadcast) {
+                  onOpenBroadcast();
+                }
+              }}
+              className="w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer bg-white hover:bg-blue-50/80 text-slate-700 hover:text-blue-900 border border-slate-200/70 hover:border-blue-300 shadow-2xs group"
+              title="Buka Intercom & Pesan Siaran Realtime"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <Radio size={13} className="text-amber-300 animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold truncate block">
+                      Pesan Siaran
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  </div>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    {latestBroadcast ? `[${latestBroadcast.sender_name}]: ${latestBroadcast.message}` : 'Intercom Siaran Realtime'}
+                  </span>
+                </div>
+              </div>
+
+              {broadcastCount > 0 && (
+                <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0">
+                  {broadcastCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* 2. Daftar Tools & Utilitas Header */}
@@ -530,8 +582,8 @@ export function Sidebar({
                   {currentUser?.nama_lengkap || currentUser?.nama || currentUser?.username || 'Operator Logistik'}
                 </div>
                 <div className="text-[9px] text-slate-500 flex items-center gap-1 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span>Sistem Online &bull; Aktif</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                  <span>Sistem Online &bull; {onlineCount} User Aktif</span>
                 </div>
               </div>
             </div>

@@ -325,6 +325,18 @@ export interface UserSession {
   loggedInAt?: number;
 }
 
+export interface ActiveOnlineUser {
+  id: string;
+  username: string;
+  nama: string;
+  role: string;
+  avatar?: string;
+  device?: string;
+  onlineAt: number;
+  lastActive: number;
+  isSelf?: boolean;
+}
+
 export interface UserRecord {
   id: string;
   username: string;

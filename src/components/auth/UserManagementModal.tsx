@@ -29,6 +29,7 @@ import { UserRecord, UserPermissions, UserRole, UserStatus } from '../../types';
 import { useAuth } from '../../hooks/useSupabase';
 import { useNotification } from '../../context/NotificationContext';
 import { DEFAULT_ADMIN_PERMISSIONS, DEFAULT_PELAKSANA_PERMISSIONS } from '../../context/AuthContext';
+import { useOnlineUsers } from '../../hooks/useOnlineUsers';
 
 const MASTER_SECURITY_PIN = '399339';
 
@@ -54,6 +55,10 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [onlineFilter, setOnlineFilter] = useState<string>('all');
+
+  // Realtime Online Users Tracking
+  const { isUserOnline, onlineCount } = useOnlineUsers();
 
   // Form State for Add / Edit
   const [isEditing, setIsEditing] = useState(false);
@@ -337,8 +342,9 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
     
     const matchRole = roleFilter === 'all' || u.role === roleFilter;
     const matchStatus = statusFilter === 'all' || u.status === statusFilter;
+    const matchOnline = onlineFilter === 'all' || (onlineFilter === 'online' ? isUserOnline(u.username) : !isUserOnline(u.username));
 
-    return matchSearch && matchRole && matchStatus;
+    return matchSearch && matchRole && matchStatus && matchOnline;
   });
 
   return (
@@ -813,6 +819,46 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
           ) : (
             /* USER LIST & FILTERS */
             <>
+              {/* Summary Stats Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2.5 rounded-2xl bg-blue-50/70 border border-blue-200">
+                  <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Total User</div>
+                  <div className="text-lg font-black text-blue-950 mt-0.5">{users.length}</div>
+                </div>
+                <div className="p-2.5 rounded-2xl bg-purple-50/70 border border-purple-200">
+                  <div className="text-[10px] font-bold text-purple-800 uppercase tracking-wider">Admin</div>
+                  <div className="text-lg font-black text-purple-950 mt-0.5">{users.filter(u => u.role === 'Admin').length}</div>
+                </div>
+                <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200">
+                  <div className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Pelaksana</div>
+                  <div className="text-lg font-black text-slate-900 mt-0.5">{users.filter(u => u.role === 'Pelaksana').length}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOnlineFilter(prev => prev === 'online' ? 'all' : 'online')}
+                  className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                    onlineFilter === 'online' 
+                      ? 'bg-emerald-100 border-emerald-400 ring-2 ring-emerald-300' 
+                      : 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/60'
+                  }`}
+                  title="Klik untuk memfilter hanya user yang sedang online"
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Sedang Online</span>
+                  </div>
+                  <div className="text-lg font-black text-emerald-950 mt-0.5 flex items-center justify-between">
+                    <span>{onlineCount} Aktif</span>
+                    {onlineFilter === 'online' && (
+                      <span className="text-[9px] font-extrabold bg-emerald-600 text-white px-1.5 py-0.2 rounded">Filter Aktif</span>
+                    )}
+                  </div>
+                </button>
+              </div>
+
               {/* Filter & Search Bar */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                 
@@ -846,6 +892,16 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                     <option value="all">Semua Status</option>
                     <option value="Aktif">Aktif</option>
                     <option value="Nonaktif">Nonaktif</option>
+                  </select>
+
+                  <select 
+                    value={onlineFilter}
+                    onChange={e => setOnlineFilter(e.target.value)}
+                    className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-700 outline-none"
+                  >
+                    <option value="all">Semua Koneksi</option>
+                    <option value="online">🟢 Sedang Online Saja</option>
+                    <option value="offline">⚪ Sedang Offline Saja</option>
                   </select>
 
                   <button 
@@ -886,12 +942,20 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                       >
                         {/* User info */}
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black text-sm shrink-0 shadow-2xs ${
-                            u.role === 'Admin' 
-                              ? 'bg-gradient-to-tr from-blue-900 to-indigo-900' 
-                              : 'bg-gradient-to-tr from-slate-700 to-slate-900'
-                          }`}>
-                            {u.nama.slice(0, 2).toUpperCase() || 'US'}
+                          <div className="relative shrink-0">
+                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black text-sm shadow-2xs ${
+                              u.role === 'Admin' 
+                                ? 'bg-gradient-to-tr from-blue-900 to-indigo-900' 
+                                : 'bg-gradient-to-tr from-slate-700 to-slate-900'
+                            }`}>
+                              {u.nama.slice(0, 2).toUpperCase() || 'US'}
+                            </div>
+                            {isUserOnline(u.username) && (
+                              <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
+                              </span>
+                            )}
                           </div>
 
                           <div className="min-w-0">
@@ -910,6 +974,19 @@ export function UserManagementModal({ isOpen, onClose }: UserManagementModalProp
                             </div>
 
                             <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 flex-wrap">
+                              {/* Online Status Pill */}
+                              {isUserOnline(u.username) ? (
+                                <span className="px-2 py-0.5 rounded-full font-extrabold text-[10px] border bg-emerald-100 text-emerald-800 border-emerald-300 flex items-center gap-1 shadow-2xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                  <span>Online Sekarang</span>
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full font-medium text-[10px] border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                  <span>Offline</span>
+                                </span>
+                              )}
+
                               <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${
                                 u.role === 'Admin' 
                                   ? 'bg-purple-50 text-purple-800 border-purple-200' 

@@ -17,6 +17,7 @@ interface LinkGridProps {
   onHideMenu?: (id: string, title: string) => void;
   onUnhideMenu?: (id: string, title: string) => void;
   onOpenMenuVisibility?: () => void;
+  onMenuClick?: (title: string) => void;
 }
 
 const NATIVE_ICON_STYLES = [
@@ -41,7 +42,8 @@ export function LinkGrid({
   hiddenMenuIds = [],
   onHideMenu,
   onUnhideMenu,
-  onOpenMenuVisibility
+  onOpenMenuVisibility,
+  onMenuClick
 }: LinkGridProps) {
   const { showConfirm, showToast } = useNotification();
   const { menuOrder, saveMenuOrder } = useMenuOrder();
@@ -466,7 +468,9 @@ export function LinkGrid({
                   if (isReordering) {
                     e.preventDefault();
                     e.stopPropagation();
+                    return;
                   }
+                  onMenuClick?.(l.title);
                 }}
                 className={`bg-white border shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
                   isItemHidden 
@@ -609,7 +613,9 @@ export function LinkGrid({
                   if (isReordering) {
                     e.preventDefault();
                     e.stopPropagation();
+                    return;
                   }
+                  onMenuClick?.(l.title);
                 }}
                 className={`bg-white border shadow-2xs px-3 py-2 flex items-center gap-2.5 relative min-h-[46px] transition-all duration-150 ease-out group overflow-hidden no-underline text-slate-800 rounded-xl ${
                   isItemHidden 
