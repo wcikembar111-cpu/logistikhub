@@ -375,24 +375,24 @@ export function SnGeneratorModule() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Banner & Quick Template Action */}
-      <div className="bg-gradient-to-r from-blue-900 via-blue-950 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-blue-800/40 space-y-4">
+      <div className="bg-gradient-to-r from-white via-blue-50/30 to-sky-50/40 text-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs border border-blue-100/90 space-y-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 text-[10px] font-mono font-bold tracking-wide border border-blue-400/30">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-900 text-[10px] font-mono font-bold tracking-wide border border-blue-200">
                 INBOUND SERIAL NUMBER GENERATOR
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold flex items-center gap-1 border border-emerald-500/30">
-                <ShieldCheck size={12} className="text-emerald-400" />
+              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-[10px] font-semibold flex items-center gap-1 border border-emerald-200">
+                <ShieldCheck size={12} className="text-emerald-600" />
                 Anti-Duplikat Terjamin (Memori Terkunci)
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-extrabold text-blue-950 tracking-tight">
               Generator Serial Number Inbound FGKINO
             </h2>
-            <p className="text-xs text-blue-200/90 leading-relaxed max-w-3xl">
+            <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
               Unduh template Excel dengan 8 kolom standar, isi data inbound, lalu generate Serial Number otomatis: <br />
-              <code className="text-amber-300 font-mono bg-blue-950/80 px-1.5 py-0.5 rounded text-[11px]">
+              <code className="text-blue-900 font-mono bg-blue-50 border border-blue-200 font-bold px-1.5 py-0.5 rounded text-[11px]">
                 FGKINO-YYMMDD[BinLoc8Digit][SeqOrRand4Digit]
               </code>
             </p>
@@ -403,28 +403,28 @@ export function SnGeneratorModule() {
             <button
               type="button"
               onClick={handleDownloadTemplate}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 border border-emerald-400/40"
+              className="px-4 py-2.5 bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 active:scale-95 text-emerald-900 text-xs font-bold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-2 border border-emerald-300"
               title="Download File Template Excel dengan 8 Kolom Standar"
             >
-              <FileDown size={16} />
+              <FileDown size={16} className="text-emerald-700" />
               <span>Download Template Excel</span>
             </button>
           </div>
         </div>
 
         {/* Status Anti-Duplikat Hari Ini & Counter Registry */}
-        <div className="bg-blue-950/60 rounded-xl p-3 border border-blue-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5 text-blue-200">
-            <Clock size={16} className="text-amber-400 shrink-0" />
+        <div className="bg-white/80 rounded-xl p-3 border border-blue-100 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-slate-600">
+            <Clock size={16} className="text-amber-500 shrink-0" />
             <div>
-              <span className="font-semibold text-white">Status Anti-Duplikasi Hari Ini (YYMMDD: {snStats.todayDateStr || 'Aktif'}): </span>
-              <span className="text-emerald-300 font-bold font-mono">
+              <span className="font-semibold text-slate-800">Status Anti-Duplikasi Hari Ini (YYMMDD: {snStats.todayDateStr || 'Aktif'}): </span>
+              <span className="text-emerald-700 font-bold font-mono">
                 {snStats.totalToday} Serial Number
               </span>
-              <span className="text-blue-300 text-[11px] ml-1.5">
+              <span className="text-slate-500 text-[11px] ml-1.5">
                 (Total tersimpan di browser: {snStats.totalAllTime})
               </span>
-              <p className="text-[10.5px] text-blue-300/80 m-0">
+              <p className="text-[10.5px] text-slate-500 m-0">
                 Generate ulang di tanggal yang sama dijamin melanjutkan urutan nomor dan tidak akan ada SN yang kembar/duplikat.
               </p>
             </div>
@@ -434,7 +434,7 @@ export function SnGeneratorModule() {
             <button
               type="button"
               onClick={handleResetRegistry}
-              className="px-2.5 py-1.5 bg-white/10 hover:bg-red-500/20 text-blue-200 hover:text-red-200 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 border border-white/10"
+              className="px-2.5 py-1.5 bg-white hover:bg-red-50 text-red-700 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1 shrink-0 border border-red-200 shadow-2xs"
               title="Reset seluruh riwayat nomor urut jika ingin mulai dari nomor 0001 lagi"
             >
               <RotateCcw size={12} />
@@ -444,15 +444,15 @@ export function SnGeneratorModule() {
         </div>
 
         {/* Kolom Standar Visual Pills */}
-        <div className="pt-2 border-t border-blue-800/60 flex items-center gap-1.5 flex-wrap text-[11px]">
-          <span className="text-blue-300 font-semibold flex items-center gap-1 mr-1">
-            <Layers size={13} />
+        <div className="pt-2 border-t border-blue-100 flex items-center gap-1.5 flex-wrap text-[11px]">
+          <span className="text-slate-600 font-semibold flex items-center gap-1 mr-1">
+            <Layers size={13} className="text-blue-600" />
             Struktur 8 Kolom Template:
           </span>
           {TEMPLATE_HEADERS.map((col, idx) => (
             <span 
               key={idx}
-              className="px-2 py-0.5 bg-white/10 text-white rounded-md font-mono text-[10.5px] border border-white/10"
+              className="px-2 py-0.5 bg-white text-blue-900 rounded-md font-mono text-[10.5px] border border-blue-200/80 shadow-2xs"
             >
               {idx + 1}. {col}
             </span>
@@ -461,11 +461,11 @@ export function SnGeneratorModule() {
       </div>
 
       {/* Input Section (Upload & Direct Paste) */}
-      <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+      <div className="p-4 sm:p-5 bg-gradient-to-br from-white via-white to-blue-50/20 rounded-2xl border border-blue-100 shadow-2xs space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-bold text-slate-800 m-0 flex items-center gap-1.5">
-              <FileSpreadsheet size={16} className="text-blue-900" />
+              <FileSpreadsheet size={16} className="text-blue-700" />
               Input Data Inbound (Upload Excel atau Tempel Teks)
             </h3>
             <p className="text-[11px] text-slate-500 m-0 mt-0.5">
@@ -498,9 +498,9 @@ export function SnGeneratorModule() {
             <button
               type="button"
               onClick={handleGenerateSN}
-              className="px-4 py-2 bg-blue-900 hover:bg-blue-950 active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 border border-blue-800"
+              className="px-4 py-2 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 active:scale-95 text-blue-900 text-xs font-bold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 border border-blue-300"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={14} className="text-blue-700" />
               <span>Generate Serial Number</span>
             </button>
           </div>
@@ -572,7 +572,7 @@ export function SnGeneratorModule() {
 
       {/* Generated Results Section */}
       {generatedList.length > 0 && (
-        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+        <div className="p-4 sm:p-5 bg-gradient-to-br from-white via-white to-blue-50/20 rounded-2xl border border-blue-100 shadow-2xs space-y-4">
           {/* Header Stats & Action Buttons */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div className="space-y-1">
@@ -580,16 +580,16 @@ export function SnGeneratorModule() {
                 <span className="text-sm font-bold text-slate-800">
                   Hasil Generator Serial Number
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 text-xs font-bold font-mono">
+                <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-200/80 text-xs font-bold font-mono shadow-2xs">
                   {generatedList.length} Item
                 </span>
                 {totalQty > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-white via-emerald-50 to-emerald-100 text-emerald-900 border border-emerald-200/80 text-[11px] font-semibold shadow-2xs">
                     Total Qty: {totalQty.toLocaleString('id-ID')}
                   </span>
                 )}
                 {uniqueSkus > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-white text-slate-700 border border-slate-200 text-[11px] font-semibold shadow-2xs">
                     {uniqueSkus} Unik SKU
                   </span>
                 )}
@@ -608,36 +608,36 @@ export function SnGeneratorModule() {
                   placeholder="Cari SN, SKU, Item..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full pl-8 pr-3 py-1.5 bg-white text-slate-800 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-400 outline-none"
                 />
               </div>
 
               <button
                 type="button"
                 onClick={handleCopyTable}
-                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200"
+                className="px-3.5 py-1.5 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 active:scale-95 text-blue-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-blue-300 shadow-2xs"
                 title="Salin semua kolom ke Clipboard"
               >
-                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} className="text-blue-700" />}
                 <span>{copied ? 'Tersalin!' : 'Salin Tabel'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownloadExcel}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-1.5 bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 active:scale-95 text-emerald-900 text-xs font-bold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-300"
                 title="Download file Excel lengkap dengan kolom Serial Number"
               >
-                <Download size={14} />
+                <Download size={14} className="text-emerald-700" />
                 <span>Download Excel (Hasil + SN)</span>
               </button>
             </div>
           </div>
 
           {/* Data Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-[460px] overflow-y-auto shadow-2xs">
+          <div className="overflow-x-auto border border-blue-100 rounded-xl max-h-[460px] overflow-y-auto shadow-2xs">
             <table className="w-full text-left text-xs border-collapse min-w-[950px]">
-              <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0 z-10">
+              <thead className="bg-gradient-to-r from-slate-50 via-blue-50/50 to-slate-50 text-slate-700 font-bold sticky top-0 z-10">
                 <tr>
                   <th className="p-2.5 border-b border-slate-200 w-12 text-center">#</th>
                   <th className="p-2.5 border-b border-slate-200 text-blue-950 font-extrabold min-w-[210px]">

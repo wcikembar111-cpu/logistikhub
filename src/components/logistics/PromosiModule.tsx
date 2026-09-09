@@ -637,7 +637,7 @@ export function PromosiModule() {
   return (
     <div className="space-y-6 text-slate-800">
       {/* HEADER TITLE */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
+      <div className="bg-gradient-to-r from-white via-blue-50/30 to-sky-50/40 p-4 sm:p-4.5 rounded-2xl border border-blue-100/90 shadow-2xs flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight m-0 flex items-center gap-2">
             <PackageCheck size={24} className="text-blue-600" />
@@ -652,10 +652,10 @@ export function PromosiModule() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={downloadDatabaseTemplate}
-            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-indigo-600/30"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-black transition-all cursor-pointer flex items-center gap-2 shadow-2xs"
             title="Unduh file template Excel sesuai format"
           >
-            <FileSpreadsheet size={16} />
+            <FileSpreadsheet size={16} className="text-blue-700" />
             <span>Download Template Excel</span>
           </button>
         </div>
@@ -735,7 +735,7 @@ export function PromosiModule() {
       )}
 
       {/* FORM INPUT SECTION (CARD SECTION) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="bg-gradient-to-br from-white via-white to-blue-50/25 border border-blue-100 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h2 className="text-base font-extrabold text-slate-900 uppercase m-0 flex items-center gap-2">
             <Edit size={18} className="text-blue-600" />
@@ -901,13 +901,13 @@ export function PromosiModule() {
           <div className="flex justify-end pt-2">
             <button
               type="submit"
-              className={`px-5 py-2.5 rounded-lg text-xs font-extrabold text-white shadow-md transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 shadow-2xs ${
                 editingId
-                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
-                  : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                  ? 'bg-gradient-to-r from-white via-amber-50 to-amber-100 hover:from-white hover:to-amber-150 text-amber-900 border border-amber-300'
+                  : 'bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300'
               }`}
             >
-              <Save size={16} />
+              <Save size={16} className={editingId ? 'text-amber-700' : 'text-blue-700'} />
               <span>{editingId ? 'Update Data' : 'Simpan Data'}</span>
             </button>
           </div>
@@ -915,7 +915,7 @@ export function PromosiModule() {
       </div>
 
       {/* TABLE DATA SECTION (CARD SECTION) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="bg-gradient-to-br from-white via-white to-blue-50/20 border border-blue-100 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
         {/* HEADER & ACTION BUTTONS */}
         <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
           <div>
@@ -953,26 +953,26 @@ export function PromosiModule() {
             {/* BUTTON 1: DOWNLOAD TEMPLATE EXCEL */}
             <button
               onClick={downloadDatabaseTemplate}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
               title="Unduh Template Excel sesuai format sistem"
             >
-              <FileSpreadsheet size={14} />
+              <FileSpreadsheet size={14} className="text-blue-700" />
               <span>Download Template</span>
             </button>
 
             {/* BUTTON 2: DOWNLOAD EXCEL */}
             <button
               onClick={downloadExcel}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 text-emerald-900 border border-emerald-300 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
               title="Unduh semua data penerimaan ke file Excel"
             >
-              <Download size={14} />
+              <Download size={14} className="text-emerald-700" />
               <span>Download Excel</span>
             </button>
 
             {/* BUTTON 3: UPLOAD EXCEL */}
-            <label className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
-              <Upload size={14} />
+            <label className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs">
+              <Upload size={14} className="text-blue-700" />
               <span>Upload Excel</span>
               <input
                 type="file"

@@ -287,22 +287,22 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
       />
 
       {/* Header bar */}
-      <div className="p-5 sm:p-6 rounded-3xl border border-blue-100 shadow-md mb-6 bg-blue-600 text-white">
+      <div className="p-5 sm:p-6 rounded-3xl border border-blue-100/90 shadow-2xs mb-6 bg-gradient-to-r from-white via-blue-50/35 to-sky-50/45 text-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shrink-0">
-              <QrCode size={26} className="text-amber-300" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-2xs flex items-center justify-center shrink-0 text-white">
+              <QrCode size={26} className="text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg sm:text-xl font-bold m-0 text-white">
+                <h3 className="text-lg sm:text-xl font-bold m-0 text-blue-950">
                   Hasil Generasi QR Code Massal
                 </h3>
-                <span className="bg-amber-400 text-slate-900 font-extrabold text-xs px-2.5 py-0.5 rounded-full">
+                <span className="bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 font-extrabold text-xs px-2.5 py-0.5 rounded-full shadow-2xs">
                   {items.length} Item
                 </span>
               </div>
-              <p className="text-xs text-blue-100 mt-1 m-0">
+              <p className="text-xs text-slate-500 mt-1 m-0">
                 Ukuran QR Code jernih untuk scanner & siap cetak Stiker Thermal Honeywell PM42
               </p>
             </div>
@@ -313,16 +313,16 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
             {onOpenModal && (
               <button
                 onClick={onOpenModal}
-                className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 border border-blue-300 text-blue-900 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
               >
-                <QrCode size={15} />
+                <QrCode size={15} className="text-blue-700" />
                 <span>Tambah / Edit Batch</span>
               </button>
             )}
 
             <button
               onClick={() => setShowPrintModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
               title="Pengaturan Ukuran Label"
             >
               <Sliders size={14} />
@@ -331,26 +331,26 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
             <button
               onClick={handlePrintAllStickers}
-              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 text-emerald-900 border border-emerald-300 text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               title="Cetak Stiker Label Honeywell PM42"
             >
-              <Printer size={15} />
+              <Printer size={15} className="text-emerald-700" />
               <span>Cetak Honeywell PM42</span>
             </button>
 
             <button
               onClick={handleDownloadZip}
               disabled={isZipping}
-              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-white via-amber-50 to-amber-100 hover:from-white hover:to-amber-150 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
             >
-              <Download size={15} />
+              <Download size={15} className="text-amber-700" />
               <span>{isZipping ? 'Membuat ZIP...' : 'Unduh Semua (ZIP)'}</span>
             </button>
 
             {isAdmin && (
               <button
                 onClick={onClear}
-                className="p-2 rounded-xl bg-red-500/30 hover:bg-red-500/50 text-white border border-red-400/40 transition-all cursor-pointer ml-1"
+                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-all cursor-pointer ml-1 shadow-2xs"
                 title="Sembunyikan / Hapus Hasil (Admin)"
               >
                 <Trash2 size={16} />
@@ -361,7 +361,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
 
         {/* Search bar */}
         {items.length > 3 && (
-          <div className="mt-4 pt-4 border-t border-white/20 flex items-center">
+          <div className="mt-4 pt-4 border-t border-blue-100 flex items-center">
             <div className="relative w-full max-w-md">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -369,7 +369,7 @@ export function BatchQrSection({ items, onClear, onOpenModal }: BatchQrSectionPr
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Cari dari ${items.length} QR Code...`}
-                className="w-full bg-white text-slate-800 border border-white/20 rounded-xl pl-10 pr-4 py-2 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                className="w-full bg-white text-slate-800 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
           </div>

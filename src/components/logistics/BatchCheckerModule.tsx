@@ -471,10 +471,10 @@ export function BatchCheckerModule() {
       {/* Upload Section Box */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Largo Box */}
-        <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+        <div className="p-4 bg-gradient-to-br from-white via-white to-blue-50/25 rounded-2xl border border-blue-100 shadow-xs space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center font-black text-xs">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center font-black text-xs border border-blue-200">
                 1
               </div>
               <div>
@@ -488,8 +488,8 @@ export function BatchCheckerModule() {
                 )}
               </div>
             </div>
-            <label className="px-3 py-1.5 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all active:scale-95">
-              <Upload size={13} />
+            <label className="px-3 py-1.5 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs transition-all active:scale-95">
+              <Upload size={13} className="text-blue-700" />
               <span>{largoRows.length > 0 ? 'Ganti LARGO' : 'Upload LARGO'}</span>
               <input type="file" accept=".xlsx, .xls" onChange={handleLargoFileUpload} className="hidden" />
             </label>
@@ -500,10 +500,10 @@ export function BatchCheckerModule() {
         </div>
 
         {/* SAP Box */}
-        <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+        <div className="p-4 bg-gradient-to-br from-white via-white to-emerald-50/20 rounded-2xl border border-emerald-100 shadow-xs space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-xs">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-xs border border-emerald-200">
                 2
               </div>
               <div>
@@ -527,8 +527,8 @@ export function BatchCheckerModule() {
                 )}
               </div>
             </div>
-            <label className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all active:scale-95">
-              <Upload size={13} />
+            <label className="px-3 py-1.5 bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 text-emerald-900 border border-emerald-300 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs transition-all active:scale-95">
+              <Upload size={13} className="text-emerald-700" />
               <span>{sapRows.length > 0 ? 'Ganti SAP' : 'Upload SAP'}</span>
               <input type="file" accept=".xlsx, .xls" onChange={handleSapFileUpload} className="hidden" />
             </label>
@@ -545,16 +545,16 @@ export function BatchCheckerModule() {
           type="button"
           onClick={handleRunComparison}
           disabled={isProcessing || largoRows.length === 0 || sapRows.length === 0}
-          className="px-6 py-2.5 bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white text-xs font-bold rounded-2xl shadow-md disabled:opacity-40 transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+          className="px-6 py-2.5 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-bold rounded-2xl shadow-2xs disabled:opacity-40 transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
         >
-          <ArrowRightLeft size={16} className={isProcessing ? 'animate-spin' : ''} />
+          <ArrowRightLeft size={16} className={`text-blue-700 ${isProcessing ? 'animate-spin' : ''}`} />
           <span>{isProcessing ? 'Sedang Membandingkan...' : 'Bandingkan LARGO vs SAP & Pemetaan Batch'}</span>
         </button>
       </div>
 
       {/* Comparison Output */}
       {compareResults.length > 0 && (
-        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="p-4 sm:p-5 bg-gradient-to-br from-white via-white to-blue-50/20 rounded-2xl border border-blue-100 shadow-xs space-y-4">
           
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
@@ -563,8 +563,8 @@ export function BatchCheckerModule() {
               onClick={() => setFilterStatus('all')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 filterStatus === 'all'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border-blue-300 shadow-2xs'
+                  : 'bg-white hover:bg-blue-50/50 border-slate-200 text-slate-800'
               }`}
             >
               <div className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Total Data</div>
@@ -665,20 +665,20 @@ export function BatchCheckerModule() {
               <button
                 type="button"
                 onClick={handleExportFiltered}
-                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                className="px-3.5 py-2 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                 title="Download sesuai filter & pencarian yang sedang tampil di layar"
               >
-                <Download size={13} />
+                <Download size={13} className="text-blue-700" />
                 <span>Export Tampilan ({filteredResults.length})</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleExportMultiSheet}
-                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                className="px-3.5 py-2 bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 text-emerald-900 border border-emerald-300 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                 title="Download Excel lengkap dengan sheet terpisah untuk setiap status dan pemetaan batch"
               >
-                <FileSpreadsheet size={13} />
+                <FileSpreadsheet size={13} className="text-emerald-700" />
                 <span>Export Multi-Sheet Lengkap</span>
               </button>
             </div>

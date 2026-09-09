@@ -30,7 +30,7 @@ export function EmbeddedToolsWorkspace({
 }: EmbeddedToolsWorkspaceProps) {
   return (
     <div id="main-page-tool-workspace" className="w-full scroll-mt-6 animate-fade-in">
-      <div className="bg-white border border-slate-200 shadow-xs rounded-2xl p-4 sm:p-6">
+      <div className="bg-gradient-to-br from-white via-white to-blue-50/25 border border-blue-100 shadow-xs rounded-2xl p-4 sm:p-6">
         {/* ACTIVE TOOL MODULE RENDERING WITH ERROR BOUNDARY */}
         <div className="w-full">
           <ErrorBoundary 

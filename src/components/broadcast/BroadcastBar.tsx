@@ -23,11 +23,11 @@ export function BroadcastBar({
   isNotificationSupported = true
 }: BroadcastBarProps) {
   return (
-    <div className="min-h-[46px] py-1.5 px-3 sm:px-4 flex flex-wrap items-center justify-between gap-2.5 mb-6 rounded-2xl border border-slate-200 shadow-2xs bg-white">
+    <div className="min-h-[46px] py-1.5 px-3 sm:px-4 flex flex-wrap items-center justify-between gap-2.5 mb-6 rounded-2xl border border-blue-100/90 shadow-2xs bg-gradient-to-r from-white via-blue-50/30 to-sky-50/40">
       {/* Left: Broadcast Status & Latest Message Preview */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 bg-blue-600 text-white px-2.5 py-1 rounded-xl font-bold text-[11px] uppercase tracking-wider shrink-0 shadow-2xs">
-          <Radio size={13} className="text-amber-300 animate-pulse" />
+        <div className="flex items-center gap-1.5 bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 px-2.5 py-1 rounded-xl font-bold text-[11px] uppercase tracking-wider shrink-0 shadow-2xs">
+          <Radio size={13} className="text-blue-600 animate-pulse" />
           <span>SIARAN PUBLIK</span>
         </div>
 
@@ -90,12 +90,12 @@ export function BroadcastBar({
         {/* Kirim Siaran Button */}
         <button
           onClick={onOpenBroadcastModal}
-          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
         >
-          <Send size={12} className="text-amber-300" />
+          <Send size={12} className="text-blue-700" />
           <span>Kirim Siaran</span>
           {messageCount > 0 && (
-            <span className="bg-amber-400 text-slate-900 px-1.5 py-0.2 rounded-full text-[9px] font-black">
+            <span className="bg-blue-200 text-blue-900 px-1.5 py-0.2 rounded-full text-[9px] font-black border border-blue-300">
               {messageCount}
             </span>
           )}

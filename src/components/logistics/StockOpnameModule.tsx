@@ -1065,9 +1065,9 @@ export function StockOpnameModule() {
   return (
     <div className="space-y-5 animate-fade-in text-slate-800">
       {/* Top Application Header / Brand Bar - Minimalist Blue, Orange, White */}
-      <div className="bg-white text-slate-900 p-4 sm:p-4.5 rounded-2xl shadow-2xs border border-slate-200 flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-gradient-to-r from-white via-blue-50/30 to-sky-50/40 text-slate-900 p-4 sm:p-4.5 rounded-2xl shadow-2xs border border-blue-100/90 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold tracking-wider text-xs shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold tracking-wider text-xs shadow-2xs">
             SO
           </div>
           <div>
@@ -1075,7 +1075,7 @@ export function StockOpnameModule() {
               <h2 className="text-base sm:text-lg font-bold tracking-wide uppercase m-0 leading-tight text-blue-900">
                 SUITE STOCK OPNAME
               </h2>
-              <span className="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-200">
+              <span className="bg-orange-50 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-200">
                 v{APP_METADATA.version}
               </span>
             </div>
@@ -1085,19 +1085,21 @@ export function StockOpnameModule() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600">
+        <div className="flex items-center gap-2 text-xs font-mono bg-white/80 px-3 py-1.5 rounded-xl border border-blue-100 text-slate-600">
           <Clock size={13} className="text-orange-500" />
           <span>{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
       </div>
 
       {/* Main Tab Navigation */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90">
+      <div className="flex items-center gap-1.5 p-1.5 bg-gradient-to-r from-white via-blue-50/40 to-sky-50/40 rounded-2xl border border-blue-100">
         <button
           type="button"
           onClick={() => setCurrentRoute('form')}
           className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            currentRoute === 'form' ? 'bg-blue-900 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200'
+            currentRoute === 'form' 
+              ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 shadow-2xs' 
+              : 'text-slate-600 hover:bg-white/80'
           }`}
         >
           <FileText size={15} />
@@ -1108,7 +1110,9 @@ export function StockOpnameModule() {
           type="button"
           onClick={() => setCurrentRoute('ba')}
           className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            currentRoute === 'ba' ? 'bg-blue-900 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200'
+            currentRoute === 'ba' 
+              ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 shadow-2xs' 
+              : 'text-slate-600 hover:bg-white/80'
           }`}
         >
           <FileSpreadsheet size={15} />
@@ -1122,12 +1126,14 @@ export function StockOpnameModule() {
       {currentRoute === 'form' && (
         <div className="space-y-5">
           {/* Format Selector Toggle (Retur vs MB52) */}
-          <div className="flex items-center gap-1 p-1 bg-slate-200/80 rounded-2xl w-max border border-slate-300/80">
+          <div className="flex items-center gap-1 p-1 bg-gradient-to-r from-white via-blue-50/50 to-sky-50/50 rounded-2xl w-max border border-blue-200">
             <button
               type="button"
               onClick={() => handleFormatChange('retur')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                uploadFormat === 'retur' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-300/60'
+                uploadFormat === 'retur' 
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 shadow-xs' 
+                  : 'text-slate-700 hover:bg-white/70'
               }`}
             >
               <RotateCcw size={14} />
@@ -1138,7 +1144,9 @@ export function StockOpnameModule() {
               type="button"
               onClick={() => handleFormatChange('mb52')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                uploadFormat === 'mb52' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-300/60'
+                uploadFormat === 'mb52' 
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 shadow-xs' 
+                  : 'text-slate-700 hover:bg-white/70'
               }`}
             >
               <FileSpreadsheet size={14} />
@@ -1147,7 +1155,7 @@ export function StockOpnameModule() {
           </div>
 
           {/* Panel 1: Upload File */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="p-5 bg-gradient-to-br from-white via-white to-blue-50/20 rounded-2xl border border-blue-100 shadow-xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-md bg-red-100 text-red-600 font-mono font-bold text-xs flex items-center justify-center">
@@ -1483,7 +1491,7 @@ export function StockOpnameModule() {
                     Export MB52 dari sistem SAP (Material, SLoc, Unrestricted, Transit, Blocked).
                   </p>
 
-                  <div className="bg-slate-900 text-white font-mono text-[10px] p-2 rounded-lg mb-3">
+                  <div className="bg-gradient-to-r from-blue-50 to-sky-50 text-blue-950 border border-blue-200 font-mono text-[10px] p-2 rounded-lg mb-3">
                     SAP Qty = Unrestricted + Transit and Transfer + Blocked
                   </div>
 
@@ -1494,7 +1502,7 @@ export function StockOpnameModule() {
                   )}
                 </div>
 
-                <label className="w-full py-2.5 px-3 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2">
+                <label className="w-full py-2.5 px-3 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2">
                   <Upload size={14} />
                   <span>{sapData ? 'Ganti File SAP' : 'Pilih File SAP'}</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleSapFileUpload} className="hidden" />
@@ -1516,7 +1524,7 @@ export function StockOpnameModule() {
                     Hasil export Generator Form SO (Mendukung multi-sheet otomatis).
                   </p>
 
-                  <div className="bg-slate-900 text-white font-mono text-[10px] p-2 rounded-lg mb-3">
+                  <div className="bg-gradient-to-r from-blue-50 to-sky-50 text-blue-950 border border-blue-200 font-mono text-[10px] p-2 rounded-lg mb-3">
                     Kolom Wajib: Item Code · SLoc · Fisik
                   </div>
 
@@ -1537,7 +1545,9 @@ export function StockOpnameModule() {
                             type="button"
                             onClick={() => handleSelectSoFisikCol(c)}
                             className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border cursor-pointer ${
-                              soFisikCol === c ? 'bg-blue-900 text-white border-blue-950' : 'bg-white text-slate-700 border-slate-300'
+                              soFisikCol === c 
+                                ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border-blue-300 shadow-2xs' 
+                                : 'bg-white text-slate-700 border-slate-300'
                             }`}
                           >
                             {c}
@@ -1548,7 +1558,7 @@ export function StockOpnameModule() {
                   )}
                 </div>
 
-                <label className="w-full py-2.5 px-3 bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2">
+                <label className="w-full py-2.5 px-3 bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2">
                   <Upload size={14} />
                   <span>{soData ? 'Ganti Form SO' : 'Pilih Form SO Terisi'}</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleSoFileUpload} className="hidden" />
@@ -1564,7 +1574,7 @@ export function StockOpnameModule() {
                 onClick={handleExecuteJoin}
                 className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer ${
                   sapData && soData
-                    ? 'bg-blue-900 hover:bg-blue-950 text-white active:scale-98'
+                    ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 active:scale-98'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >

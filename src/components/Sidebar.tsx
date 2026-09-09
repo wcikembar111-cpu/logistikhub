@@ -320,8 +320,8 @@ export function Sidebar({
         onClick={() => handleToolClick(tool)}
         className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group border ${
           isActive
-            ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
-            : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200/70 shadow-2xs'
+            ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100/90 text-blue-900 font-bold border-blue-300 shadow-2xs'
+            : 'bg-gradient-to-r from-white to-blue-50/20 hover:from-white hover:to-blue-50/60 text-slate-700 hover:text-blue-900 border-blue-100/70 shadow-2xs'
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
@@ -334,7 +334,7 @@ export function Sidebar({
         </div>
 
         {isActive && (
-          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 animate-pulse" />
         )}
       </button>
     );
@@ -353,18 +353,18 @@ export function Sidebar({
 
       {/* Main Left Sidebar */}
       <aside 
-        className={`fixed top-0 left-0 bottom-0 w-[260px] sm:w-[270px] bg-slate-50/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none text-slate-800 border-r border-slate-200/80 flex flex-col transition-transform duration-200 ease-in-out z-[90] ${
+        className={`fixed top-0 left-0 bottom-0 w-[260px] sm:w-[270px] bg-gradient-to-b from-white via-sky-50/25 to-blue-50/35 backdrop-blur-md lg:backdrop-blur-none text-slate-800 border-r border-blue-100/90 flex flex-col transition-transform duration-200 ease-in-out z-[90] ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Brand Header */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-200/70 flex items-center justify-between gap-2.5 shrink-0">
+        <div className="p-3.5 sm:p-4 border-b border-blue-100/70 bg-gradient-to-r from-white via-blue-50/30 to-sky-50/30 flex items-center justify-between gap-2.5 shrink-0">
           <div 
             onClick={handleHomeClick}
             className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
             title="Kembali ke Beranda Dashboard"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 border border-blue-400/30 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform p-1">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-white via-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform p-1">
               <InitialDLogo className="w-5.5 h-5.5" glow />
             </div>
             <div className="min-w-0">
@@ -425,13 +425,13 @@ export function Sidebar({
               onClick={handleHomeClick}
               className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer border ${
                 currentView === 'home'
-                  ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-xs'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200/70 font-semibold shadow-2xs'
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100/90 text-blue-900 font-bold border-blue-300 shadow-2xs'
+                  : 'bg-gradient-to-r from-white to-blue-50/20 hover:from-white hover:to-blue-50/60 text-slate-700 hover:text-blue-900 border-blue-100/70 font-semibold shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                  currentView === 'home' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  currentView === 'home' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
                 }`}>
                   <LayoutGrid size={14} />
                 </div>
@@ -441,7 +441,7 @@ export function Sidebar({
               </div>
 
               {currentView === 'home' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 animate-pulse" />
               )}
             </button>
 
@@ -453,12 +453,12 @@ export function Sidebar({
                   onOpenBroadcast();
                 }
               }}
-              className="w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer bg-white hover:bg-blue-50/80 text-slate-700 hover:text-blue-900 border border-slate-200/70 hover:border-blue-300 shadow-2xs group"
+              className="w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer bg-gradient-to-r from-white to-blue-50/20 hover:from-white hover:to-blue-50/60 text-slate-700 hover:text-blue-900 border border-blue-100/70 hover:border-blue-300 shadow-2xs group"
               title="Buka Intercom & Pesan Siaran Realtime"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                  <Radio size={13} className="text-amber-300 animate-pulse" />
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-white to-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <Radio size={13} className="text-blue-600 animate-pulse" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -571,10 +571,10 @@ export function Sidebar({
         </div>
 
         {/* Sidebar Footer: User Status & System Info */}
-        <div className="p-2.5 border-t border-slate-200/70 bg-white/40 shrink-0">
+        <div className="p-2.5 border-t border-blue-100/70 bg-gradient-to-r from-white via-blue-50/30 to-sky-50/30 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 shadow-2xs">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-white to-blue-100 text-blue-900 border border-blue-200 flex items-center justify-center text-[11px] font-bold shrink-0 shadow-2xs">
                 {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="min-w-0">

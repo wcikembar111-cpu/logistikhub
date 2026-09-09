@@ -216,7 +216,7 @@ export default function App() {
   // 3. Tampilan Halaman Utama (Main Dashboard & Workspace) setelah berhasil Login
   return (
     <>
-      <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-slate-50 text-slate-800 selection:bg-blue-600 selection:text-white relative">
+      <div className="flex h-screen p-0 overflow-hidden text-[13px] font-sans bg-gradient-to-br from-white via-blue-50/20 to-sky-50/30 text-slate-800 selection:bg-blue-600 selection:text-white relative">
         
         {/* Modern Left Sidebar (Tools & Utilitas + Navigasi Utama) */}
         <Sidebar 
@@ -250,7 +250,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-bold shadow-2xs border border-slate-200 flex items-center gap-2 transition-all cursor-pointer hover:shadow-xs"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100/70 hover:from-white hover:to-blue-100 text-blue-900 text-xs font-bold shadow-2xs border border-blue-200 flex items-center gap-2 transition-all cursor-pointer hover:shadow-xs"
                 title="Buka Sidebar Tools & Utilitas"
               >
                 <PanelLeftOpen size={15} className="text-blue-600" />

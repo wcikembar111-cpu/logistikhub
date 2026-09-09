@@ -1184,7 +1184,7 @@ export function MonitoringPemusnahanModule() {
       {/* 4 Top KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Card 1: Total Pengajuan */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
+        <div className="bg-gradient-to-br from-white via-white to-blue-50/30 border border-blue-100/90 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               TOTAL PENGAJUAN
@@ -1202,7 +1202,7 @@ export function MonitoringPemusnahanModule() {
         </div>
 
         {/* Card 2: Total Qty Pcs */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
+        <div className="bg-gradient-to-br from-white via-white to-emerald-50/20 border border-emerald-100/90 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               TOTAL QTY PCS
@@ -1220,12 +1220,12 @@ export function MonitoringPemusnahanModule() {
         </div>
 
         {/* Card 3: Total Value & COGS */}
-        <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
+        <div className="bg-gradient-to-br from-white via-blue-50/40 to-sky-50/50 border border-blue-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">
               TOTAL VALUE (RP)
             </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-900 text-white flex items-center justify-center shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-2xs">
               <Coins size={16} />
             </div>
           </div>
@@ -1240,7 +1240,7 @@ export function MonitoringPemusnahanModule() {
         </div>
 
         {/* Card 4: Status Pipeline */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
+        <div className="bg-gradient-to-br from-white via-white to-amber-50/20 border border-amber-100/90 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between min-h-[120px]">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               STATUS PIPELINE
@@ -1284,7 +1284,7 @@ export function MonitoringPemusnahanModule() {
       />
 
       {/* Toolbar Filter & Controls */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col gap-3">
+      <div className="bg-gradient-to-r from-white via-blue-50/25 to-sky-50/30 border border-blue-100/90 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-col gap-3">
         {/* Top Row: Search & Filters */}
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
           <div className="flex flex-wrap items-center gap-2 flex-1">
@@ -1381,10 +1381,10 @@ export function MonitoringPemusnahanModule() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-emerald-50 to-emerald-100 hover:from-white hover:to-emerald-150 text-emerald-900 border border-emerald-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               title="Unggah Data dari File Excel (.xlsx / .xls / .csv)"
             >
-              <Upload size={14} />
+              <Upload size={14} className="text-emerald-700" />
               <span>Upload Data Excel</span>
             </button>
 
@@ -1393,12 +1393,12 @@ export function MonitoringPemusnahanModule() {
               type="button"
               onClick={handleSyncAllToSupabase}
               disabled={isUploadingBatch || dataList.length === 0}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
               title="Kirim dan sinkronkan seluruh data di tabel ke server"
             >
-              <Server size={14} className={isUploadingBatch ? 'animate-spin' : ''} />
+              <Server size={14} className={`text-blue-700 ${isUploadingBatch ? 'animate-spin' : ''}`} />
               <span>Sinkronisasi</span>
-              <span className="ml-0.5 px-1.5 py-0.2 bg-blue-800 text-[10px] rounded-full font-mono">
+              <span className="ml-0.5 px-1.5 py-0.2 bg-blue-200 text-blue-900 text-[10px] rounded-full font-mono border border-blue-300">
                 {dataList.length}
               </span>
             </button>
@@ -1429,9 +1429,9 @@ export function MonitoringPemusnahanModule() {
             <button
               type="button"
               onClick={() => handleOpenFormModal()}
-              className="px-3 py-1.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
-              <Plus size={14} />
+              <Plus size={14} className="text-blue-700" />
               <span>+ Form Baru</span>
             </button>
 

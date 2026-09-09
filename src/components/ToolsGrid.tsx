@@ -218,10 +218,10 @@ export function ToolsGrid({
                   onSelectTool(t.id);
                 }}
                 title={`${t.title} - Klik untuk Buka Halaman Tool`}
-                className={`bg-white border p-3 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[112px] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:shadow-xs hover:border-blue-400 cursor-pointer group rounded-xl text-slate-800 ${
+                className={`bg-gradient-to-br from-white via-white to-blue-50/30 border p-3 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[112px] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:shadow-xs hover:border-blue-400 hover:from-white hover:to-blue-50/60 cursor-pointer group rounded-xl text-slate-800 ${
                   isActive 
-                    ? 'border-2 border-blue-600 ring-2 ring-blue-100 shadow-2xs' 
-                    : 'border-slate-200 shadow-2xs'
+                    ? 'border-2 !border-blue-500 !from-white !to-blue-100/70 ring-2 ring-blue-200/80 shadow-2xs' 
+                    : 'border-blue-100/80 shadow-2xs'
                 }`}
               >
                 {/* Active Badge Marker */}

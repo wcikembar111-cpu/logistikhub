@@ -324,7 +324,7 @@ export function LinkGrid({
               onClick={() => handleToggleViewMode('grid')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === 'grid' 
-                  ? 'bg-blue-600 text-white shadow-xs' 
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 font-bold shadow-2xs' 
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title="Tampilan Grid (Kotak)"
@@ -337,7 +337,7 @@ export function LinkGrid({
               onClick={() => handleToggleViewMode('list')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === 'list' 
-                  ? 'bg-blue-600 text-white shadow-xs' 
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 font-bold shadow-2xs' 
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title="Tampilan Daftar Ringkas (List View - Hemat Ruang Layar Desktop)"
@@ -365,7 +365,7 @@ export function LinkGrid({
                     }} 
                     className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
                       isReordering 
-                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm animate-pulse' 
+                        ? 'bg-gradient-to-r from-white via-emerald-50 to-emerald-100 text-emerald-800 border-emerald-300 shadow-sm animate-pulse' 
                         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'
                     }`}
                     title="Atur Urutan Tata Letak Menu (Khusus Super Admin)"
@@ -376,7 +376,7 @@ export function LinkGrid({
 
                   <button 
                     onClick={handleRequestAdd} 
-                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-white hover:to-blue-150 text-blue-900 border border-blue-300 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
                     title="Tambah Aplikasi Baru (Wajib PIN Super Admin)"
                   >
                     <Plus size={14} />
@@ -402,13 +402,13 @@ export function LinkGrid({
               onClick={() => setCategory(cat)} 
               className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 isActive 
-                  ? 'bg-blue-600 text-white shadow-xs' 
-                  : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+                  ? 'bg-gradient-to-r from-white via-blue-50 to-blue-100 text-blue-900 border border-blue-300 font-bold shadow-2xs' 
+                  : 'bg-white hover:bg-blue-50/50 text-slate-600 border border-slate-200'
               }`}
             >
               <span>{cat}</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                isActive ? 'bg-blue-200/80 text-blue-900' : 'bg-slate-100 text-slate-500'
               }`}>
                 {count}
               </span>
@@ -472,10 +472,10 @@ export function LinkGrid({
                   }
                   onMenuClick?.(l.title);
                 }}
-                className={`bg-white border shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
+                className={`bg-gradient-to-br from-white via-white to-blue-50/30 border shadow-2xs p-3 sm:p-3.5 flex flex-col items-center justify-center relative min-h-[105px] sm:min-h-[118px] transition-all duration-200 ease-out group overflow-hidden no-underline text-slate-800 block rounded-xl sm:rounded-2xl ${
                   isItemHidden 
                     ? 'border-dashed !border-amber-400 !bg-amber-50/40 opacity-80' 
-                    : 'border-slate-200/80 hover:-translate-y-1 hover:shadow-md hover:border-blue-300 hover:bg-slate-50/70'
+                    : 'border-blue-100/80 hover:-translate-y-1 hover:shadow-md hover:border-blue-300 hover:from-white hover:to-blue-50/60'
                 } ${
                   isReordering ? 'ring-2 ring-blue-400 bg-blue-50/50 cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${
@@ -617,10 +617,10 @@ export function LinkGrid({
                   }
                   onMenuClick?.(l.title);
                 }}
-                className={`bg-white border shadow-2xs px-3 py-2 flex items-center gap-2.5 relative min-h-[46px] transition-all duration-150 ease-out group overflow-hidden no-underline text-slate-800 rounded-xl ${
+                className={`bg-gradient-to-r from-white via-white to-blue-50/25 border shadow-2xs px-3 py-2 flex items-center gap-2.5 relative min-h-[46px] transition-all duration-150 ease-out group overflow-hidden no-underline text-slate-800 rounded-xl ${
                   isItemHidden 
                     ? 'border-dashed !border-amber-400 !bg-amber-50/40 opacity-80' 
-                    : 'border-slate-200/90 hover:shadow-xs hover:border-blue-300 hover:bg-slate-50/80'
+                    : 'border-blue-100/80 hover:shadow-xs hover:border-blue-300 hover:from-white hover:to-blue-50/60'
                 } ${
                   isReordering ? 'ring-2 ring-blue-400 bg-blue-50/50 cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${isDraggingThis ? 'opacity-40 scale-95' : ''} ${

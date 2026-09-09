@@ -1024,9 +1024,9 @@ export function Hero({
         </div>
       )}
 
-      <div className="bg-white border border-slate-200/90 shadow-2xs rounded-2xl overflow-hidden mb-6">
+      <div className="bg-gradient-to-r from-white via-blue-50/25 to-sky-50/35 border border-blue-100/90 shadow-2xs rounded-2xl overflow-hidden mb-6">
         {/* Top Header Row: Profile Info on Left, Action Buttons on Right */}
-        <div className="p-4 sm:p-5 bg-slate-50/80 border-b border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-white via-blue-50/35 to-sky-50/40 border-b border-blue-100/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           
           {/* Left: Profile Photo & Greeting & Role */}
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
@@ -1113,10 +1113,10 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onOpenSidebar}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100/80 hover:from-white hover:to-blue-100 text-blue-900 border border-blue-200 hover:border-blue-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                 title="Buka / Tutup Sidebar Tools & Utilitas"
               >
-                <Wrench size={12} className="text-blue-300" />
+                <Wrench size={12} className="text-blue-700" />
                 <span>Tools & Utilitas</span>
               </button>
             )}
@@ -1126,13 +1126,13 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onOpenTodo}
-                className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer relative"
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-orange-50 to-orange-100/80 hover:from-white hover:to-orange-100 text-orange-900 border border-orange-200 hover:border-orange-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer relative"
                 title="Buka Panel Public Todo Tim"
               >
-                <ListTodo size={12} />
+                <ListTodo size={12} className="text-orange-700" />
                 <span>Public Todo</span>
                 {todos && todos.filter(t => t.status !== 'close').length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[9px] font-black">
+                  <span className="px-1.5 py-0.2 rounded-full bg-orange-100 border border-orange-200 text-orange-800 text-[9px] font-black">
                     {todos.filter(t => t.status !== 'close').length}
                   </span>
                 )}
@@ -1143,7 +1143,7 @@ export function Hero({
             <button 
               type="button"
               onClick={() => setShowOnlineUsersModal(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-800 border border-emerald-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-emerald-50 to-emerald-100/70 hover:from-white hover:to-emerald-100 active:scale-95 text-emerald-800 border border-emerald-200 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
               title="Lihat Siapa Saja yang Sedang Online / Login ke Aplikasi"
             >
               <span className="relative flex h-2 w-2">
@@ -1159,10 +1159,10 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onOpenLogin}
-                className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100/80 hover:from-white hover:to-blue-100 text-blue-900 border border-blue-200 hover:border-blue-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                 title="Ganti Akun Pengguna / Login"
               >
-                <Lock size={12} className="text-blue-100" />
+                <Lock size={12} className="text-blue-700" />
                 <span>{user?.username ? `@${user.username}` : 'Masuk'}</span>
               </button>
             )}
@@ -1172,10 +1172,10 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onOpenUserManagement}
-                className="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-purple-50 to-purple-100/80 hover:from-white hover:to-purple-100 text-purple-900 border border-purple-200 hover:border-purple-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                 title="Kelola Pengguna & Hak Akses (RBAC)"
               >
-                <Users size={12} className="text-purple-100" />
+                <Users size={12} className="text-purple-700" />
                 <span>Kelola User</span>
               </button>
             )}
@@ -1185,10 +1185,10 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onLogout}
-                className="px-2.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-rose-50 to-rose-100/70 hover:from-white hover:to-rose-100 active:scale-95 text-rose-800 border border-rose-200 hover:border-rose-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                 title="Keluar / Logout Akun"
               >
-                <LogOut size={12} className="text-rose-100" />
+                <LogOut size={12} className="text-rose-700" />
                 <span>Logout</span>
               </button>
             )}
