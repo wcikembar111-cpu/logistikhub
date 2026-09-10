@@ -12,6 +12,7 @@ import {
   Flame,
   Truck,
   FileSpreadsheet,
+  Cloud,
   Radio,
   Volume2,
   VolumeX
@@ -108,6 +109,18 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
   'match-grfg-repack': {
     title: 'Match GRFG Repack',
     category: 'Cek Selisih MB51 Order',
+    icon: <FileSpreadsheet size={18} className="text-white" />,
+    iconBg: 'bg-emerald-600'
+  },
+  'spreadsheet-dashboard': {
+    title: 'Ecomm',
+    category: 'Live Sync & Visualisasi KPI',
+    icon: <FileSpreadsheet size={18} className="text-white" />,
+    iconBg: 'bg-emerald-600'
+  },
+  'onedrive-dashboard': {
+    title: 'Ecomm',
+    category: 'Live Sync & Visualisasi KPI',
     icon: <FileSpreadsheet size={18} className="text-white" />,
     iconBg: 'bg-emerald-600'
   }

@@ -566,7 +566,7 @@ export function MatchGrfgRepackModule() {
         recalculateWithNewKonversi(extracted);
       }
     } catch (err: any) {
-      console.error('Sync Konversi Error:', err);
+      console.warn('Sync Konversi notice:', err?.message || err);
       showToast(`Gagal sinkronisasi konversi: ${err.message}`, 'error');
     } finally {
       setIsSyncingKonversi(false);

@@ -28,6 +28,7 @@ import {
   EyeOff,
   Lock,
   FileSpreadsheet,
+  Cloud,
   Radio
 } from 'lucide-react';
 import { MainToolTab, BroadcastMessage } from '../types';
@@ -211,6 +212,19 @@ export const TOOLS_LIST: ToolItemDef[] = [
     iconBg: 'bg-emerald-600',
     badge: 'Generator',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+  {
+    id: 'spreadsheet-dashboard',
+    title: 'Ecomm',
+    category: 'Live Sync & Visualisasi',
+    group: 'doc',
+    hasDatabase: false,
+    desc: 'Visualisasi dashboard interaktif dari tautan Google Spreadsheet E-Commerce secara real-time dengan KPI, grafik, dan tabel filter',
+    keywords: 'ecomm ecommerce dashboard google spreadsheet gsheets visualisasi grafik chart kpi pivot rekap laporan spreadsheet table read only online',
+    icon: <FileSpreadsheet size={15} className="text-white" />,
+    iconBg: 'bg-emerald-600',
+    badge: 'Ecomm',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   }
 ];
 
@@ -258,11 +272,9 @@ export function Sidebar({
 }: SidebarProps) {
   const { onlineCount } = useOnlineUsers();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDbExpanded, setIsDbExpanded] = useState(true);
-  const [isToolsExpanded, setIsToolsExpanded] = useState(true);
 
-  // Filter tools based on search query and visibility, partitioned into Database Connected and Generator tools
-  const { dbTools, generatorTools, totalMatches, hiddenToolsCount } = useMemo(() => {
+  // Filter tools based on search query and visibility (unified list)
+  const { filteredTools, totalMatches, hiddenToolsCount } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const filterFn = (item: ToolItemDef) => {
       if (hiddenMenuIds.includes(item.id)) return false;
@@ -275,14 +287,12 @@ export function Sidebar({
       );
     };
 
-    const db = TOOLS_LIST.filter(item => item.hasDatabase && filterFn(item));
-    const gen = TOOLS_LIST.filter(item => !item.hasDatabase && filterFn(item));
+    const tools = TOOLS_LIST.filter(filterFn);
     const hiddenCount = TOOLS_LIST.filter(item => hiddenMenuIds.includes(item.id)).length;
 
     return {
-      dbTools: db,
-      generatorTools: gen,
-      totalMatches: db.length + gen.length,
+      filteredTools: tools,
+      totalMatches: tools.length,
       hiddenToolsCount: hiddenCount
     };
   }, [searchQuery, hiddenMenuIds]);
@@ -481,7 +491,7 @@ export function Sidebar({
             </button>
           </div>
 
-          {/* 2. Daftar Tools & Utilitas Header */}
+          {/* 2. Daftar Tools & Utilitas */}
           <div className="pt-2 border-t border-slate-200/60">
             <div className="flex items-center justify-between px-2 mb-1.5">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -496,78 +506,18 @@ export function Sidebar({
             </div>
           </div>
 
-          {/* 2a. Menu Terhubung Server Section */}
+          {/* Unified Tools List */}
           <div className="space-y-1">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Layers size={12} className="text-emerald-600 shrink-0" />
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
-                  Modul Online ({dbTools.length})
-                </span>
+            {filteredTools.length === 0 ? (
+              <div className="text-center py-5 px-3 bg-white rounded-xl border border-slate-200/70">
+                <Search size={16} className="mx-auto text-slate-400 mb-1" />
+                <p className="text-xs font-bold text-slate-600 m-0">Menu tidak ditemukan</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Coba cari kata kunci lainnya</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDbExpanded(!isDbExpanded)}
-                className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
-                title={isDbExpanded ? 'Perkecil grup Modul' : 'Bentangkan grup Modul'}
-              >
-                <ChevronDown size={13} className={`transition-transform duration-200 ${isDbExpanded ? 'rotate-0' : '-rotate-90'}`} />
-              </button>
-            </div>
-
-            {isDbExpanded && (
-              <div className="space-y-1">
-                {dbTools.length === 0 ? (
-                  <div className="text-center py-3 px-2 bg-white/70 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[10px] font-medium">
-                    Tidak ada menu yang cocok
-                  </div>
-                ) : (
-                  dbTools.map(renderToolButton)
-                )}
-              </div>
+            ) : (
+              filteredTools.map(renderToolButton)
             )}
           </div>
-
-          {/* 3. Tools Generator Section (Offline / Standalone) */}
-          <div className="space-y-1 pt-1">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Wrench size={12} className="text-blue-600 shrink-0" />
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
-                  Tools Generator ({generatorTools.length})
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsToolsExpanded(!isToolsExpanded)}
-                className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
-                title={isToolsExpanded ? 'Perkecil grup Generator' : 'Bentangkan grup Generator'}
-              >
-                <ChevronDown size={13} className={`transition-transform duration-200 ${isToolsExpanded ? 'rotate-0' : '-rotate-90'}`} />
-              </button>
-            </div>
-
-            {isToolsExpanded && (
-              <div className="space-y-1">
-                {generatorTools.length === 0 ? (
-                  <div className="text-center py-3 px-2 bg-white/70 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[10px] font-medium">
-                    Tidak ada tools generator yang cocok
-                  </div>
-                ) : (
-                  generatorTools.map(renderToolButton)
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Global Empty State when searching */}
-          {totalMatches === 0 && (
-            <div className="text-center py-5 px-3 bg-white rounded-xl border border-slate-200/70">
-              <Search size={16} className="mx-auto text-slate-400 mb-1" />
-              <p className="text-xs font-bold text-slate-600 m-0">Menu tidak ditemukan</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Coba cari kata kunci lainnya</p>
-            </div>
-          )}
         </div>
 
         {/* Sidebar Footer: User Status & System Info */}

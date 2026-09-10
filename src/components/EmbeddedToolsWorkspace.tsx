@@ -14,6 +14,7 @@ import { MonitoringPemusnahanModule } from './logistics/MonitoringPemusnahanModu
 import { DataPemusnahanModule } from './logistics/DataPemusnahanModule';
 import { OutboundLrgModule } from './logistics/OutboundLrgModule';
 import { MatchGrfgRepackModule } from './logistics/MatchGrfgRepackModule';
+import { GoogleSpreadsheetDashboardModule } from './logistics/GoogleSpreadsheetDashboardModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -52,6 +53,9 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}
             {activeTool === 'outbound-lrg' && <OutboundLrgModule />}
             {activeTool === 'match-grfg-repack' && <MatchGrfgRepackModule />}
+            {(activeTool === 'spreadsheet-dashboard' || activeTool === 'onedrive-dashboard') && (
+              <GoogleSpreadsheetDashboardModule />
+            )}
           </ErrorBoundary>
         </div>
       </div>

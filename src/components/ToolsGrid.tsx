@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -118,6 +118,14 @@ export function ToolsGrid({
       title: 'Match GRFG Repack',
       category: 'Cek Selisih MB51 Order',
       keywords: 'match grfg repack cek selisih order mb51 sap rekonsiliasi total pcs seimbang movement type 101 261 262 531 konversi offline generator',
+      icon: <FileSpreadsheet size={20} className="text-white" />,
+      iconBg: 'bg-emerald-600'
+    },
+    {
+      id: 'spreadsheet-dashboard',
+      title: 'Ecomm',
+      category: 'Live Sync & KPI',
+      keywords: 'ecomm ecommerce dashboard google spreadsheet gsheets visualisasi grafik chart kpi pivot rekap laporan spreadsheet table read only online',
       icon: <FileSpreadsheet size={20} className="text-white" />,
       iconBg: 'bg-emerald-600'
     }

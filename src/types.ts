@@ -163,7 +163,9 @@ export type LogisticsTab =
   | 'monitoring-pemusnahan'
   | 'data-pemusnahan'
   | 'outbound-lrg'
-  | 'match-grfg-repack';
+  | 'match-grfg-repack'
+  | 'spreadsheet-dashboard'
+  | 'onedrive-dashboard';
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
 

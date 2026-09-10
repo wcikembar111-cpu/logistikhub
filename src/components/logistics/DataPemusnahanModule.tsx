@@ -767,7 +767,7 @@ export function DataPemusnahanModule() {
         throw new Error('Format data dari Google Apps Script belum mengembalikan array baris. Pastikan fungsi doGet() di Google Apps Script mengembalikan JSON array data.');
       }
     } catch (err: any) {
-      console.error('Pull GAS error:', err);
+      console.warn('Pull GAS notice:', err?.message || err);
       setPullStatusMsg(`Gagal: ${err.message || 'Tidak dapat menarik data'}`);
       showToast('Gagal Tarik Data', err.message || 'Pastikan Google Apps Script di-deploy sebagai Web App dengan akses "Anyone"', 'danger');
     } finally {
