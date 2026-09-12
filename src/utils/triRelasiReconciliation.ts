@@ -53,7 +53,10 @@ export function reconcileTriRelasi(
       name: string;
       category: string;
       uom: string;
-      totalQty: number;
+      uomConvert: string;
+      totalQty: number; // Last Qty (Stok Fisik)
+      totalFirstQty: number;
+      totalQtyConvert: number; // Qty Convert (Yang sudah siap)
       batches: BatchDetailLargo[];
       rowCount: number;
     }
@@ -66,18 +69,22 @@ export function reconcileTriRelasi(
 
     const rawName = getField(row, [/^item\s*name$/i, /^nama\s*(barang|item|produk)$/i, /^description$/i]) || '';
     const rawCategory = getField(row, [/^category$/i, /^kategori$/i]) || 'Umum';
-    const rawUom = getField(row, [/^uom$/i, /^satuan$/i, /^uom\s*convert$/i]) || 'PCS';
+    const rawUom = getField(row, [/^uom$/i, /^satuan$/i]) || 'PCS';
+    const rawUomConvert = getField(row, [/^uom\s*convert$/i, /^satuan\s*konversi$/i]) || '';
     
-    // Primary qty is Last Qty, fallback to Qty Convert or First Qty
+    // Explicitly distinguish Last Qty, First Qty, and Qty Convert
     const rawLastQty = getField(row, [/^last\s*qty$/i, /^qty\s*akhir$/i, /^final\s*qty$/i]);
-    const rawQtyConvert = getField(row, [/^qty\s*convert$/i, /^qty\s*konversi$/i]);
+    const rawQtyConvert = getField(row, [/^qty\s*convert$/i, /^qty\s*konversi$/i, /^convert\s*qty$/i]);
     const rawFirstQty = getField(row, [/^first\s*qty$/i, /^qty\s*awal$/i]);
     
-    const qty = rawLastQty !== undefined
+    const lastQty = rawLastQty !== undefined
       ? parseNumber(rawLastQty)
-      : rawQtyConvert !== undefined
-      ? parseNumber(rawQtyConvert)
-      : parseNumber(rawFirstQty);
+      : rawFirstQty !== undefined
+      ? parseNumber(rawFirstQty)
+      : parseNumber(rawQtyConvert);
+
+    const firstQty = parseNumber(rawFirstQty);
+    const qtyConvert = parseNumber(rawQtyConvert);
 
     const batchStr = String(getField(row, [/^batch$/i, /^no\s*batch$/i]) || '-');
     const vendorBatchStr = String(getField(row, [/^vendor\s*batch$/i]) || '-');
@@ -92,25 +99,34 @@ export function reconcileTriRelasi(
         name: String(rawName).trim(),
         category: String(rawCategory).trim(),
         uom: String(rawUom).trim(),
+        uomConvert: String(rawUomConvert).trim(),
         totalQty: 0,
+        totalFirstQty: 0,
+        totalQtyConvert: 0,
         batches: [],
         rowCount: 0
       });
     }
 
     const entry = largoMap.get(normCode)!;
-    entry.totalQty += qty;
+    entry.totalQty += lastQty;
+    entry.totalFirstQty += firstQty;
+    entry.totalQtyConvert += qtyConvert;
     entry.rowCount += 1;
     if (entry.name === '' && rawName) entry.name = String(rawName).trim();
     if (entry.category === 'Umum' && rawCategory) entry.category = String(rawCategory).trim();
     if (entry.uom === 'PCS' && rawUom) entry.uom = String(rawUom).trim();
+    if (!entry.uomConvert && rawUomConvert) entry.uomConvert = String(rawUomConvert).trim();
 
     entry.batches.push({
       batch: batchStr,
       vendorBatch: vendorBatchStr,
       location: locationStr,
       sloc: slocStr,
-      qty,
+      qty: lastQty,
+      firstQty,
+      qtyConvert,
+      uomConvert: String(rawUomConvert || entry.uomConvert || entry.uom),
       expiredDate: expDateStr,
       lpn: lpnStr
     });
@@ -126,6 +142,7 @@ export function reconcileTriRelasi(
       unresStock: number;
       blockedStock: number;
       stockInTrf: number;
+      price: number;
       stockValue: number;
       batches: BatchDetailSap[];
       rowCount: number;
@@ -142,7 +159,8 @@ export function reconcileTriRelasi(
     const unres = parseNumber(getField(row, [/^unres\.\s*stock$/i, /^unres\s*stock$/i, /^unrestricted$/i, /^stock$/i]));
     const blocked = parseNumber(getField(row, [/^blocked\s*stock$/i, /^blocked$/i]));
     const trf = parseNumber(getField(row, [/^stock\s*in\s*trf$/i, /^in\s*transit$/i]));
-    const val = parseNumber(getField(row, [/^unres\.\s*stock\s*value$/i, /^stock\s*value$/i, /^nilai\s*stock$/i]));
+    const price = parseNumber(getField(row, [/^price$/i, /^harga$/i, /^unit\s*price$/i]));
+    const val = parseNumber(getField(row, [/^unres\.\s*stock\s*value$/i, /^stock\s*value$/i, /^nilai\s*stock$/i])) || (unres * price);
 
     const batchStr = String(getField(row, [/^batch$/i, /^no\s*batch$/i]) || '-');
     const vendorBatchStr = String(getField(row, [/^vendor\s*batch$/i]) || '-');
@@ -158,6 +176,7 @@ export function reconcileTriRelasi(
         unresStock: 0,
         blockedStock: 0,
         stockInTrf: 0,
+        price: 0,
         stockValue: 0,
         batches: [],
         rowCount: 0
@@ -169,6 +188,7 @@ export function reconcileTriRelasi(
     entry.blockedStock += blocked;
     entry.stockInTrf += trf;
     entry.stockValue += val;
+    if (price > 0 && entry.price === 0) entry.price = price;
     entry.rowCount += 1;
     if (!entry.desc && rawDesc) entry.desc = String(rawDesc).trim();
     if (entry.uom === 'PCS' && rawUom) entry.uom = String(rawUom).trim();
@@ -180,7 +200,9 @@ export function reconcileTriRelasi(
       sloc: slocStr,
       unresStock: unres,
       blockedStock: blocked,
-      sled: sledStr
+      sled: sledStr,
+      price,
+      stockValue: val
     });
   });
 
@@ -192,6 +214,7 @@ export function reconcileTriRelasi(
       name: string;
       sepQty: number;
       octQty: number;
+      otherTargetQty: number;
     }
   >();
 
@@ -227,18 +250,34 @@ export function reconcileTriRelasi(
       /target.*oct/i
     ]));
 
+    // Check if there are other target columns (e.g. general target qty)
+    let otherVal = 0;
+    if (sepVal === 0 && octVal === 0) {
+      const fallbackTarget = getField(row, [
+        /^target(\s*qty)?$/i,
+        /^qty\s*target$/i,
+        /^total\s*target$/i,
+        /^target\s*produksi$/i
+      ]);
+      if (fallbackTarget !== undefined) {
+        otherVal = parseNumber(fallbackTarget);
+      }
+    }
+
     if (!targetMap.has(normCode)) {
       targetMap.set(normCode, {
         code: String(rawCode || normCode).trim(),
         name: String(rawName).trim(),
         sepQty: 0,
-        octQty: 0
+        octQty: 0,
+        otherTargetQty: 0
       });
     }
 
     const entry = targetMap.get(normCode)!;
     entry.sepQty += sepVal;
     entry.octQty += octVal;
+    entry.otherTargetQty += otherVal;
     if (!entry.name && rawName) entry.name = String(rawName).trim();
   });
 
@@ -255,10 +294,15 @@ export function reconcileTriRelasi(
     const sap = sapMap.get(normCode);
     const target = targetMap.get(normCode);
 
-    const largoStock = largo ? largo.totalQty : 0;
+    const largoStock = largo ? largo.totalQty : 0; // Last Qty
+    const largoFirstQty = largo ? largo.totalFirstQty : 0;
+    const largoQtyConvert = largo ? largo.totalQtyConvert : 0; // Qty Convert (Yang sudah siap)
+    const largoUomConvert = largo?.uomConvert || '';
+
     const sapStock = sap ? sap.unresStock : 0;
     const sapBlocked = sap ? sap.blockedStock : 0;
     const sapTrf = sap ? sap.stockInTrf : 0;
+    const sapPrice = sap ? sap.price : 0;
     const sapVal = sap ? sap.stockValue : 0;
 
     const displayCode = largo?.code || sap?.code || target?.code || normCode;
@@ -266,9 +310,10 @@ export function reconcileTriRelasi(
     const category = largo?.category || 'General';
     const uom = largo?.uom || sap?.uom || 'PCS';
 
-    // Stock Variance: Largo - SAP
+    // Stock Variance: Largo Last Qty - SAP Unres Stock
     const stockVariance = largoStock - sapStock;
     const absVariance = Math.abs(stockVariance);
+    const valueVariance = sapPrice > 0 ? stockVariance * sapPrice : (sapStock > 0 ? stockVariance * (sapVal / sapStock) : 0);
 
     let matchStatus: MatchStatus;
     if (largo && !sap) {
@@ -283,18 +328,37 @@ export function reconcileTriRelasi(
       matchStatus = 'SAP_SURPLUS';
     }
 
-    // Target metrics
+    // Target metrics from Sheet Target
     const targetSepQty = target ? target.sepQty : 0;
     const targetOctQty = target ? target.octQty : 0;
-    const totalTargetQty = targetSepQty + targetOctQty;
+    const totalTargetQty = target ? (target.sepQty + target.octQty + target.otherTargetQty) : 0;
     const hasTarget = totalTargetQty > 0;
 
-    // Percentages from Largo
+    // Target Readiness from Largo Qty Convert (Yang sudah siap di sheet largo kolom qty convert)
+    const targetReadyQty = largoQtyConvert;
+    const targetReadyPct = totalTargetQty > 0 ? (targetReadyQty / totalTargetQty) * 100 : null;
+    const targetReadySepPct = targetSepQty > 0 ? (targetReadyQty / targetSepQty) * 100 : null;
+    const targetReadyOctPct = targetOctQty > 0 ? (targetReadyQty / targetOctQty) * 100 : null;
+    const targetDeficitQty = Math.max(0, totalTargetQty - targetReadyQty);
+    const targetSurplusQty = Math.max(0, targetReadyQty - totalTargetQty);
+
+    let targetReadinessStatus: 'FULL_READY' | 'PARTIAL_READY' | 'NOT_READY' | 'NO_TARGET';
+    if (!hasTarget) {
+      targetReadinessStatus = 'NO_TARGET';
+    } else if (targetReadyPct !== null && targetReadyPct >= 100) {
+      targetReadinessStatus = 'FULL_READY';
+    } else if (targetReadyPct !== null && targetReadyPct > 0) {
+      targetReadinessStatus = 'PARTIAL_READY';
+    } else {
+      targetReadinessStatus = 'NOT_READY';
+    }
+
+    // Target percentages from Largo Last Qty (Stok fisik keseluruhan)
     const targetSepPctLargo = targetSepQty > 0 ? (largoStock / targetSepQty) * 100 : null;
     const targetOctPctLargo = targetOctQty > 0 ? (largoStock / targetOctQty) * 100 : null;
     const totalTargetPctLargo = totalTargetQty > 0 ? (largoStock / totalTargetQty) * 100 : null;
 
-    // Percentages from SAP
+    // Target percentages from SAP stock
     const targetSepPctSap = targetSepQty > 0 ? (sapStock / targetSepQty) * 100 : null;
     const targetOctPctSap = targetOctQty > 0 ? (sapStock / targetOctQty) * 100 : null;
     const totalTargetPctSap = totalTargetQty > 0 ? (sapStock / totalTargetQty) * 100 : null;
@@ -316,17 +380,29 @@ export function reconcileTriRelasi(
       productName,
       category,
       uom,
+      largoUomConvert,
       largoStock,
+      largoFirstQty,
+      largoQtyConvert,
       sapStock,
       sapBlockedStock: sapBlocked,
       sapTrfStock: sapTrf,
+      sapPrice,
       sapStockValue: sapVal,
       stockVariance,
       absVariance,
+      valueVariance,
       matchStatus,
       targetSepQty,
       targetOctQty,
       totalTargetQty,
+      targetReadyQty,
+      targetReadyPct,
+      targetReadySepPct,
+      targetReadyOctPct,
+      targetDeficitQty,
+      targetSurplusQty,
+      targetReadinessStatus,
       targetSepPctLargo,
       targetOctPctLargo,
       totalTargetPctLargo,
@@ -344,22 +420,35 @@ export function reconcileTriRelasi(
     });
   });
 
-  // Sort by highest stock variance or highest target
-  items.sort((a, b) => b.totalTargetQty - a.totalTargetQty || b.absVariance - a.absVariance);
+  // Sort by highest target, then by highest deficit or variance
+  items.sort((a, b) => b.totalTargetQty - a.totalTargetQty || b.targetDeficitQty - a.targetDeficitQty || b.absVariance - a.absVariance);
 
   // 5. Summary Calculations
   let totalLargoStock = 0;
+  let totalLargoQtyConvert = 0;
   let totalSapStock = 0;
   let totalSapBlocked = 0;
   let totalSapValue = 0;
   let totalVariance = 0;
+  let totalValueVariance = 0;
+
   let matchCount = 0;
   let varianceCount = 0;
+  let largoSurplusCount = 0;
+  let sapSurplusCount = 0;
   let onlyLargoCount = 0;
   let onlySapCount = 0;
 
   let totalTargetSep = 0;
   let totalTargetOct = 0;
+  let totalTargetCombined = 0;
+  let totalTargetDeficit = 0;
+  let totalTargetSurplus = 0;
+
+  let targetReadyCount = 0;
+  let targetPartialReadyCount = 0;
+  let targetNotReadyCount = 0;
+
   let targetFulfilledCount = 0;
   let targetPartialCount = 0;
   let targetLowCount = 0;
@@ -368,29 +457,51 @@ export function reconcileTriRelasi(
 
   items.forEach(item => {
     totalLargoStock += item.largoStock;
+    totalLargoQtyConvert += item.largoQtyConvert;
     totalSapStock += item.sapStock;
     totalSapBlocked += item.sapBlockedStock;
     totalSapValue += item.sapStockValue;
     totalVariance += item.stockVariance;
+    totalValueVariance += item.valueVariance;
 
     if (item.matchStatus === 'MATCH') matchCount++;
-    else if (item.matchStatus === 'ONLY_LARGO') onlyLargoCount++;
-    else if (item.matchStatus === 'ONLY_SAP') onlySapCount++;
-    else varianceCount++;
+    else if (item.matchStatus === 'LARGO_SURPLUS') {
+      largoSurplusCount++;
+      varianceCount++;
+    } else if (item.matchStatus === 'SAP_SURPLUS') {
+      sapSurplusCount++;
+      varianceCount++;
+    } else if (item.matchStatus === 'ONLY_LARGO') {
+      onlyLargoCount++;
+      varianceCount++;
+    } else if (item.matchStatus === 'ONLY_SAP') {
+      onlySapCount++;
+      varianceCount++;
+    }
 
-    totalTargetSep += item.targetSepQty;
-    totalTargetOct += item.targetOctQty;
+    if (item.hasTarget) {
+      totalTargetCombined += item.totalTargetQty;
+      totalTargetSep += item.targetSepQty;
+      totalTargetOct += item.targetOctQty;
+      totalTargetDeficit += item.targetDeficitQty;
+      totalTargetSurplus += item.targetSurplusQty;
 
-    if (!item.hasTarget) noTargetCount++;
-    else if (item.overallTargetStatus === 'FULFILLED') targetFulfilledCount++;
-    else if (item.overallTargetStatus === 'PARTIAL') targetPartialCount++;
-    else if (item.overallTargetStatus === 'LOW') targetLowCount++;
-    else targetEmptyCount++;
+      if (item.targetReadinessStatus === 'FULL_READY') targetReadyCount++;
+      else if (item.targetReadinessStatus === 'PARTIAL_READY') targetPartialReadyCount++;
+      else targetNotReadyCount++;
+
+      if (item.overallTargetStatus === 'FULFILLED') targetFulfilledCount++;
+      else if (item.overallTargetStatus === 'PARTIAL') targetPartialCount++;
+      else if (item.overallTargetStatus === 'LOW') targetLowCount++;
+      else targetEmptyCount++;
+    } else {
+      noTargetCount++;
+    }
   });
 
   const totalSkus = items.length;
   const matchRatePct = totalSkus > 0 ? (matchCount / totalSkus) * 100 : 0;
-  const totalTargetCombined = totalTargetSep + totalTargetOct;
+  const targetReadyFulfilledPct = totalTargetCombined > 0 ? (totalLargoQtyConvert / totalTargetCombined) * 100 : 0;
 
   const targetSepFulfilledPctLargo = totalTargetSep > 0 ? (totalLargoStock / totalTargetSep) * 100 : 0;
   const targetSepFulfilledPctSap = totalTargetSep > 0 ? (totalSapStock / totalTargetSep) * 100 : 0;
@@ -402,18 +513,28 @@ export function reconcileTriRelasi(
   const summary: TriRelasiSummary = {
     totalSkus,
     totalLargoStock,
+    totalLargoQtyConvert,
     totalSapStock,
     totalSapBlocked,
     totalSapValue,
     totalVariance,
+    totalValueVariance,
     matchCount,
     varianceCount,
+    largoSurplusCount,
+    sapSurplusCount,
     onlyLargoCount,
     onlySapCount,
     matchRatePct,
     totalTargetSep,
     totalTargetOct,
     totalTargetCombined,
+    totalTargetDeficit,
+    totalTargetSurplus,
+    targetReadyFulfilledPct,
+    targetReadyCount,
+    targetPartialReadyCount,
+    targetNotReadyCount,
     targetSepFulfilledPctLargo,
     targetSepFulfilledPctSap,
     targetOctFulfilledPctLargo,

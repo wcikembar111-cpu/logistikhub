@@ -71,7 +71,10 @@ export interface BatchDetailLargo {
   vendorBatch: string;
   location: string;
   sloc: string;
-  qty: number;
+  qty: number; // Last Qty
+  firstQty: number;
+  qtyConvert: number; // Qty Convert (yang sudah siap)
+  uomConvert: string;
   expiredDate: string;
   lpn: string;
 }
@@ -84,6 +87,8 @@ export interface BatchDetailSap {
   unresStock: number;
   blockedStock: number;
   sled: string;
+  price?: number;
+  stockValue?: number;
 }
 
 export interface TriRelasiItem {
@@ -91,25 +96,41 @@ export interface TriRelasiItem {
   productName: string;
   category: string;
   uom: string;
+  largoUomConvert?: string;
 
-  // Stock figures
-  largoStock: number;
-  sapStock: number;
+  // Stock figures Largo
+  largoStock: number; // Last Qty
+  largoFirstQty: number; // First Qty
+  largoQtyConvert: number; // Qty Convert di sheet Largo (yang sudah siap)
+
+  // Stock figures SAP
+  sapStock: number; // Unres. Stock
   sapBlockedStock: number;
   sapTrfStock: number;
+  sapPrice: number;
   sapStockValue: number;
 
-  // Variance (Largo - SAP)
+  // Variance (Largo Last Qty - SAP Unres Stock)
   stockVariance: number;
   absVariance: number;
+  valueVariance: number;
   matchStatus: MatchStatus;
 
-  // Target figures
+  // Target figures from Sheet Target
   targetSepQty: number;
   targetOctQty: number;
   totalTargetQty: number;
 
-  // Target percentages from Largo stock
+  // Target Readiness from Largo Qty Convert (Yang sudah siap di sheet largo kolom qty convert)
+  targetReadyQty: number; // = largoQtyConvert
+  targetReadyPct: number | null; // % Kesiapan terhadap Total Target
+  targetReadySepPct: number | null; // % Kesiapan terhadap SEP
+  targetReadyOctPct: number | null; // % Kesiapan terhadap OCT
+  targetDeficitQty: number; // Sisa kebutuhan target (Target - Qty Convert)
+  targetSurplusQty: number; // Surplus Qty Convert jika > Target
+  targetReadinessStatus: 'FULL_READY' | 'PARTIAL_READY' | 'NOT_READY' | 'NO_TARGET';
+
+  // Target percentages from Largo Last Qty (Stok fisik)
   targetSepPctLargo: number | null;
   targetOctPctLargo: number | null;
   totalTargetPctLargo: number | null;
@@ -137,14 +158,18 @@ export interface TriRelasiItem {
 export interface TriRelasiSummary {
   totalSkus: number;
   totalLargoStock: number;
+  totalLargoQtyConvert: number; // Akumulasi Qty Convert (yang sudah siap)
   totalSapStock: number;
   totalSapBlocked: number;
   totalSapValue: number;
   totalVariance: number;
+  totalValueVariance: number;
   
-  // Match stats
+  // Match stats (Largo vs SAP)
   matchCount: number;
   varianceCount: number;
+  largoSurplusCount: number;
+  sapSurplusCount: number;
   onlyLargoCount: number;
   onlySapCount: number;
   matchRatePct: number;
@@ -153,8 +178,16 @@ export interface TriRelasiSummary {
   totalTargetSep: number;
   totalTargetOct: number;
   totalTargetCombined: number;
+  totalTargetDeficit: number; // Total sisa kebutuhan target
+  totalTargetSurplus: number; // Total kelebihan siap
 
-  // Overall Target Fulfillment
+  // Target Readiness from Qty Convert Largo
+  targetReadyFulfilledPct: number; // (totalLargoQtyConvert / totalTargetCombined) * 100
+  targetReadyCount: number; // SKU yang sudah siap penuh (>= 100%)
+  targetPartialReadyCount: number; // SKU yang siap sebagian (1-99%)
+  targetNotReadyCount: number; // SKU yang belum siap (0% / 0 qty convert)
+
+  // Overall Target Fulfillment from Largo Last Qty
   targetSepFulfilledPctLargo: number;
   targetSepFulfilledPctSap: number;
   targetOctFulfilledPctLargo: number;

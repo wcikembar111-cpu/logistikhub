@@ -36,12 +36,15 @@ import {
   MatchStatus,
   TargetFulfillmentStatus
 } from '../../../types/triRelasi';
+import { TargetMonitoringReportView } from './TargetMonitoringReportView';
+import { LargoSapComparisonView } from './LargoSapComparisonView';
 
 interface TriRelasiDashboardViewProps {
   items: TriRelasiItem[];
   summary: TriRelasiSummary;
   sourceName?: string;
   lastSyncTime?: string;
+  initialSubTab?: 'OVERVIEW' | 'TARGET_MONITORING' | 'LARGO_SAP_COMPARE';
 }
 
 const MATCH_COLORS: Record<MatchStatus, string> = {
@@ -56,8 +59,12 @@ export function TriRelasiDashboardView({
   items,
   summary,
   sourceName = 'Google Spreadsheet',
-  lastSyncTime
+  lastSyncTime,
+  initialSubTab = 'OVERVIEW'
 }: TriRelasiDashboardViewProps) {
+  // Navigation Sub-tab
+  const [subTab, setSubTab] = useState<'OVERVIEW' | 'TARGET_MONITORING' | 'LARGO_SAP_COMPARE'>(initialSubTab);
+
   // State for Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMatchStatus, setFilterMatchStatus] = useState<string>('ALL');
@@ -273,49 +280,98 @@ export function TriRelasiDashboardView({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Banner & Title */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-md border border-indigo-900/50">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Banner & Title - Clean, Ringkas, Tanpa Fill Warna */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <Layers size={12} />
-                Multi-Sheet Tri-Relasi Engine
-              </span>
-              <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-300">
-                Sumber: <strong className="text-white">{sourceName}</strong>
-              </span>
-              {lastSyncTime && (
-                <>
-                  <span className="text-xs text-slate-400">•</span>
-                  <span className="text-xs text-slate-300">Sync: {lastSyncTime}</span>
-                </>
-              )}
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <span>Rekonsiliasi Stock Largo ⟷ SAP ⟷ Target Kuantitas</span>
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <Layers size={20} className="text-indigo-600" />
+              <span>Rekonsiliasi Tri-Relasi</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl">
-              Sinkronisasi data real-time dari 3 sheet: identifikasi varians fisik (Largo) vs sistem (SAP) serta persentase pemenuhan kuota target produksi (SEP &apos;26 &amp; OCT &apos;26).
+            <p className="text-xs text-slate-500 mt-0.5">
+              Komparasi data stok Largo, SAP, dan Target Kuantitas.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-xs sm:text-sm flex items-center gap-2 transition-colors shadow-2xs cursor-pointer"
               title="Download Excel Rekap Tri-Relasi"
             >
-              <Download size={16} />
-              <span>Ekspor Rekap Excel</span>
+              <Download size={15} className="text-emerald-600" />
+              <span>Ekspor Excel</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* Navigation Sub-Tabs */}
+      <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+        <button
+          type="button"
+          onClick={() => setSubTab('OVERVIEW')}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            subTab === 'OVERVIEW'
+              ? 'bg-white text-slate-900 shadow-2xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Layers size={14} className={subTab === 'OVERVIEW' ? 'text-indigo-600' : 'text-slate-400'} />
+          <span>Dashboard Rekap</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('TARGET_MONITORING')}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            subTab === 'TARGET_MONITORING'
+              ? 'bg-white text-emerald-800 shadow-2xs border border-emerald-300'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Target size={14} className={subTab === 'TARGET_MONITORING' ? 'text-emerald-600' : 'text-slate-400'} />
+          <span>Monitoring Target</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            {summary.targetReadyFulfilledPct.toFixed(0)}%
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('LARGO_SAP_COMPARE')}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            subTab === 'LARGO_SAP_COMPARE'
+              ? 'bg-white text-blue-800 shadow-2xs border border-blue-300'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Boxes size={14} className={subTab === 'LARGO_SAP_COMPARE' ? 'text-blue-600' : 'text-slate-400'} />
+          <span>Perbandingan Largo vs SAP</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            {summary.matchRatePct.toFixed(0)}%
+          </span>
+        </button>
+      </div>
+
+      {subTab === 'TARGET_MONITORING' ? (
+        <TargetMonitoringReportView
+          items={items}
+          summary={summary}
+          sourceName={sourceName}
+          lastSyncTime={lastSyncTime}
+        />
+      ) : subTab === 'LARGO_SAP_COMPARE' ? (
+        <LargoSapComparisonView
+          items={items}
+          summary={summary}
+          sourceName={sourceName}
+          lastSyncTime={lastSyncTime}
+        />
+      ) : (
+        <>
+          {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Card 1: Total SKU */}
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
@@ -965,6 +1021,8 @@ export function TriRelasiDashboardView({
           </div>
         </div>
       </div>
-    </div>
+    </>
+  )}
+</div>
   );
 }

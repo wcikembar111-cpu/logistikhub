@@ -15,12 +15,15 @@ import {
   Cloud,
   Radio,
   Volume2,
-  VolumeX
+  VolumeX,
+  Wrench,
+  ListTodo
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
 import { MainToolTab, BroadcastMessage } from '../../types';
 import { BroadcastBar } from '../broadcast/BroadcastBar';
+import { FloatingRobotCompanion } from '../broadcast/FloatingRobotCompanion';
 
 interface ToolWorkspacePageProps {
   activeTool: MainToolTab;
@@ -37,6 +40,16 @@ interface ToolWorkspacePageProps {
   notificationPermission?: NotificationPermission;
   onRequestNotificationPermission?: () => Promise<any>;
   isNotificationSupported?: boolean;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+  isTodoOpen?: boolean;
+  onToggleTodo?: () => void;
+  todoCount?: number;
+  currentUser?: any;
+  isAdmin?: boolean;
+  onSendBroadcast?: (data: any) => Promise<any>;
+  recentMessages?: BroadcastMessage[];
+  onDeleteMessage?: (id: string) => Promise<void>;
 }
 
 const toolMetadata: Record<MainToolTab, { title: string; category: string; icon: React.ReactNode; iconBg: string }> = {
@@ -140,76 +153,113 @@ export function ToolWorkspacePage({
   onShowBroadcastPopup,
   notificationPermission,
   onRequestNotificationPermission,
-  isNotificationSupported
+  isNotificationSupported,
+  isSidebarOpen = true,
+  onToggleSidebar,
+  isTodoOpen = false,
+  onToggleTodo,
+  todoCount = 0,
+  currentUser,
+  isAdmin,
+  onSendBroadcast,
+  recentMessages,
+  onDeleteMessage
 }: ToolWorkspacePageProps) {
   const currentMeta = toolMetadata[activeTool] || toolMetadata['qr-generator'];
 
   return (
     <div className="w-full pb-16 animate-fade-in">
       {/* Top Dedicated Navigation Bar - Minimalist Blue, Orange, White */}
-      <div className="bg-white p-3 sm:p-3.5 mb-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
+      <div className="bg-white p-2.5 sm:p-3 mb-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 flex-wrap">
         
-        {/* Left: HOME Icon-Only Button */}
-        <div className="flex items-center gap-2.5">
+        {/* Left: HOME Button + Sidebar Toggle + Active Application Info */}
+        <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={onBackToHome}
-            className="w-10 h-10 rounded-xl bg-white hover:bg-blue-50 text-blue-900 hover:text-orange-600 border border-slate-200 hover:border-orange-300 flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white hover:bg-blue-50 text-blue-900 hover:text-orange-600 border border-slate-200 hover:border-orange-300 flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Kembali ke Halaman Utama"
             aria-label="Kembali ke Halaman Utama"
           >
             <Home size={18} />
           </button>
 
+          {/* Single Sidebar Toggle Button */}
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs shrink-0 ${
+                isSidebarOpen
+                  ? 'bg-blue-100 text-blue-900 border-blue-300 hover:bg-blue-200/80'
+                  : 'bg-white hover:bg-blue-50 text-blue-900 border-slate-200 hover:border-blue-300'
+              }`}
+              title={isSidebarOpen ? 'Tutup Sidebar Tools & Utilitas' : 'Buka Sidebar Tools & Utilitas'}
+            >
+              <Wrench size={13} className="text-blue-700" />
+              <span className="hidden sm:inline">{isSidebarOpen ? 'Tutup Sidebar' : 'Buka Sidebar'}</span>
+            </button>
+          )}
+
           {/* Active Application Info */}
-          <div className="flex items-center gap-2.5 pl-1">
+          <div className="flex items-center gap-2 pl-1 min-w-0">
             <div className={`w-8 h-8 rounded-xl ${currentMeta.iconBg} flex items-center justify-center shadow-2xs text-white shrink-0`}>
               {currentMeta.icon}
             </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none truncate">
                 Tools & Utilitas
               </div>
-              <div className="font-bold text-slate-900 text-sm sm:text-base leading-tight mt-0.5">
+              <div className="font-bold text-slate-900 text-xs sm:text-sm leading-tight mt-0.5 truncate">
                 {currentMeta.title}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Quick Broadcast Intercom Button & Sound Controls */}
-        <div className="flex items-center gap-2">
-          {onOpenBroadcast && (
+        {/* Right: Public Todo Toggle & Non-obstructive Robot Mascot */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Single Public Todo Toggle Button */}
+          {onToggleTodo && (
             <button
               type="button"
-              onClick={onOpenBroadcast}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 border border-blue-500/50"
-              title="Kirim / Buka Pesan Siaran Intercom"
+              onClick={onToggleTodo}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs relative ${
+                isTodoOpen
+                  ? 'bg-orange-100 text-orange-950 border-orange-300 ring-1 ring-orange-400'
+                  : 'bg-white hover:bg-orange-50 text-orange-900 border-slate-200 hover:border-orange-300'
+              }`}
+              title={isTodoOpen ? 'Tutup Public Todo' : 'Buka Public Todo Tim'}
             >
-              <Radio size={14} className="text-amber-300 animate-pulse shrink-0" />
-              <span className="hidden sm:inline">Pesan Siaran</span>
-              {broadcastCount > 0 && (
-                <span className="bg-amber-400 text-slate-900 px-1.5 py-0.2 rounded-full text-[10px] font-black">
-                  {broadcastCount}
+              <ListTodo size={13} className="text-orange-700" />
+              <span className="hidden sm:inline">{isTodoOpen ? 'Tutup Todo' : 'Public Todo'}</span>
+              {todoCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-orange-100 border border-orange-200 text-orange-800 text-[9px] font-black">
+                  {todoCount}
                 </span>
               )}
             </button>
           )}
 
-          {onToggleSound && (
-            <button
-              type="button"
-              onClick={onToggleSound}
-              className={`p-2 rounded-xl border text-xs font-bold flex items-center transition-all cursor-pointer ${
-                soundEnabled
-                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                  : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
-              }`}
-              title={soundEnabled ? 'Suara Siaran Aktif' : 'Suara Siaran Mute'}
-            >
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </button>
-          )}
+          {/* Robot Companion - Positioned in the header, never obstructs workspace content */}
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-200/80 px-2 py-1 rounded-xl shadow-2xs">
+            <FloatingRobotCompanion 
+              onSendBroadcast={onSendBroadcast || (async () => {})}
+              latestBroadcast={latestBroadcast || null}
+              recentMessages={recentMessages || []}
+              soundEnabled={soundEnabled}
+              onToggleSound={onToggleSound || (() => {})}
+              currentUser={currentUser}
+              isAdmin={isAdmin}
+              onDeleteMessage={onDeleteMessage}
+              mode="inline"
+              className="w-7 h-7 sm:w-8 sm:h-8 shrink-0"
+            />
+            <div className="hidden md:block text-left pr-1 select-none">
+              <div className="text-[10px] font-black text-blue-900 leading-none">KinoBot</div>
+              <div className="text-[9px] text-slate-500 font-medium leading-tight">Asisten Logistik</div>
+            </div>
+          </div>
         </div>
       </div>
 

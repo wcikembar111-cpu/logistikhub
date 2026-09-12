@@ -454,41 +454,6 @@ export function Sidebar({
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 animate-pulse" />
               )}
             </button>
-
-            {/* Pesan Siaran Realtime Nav Item */}
-            <button
-              type="button"
-              onClick={() => {
-                if (onOpenBroadcast) {
-                  onOpenBroadcast();
-                }
-              }}
-              className="w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer bg-gradient-to-r from-white to-blue-50/20 hover:from-white hover:to-blue-50/60 text-slate-700 hover:text-blue-900 border border-blue-100/70 hover:border-blue-300 shadow-2xs group"
-              title="Buka Intercom & Pesan Siaran Realtime"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-white to-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                  <Radio size={13} className="text-blue-600 animate-pulse" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold truncate block">
-                      Pesan Siaran
-                    </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  </div>
-                  <span className="text-[10px] text-slate-400 block truncate">
-                    {latestBroadcast ? `[${latestBroadcast.sender_name}]: ${latestBroadcast.message}` : 'Intercom Siaran Realtime'}
-                  </span>
-                </div>
-              </div>
-
-              {broadcastCount > 0 && (
-                <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0">
-                  {broadcastCount}
-                </span>
-              )}
-            </button>
           </div>
 
           {/* 2. Daftar Tools & Utilitas */}
@@ -522,29 +487,19 @@ export function Sidebar({
 
         {/* Sidebar Footer: User Status & System Info */}
         <div className="p-2.5 border-t border-blue-100/70 bg-gradient-to-r from-white via-blue-50/30 to-sky-50/30 shrink-0">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-white to-blue-100 text-blue-900 border border-blue-200 flex items-center justify-center text-[11px] font-bold shrink-0 shadow-2xs">
-                {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-white to-blue-100 text-blue-900 border border-blue-200 flex items-center justify-center text-[11px] font-bold shrink-0 shadow-2xs">
+              {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-800 truncate">
+                {currentUser?.nama_lengkap || currentUser?.nama || currentUser?.username || 'Operator Logistik'}
               </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-slate-800 truncate">
-                  {currentUser?.nama_lengkap || currentUser?.nama || currentUser?.username || 'Operator Logistik'}
-                </div>
-                <div className="text-[9px] text-slate-500 flex items-center gap-1 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                  <span>Sistem Online &bull; {onlineCount} User Aktif</span>
-                </div>
+              <div className="text-[9px] text-slate-500 flex items-center gap-1 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                <span>Sistem Online &bull; {onlineCount} User Aktif</span>
               </div>
             </div>
-
-            <button
-              onClick={onToggle}
-              className="p-1 rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
-              title="Perkecil / Tutup Sidebar Kiri"
-            >
-              <PanelLeftClose size={13} />
-            </button>
           </div>
         </div>
       </aside>

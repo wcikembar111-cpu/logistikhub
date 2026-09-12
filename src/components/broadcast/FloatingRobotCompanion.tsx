@@ -207,7 +207,7 @@ export function FloatingRobotCompanion({
         className={
           isInlineOrRelativeMode
             ? `relative flex items-center justify-center select-none ${className}`
-            : `fixed bottom-6 ${isSidebarOpen ? 'right-[380px]' : 'right-6'} z-40 transition-all duration-300 select-none ${className}`
+            : `fixed bottom-4 right-4 z-30 transition-all duration-300 select-none ${className}`
         }
       >
         {/* ROBOT MASKOT RESMI PT KINO INDONESIA (KINOBOT) */}
@@ -219,7 +219,7 @@ export function FloatingRobotCompanion({
           title="Robot Maskot DDS (Klik untuk kirim pesan siaran)"
         >
           <KinoRobotAvatar
-            size={mode === 'profile-avatar' ? 'sm' : 'md'}
+            size={mode === 'profile-avatar' || mode === 'inline' ? 'sm' : 'md'}
             isSpeaking={isSpeaking}
             isBlinking={isBlinking}
             isHovered={isHovered}

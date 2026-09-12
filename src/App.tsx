@@ -122,7 +122,7 @@ export default function App() {
 
   // Modern Navigation & Drawer States
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(true);
+  const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(false);
 
   const handleReplyPopupBroadcast = (senderName: string) => {
     dismissIncomingBroadcast();
@@ -243,21 +243,6 @@ export default function App() {
         } ${
           isTodoDrawerOpen ? '2xl:mr-[410px]' : '2xl:mr-0'
         }`}>
-          
-          {/* Floating Reopen Button if Sidebar is Closed */}
-          {!isSidebarOpen && (
-            <div className="mb-3">
-              <button
-                type="button"
-                onClick={() => setIsSidebarOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100/70 hover:from-white hover:to-blue-100 text-blue-900 text-xs font-bold shadow-2xs border border-blue-200 flex items-center gap-2 transition-all cursor-pointer hover:shadow-xs"
-                title="Buka Sidebar Tools & Utilitas"
-              >
-                <PanelLeftOpen size={15} className="text-blue-600" />
-                <span>Buka Sidebar Tools & Utilitas</span>
-              </button>
-            </div>
-          )}
 
           {/* VIEW 1: HALAMAN UTAMA (Main Dashboard) */}
           {currentView === 'home' ? (
@@ -270,7 +255,9 @@ export default function App() {
                 isOperator={!isAdmin}
                 todos={todos}
                 onOpenTodo={() => setIsTodoDrawerOpen(prev => !prev)}
+                isTodoOpen={isTodoDrawerOpen}
                 onOpenSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                isSidebarOpen={isSidebarOpen}
                 onOpenLogin={() => setShowLoginModal(true)}
                 onOpenUserManagement={() => setShowUserManagementModal(true)}
                 onLogout={() => logout('manual')}
@@ -344,6 +331,16 @@ export default function App() {
                 notificationPermission={notificationPermission}
                 onRequestNotificationPermission={requestNotificationPermission}
                 isNotificationSupported={isNotificationSupported}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
+                isTodoOpen={isTodoDrawerOpen}
+                onToggleTodo={() => setIsTodoDrawerOpen(prev => !prev)}
+                todoCount={todos.filter(t => t.status !== 'close').length}
+                currentUser={user}
+                isAdmin={isAdmin}
+                onSendBroadcast={sendBroadcast}
+                recentMessages={broadcastMessages}
+                onDeleteMessage={deleteBroadcastMessage}
               />
             </ErrorBoundary>
           )}
@@ -366,22 +363,6 @@ export default function App() {
           onRefresh={refreshTodos} 
         />
       </div>
-
-      {/* Floating Robot Companion saat di Tool Workspace */}
-      {currentView === 'tool-workspace' && (
-        <FloatingRobotCompanion 
-          onSendBroadcast={sendBroadcast}
-          latestBroadcast={broadcastMessages[0] || null}
-          recentMessages={broadcastMessages}
-          soundEnabled={broadcastSoundEnabled}
-          onToggleSound={toggleBroadcastSound}
-          currentUser={user}
-          isAdmin={isAdmin}
-          onDeleteMessage={deleteBroadcastMessage}
-          isSidebarOpen={isSidebarOpen}
-          mode="floating-bottom"
-        />
-      )}
 
       {/* Robot Popups & Broadcast Notifiers - Hanya Tampil Saat Ada Pesan Masuk Realtime */}
       <FloatingRobotBroadcast

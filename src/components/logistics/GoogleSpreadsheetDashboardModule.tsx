@@ -28,7 +28,7 @@ import {
   AlertCircle,
   CheckCircle2,
   HelpCircle,
-  Sparkles,
+  Trash2,
   ExternalLink,
   Layers,
   BarChart3,
@@ -45,13 +45,9 @@ import {
   PackageCheck
 } from 'lucide-react';
 import { TriRelasiDashboardView } from './triRelasi/TriRelasiDashboardView';
+import { TargetMonitoringReportView } from './triRelasi/TargetMonitoringReportView';
+import { LargoSapComparisonView } from './triRelasi/LargoSapComparisonView';
 import { reconcileTriRelasi } from '../../utils/triRelasiReconciliation';
-import {
-  createSampleTriRelasiWorkbook,
-  SAMPLE_LARGO_ROWS,
-  SAMPLE_SAP_ROWS,
-  SAMPLE_TARGET_ROWS
-} from '../../data/triRelasiSampleData';
 import {
   TriRelasiItem,
   TriRelasiSummary,
@@ -70,58 +66,56 @@ interface ColumnMapping {
 const STORAGE_KEY_URL = 'google_spreadsheet_dashboard_url';
 const STORAGE_KEY_DATA = 'google_spreadsheet_cached_data';
 const STORAGE_KEY_MAP = 'google_spreadsheet_cached_map';
-const DEFAULT_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4/edit?gid=901676227#gid=901676227';
-
-// Sample dataset for instant demo
-const SAMPLE_SPREADSHEET_DATA = [
-  { 'No Dokumen': 'DO-2026-001', 'Tanggal': '2026-03-01', 'Kategori': 'Personal Care', 'Nama Barang': 'Eskulin Cologne 125ml', 'Qty': 480, 'Satuan': 'Btl', 'Status': 'Selesai', 'Lokasi': 'Gudang A-01' },
-  { 'No Dokumen': 'DO-2026-002', 'Tanggal': '2026-03-02', 'Kategori': 'Skin Care', 'Nama Barang': 'Face Wash Acno 100g', 'Qty': 350, 'Satuan': 'Pcs', 'Status': 'Dalam Proses', 'Lokasi': 'Gudang B-03' },
-  { 'No Dokumen': 'DO-2026-003', 'Tanggal': '2026-03-03', 'Kategori': 'Personal Care', 'Nama Barang': 'Body Mist Temptation', 'Qty': 620, 'Satuan': 'Btl', 'Status': 'Selesai', 'Lokasi': 'Gudang A-02' },
-  { 'No Dokumen': 'DO-2026-004', 'Tanggal': '2026-03-04', 'Kategori': 'Hair Care', 'Nama Barang': 'Hair Serum Herbal 50ml', 'Qty': 210, 'Satuan': 'Btl', 'Status': 'Tertunda', 'Lokasi': 'Gudang C-01' },
-  { 'No Dokumen': 'DO-2026-005', 'Tanggal': '2026-03-05', 'Kategori': 'Baby Care', 'Nama Barang': 'Baby Powder Chamomile 150g', 'Qty': 540, 'Satuan': 'Pcs', 'Status': 'Selesai', 'Lokasi': 'Gudang A-04' },
-  { 'No Dokumen': 'DO-2026-006', 'Tanggal': '2026-03-06', 'Kategori': 'Skin Care', 'Nama Barang': 'Moisturizer Gel 50ml', 'Qty': 190, 'Satuan': 'Pcs', 'Status': 'Dalam Proses', 'Lokasi': 'Gudang B-01' },
-  { 'No Dokumen': 'DO-2026-007', 'Tanggal': '2026-03-07', 'Kategori': 'Personal Care', 'Nama Barang': 'Roll On Deodorant 50ml', 'Qty': 800, 'Satuan': 'Btl', 'Status': 'Selesai', 'Lokasi': 'Gudang A-03' },
-  { 'No Dokumen': 'DO-2026-008', 'Tanggal': '2026-03-08', 'Kategori': 'Hair Care', 'Nama Barang': 'Conditioner Silky 200ml', 'Qty': 310, 'Satuan': 'Btl', 'Status': 'Pending', 'Lokasi': 'Gudang C-02' },
-  { 'No Dokumen': 'DO-2026-009', 'Tanggal': '2026-03-09', 'Kategori': 'Oral Care', 'Nama Barang': 'Toothpaste Herbal 120g', 'Qty': 920, 'Satuan': 'Pcs', 'Status': 'Selesai', 'Lokasi': 'Gudang D-01' },
-  { 'No Dokumen': 'DO-2026-010', 'Tanggal': '2026-03-10', 'Kategori': 'Baby Care', 'Nama Barang': 'Baby Wipes Sensitive 50s', 'Qty': 430, 'Satuan': 'Pck', 'Status': 'Dalam Proses', 'Lokasi': 'Gudang A-05' }
-];
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#64748B'];
 
 export function GoogleSpreadsheetDashboardModule() {
   // State
-  const [spreadsheetUrl, setSpreadsheetUrl] = useState(() => localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_SPREADSHEET_URL);
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState<string>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_URL);
+    if (saved && (saved.includes('1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4') || saved.includes('901676227'))) {
+      localStorage.removeItem(STORAGE_KEY_URL);
+      return '';
+    }
+    return saved || '';
+  });
   const [tableData, setTableData] = useState<Record<string, any>[]>(() => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY_DATA);
-      return cached ? JSON.parse(cached) : SAMPLE_SPREADSHEET_DATA;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Exclude obsolete mock data if it was cached previously
+        if (Array.isArray(parsed) && parsed.some((r: any) => r['No Dokumen'] === 'DO-2026-001' || r['Nama Barang'] === 'Eskulin Cologne 125ml')) {
+          localStorage.removeItem(STORAGE_KEY_DATA);
+          return [];
+        }
+        return Array.isArray(parsed) ? parsed : [];
+      }
+      return [];
     } catch {
-      return SAMPLE_SPREADSHEET_DATA;
+      return [];
     }
   });
 
   const [rawWorkbook, setRawWorkbook] = useState<XLSX.WorkBook | null>(null);
-  const [availableSheets, setAvailableSheets] = useState<string[]>(['Data Sheet']);
-  const [activeSheetName, setActiveSheetName] = useState<string>('Data Sheet');
-  const [sourceType, setSourceType] = useState<'spreadsheet' | 'file' | 'sample'>('spreadsheet');
+  const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+  const [activeSheetName, setActiveSheetName] = useState<string>('');
+  const [sourceType, setSourceType] = useState<'spreadsheet' | 'file'>('spreadsheet');
   const [sourceName, setSourceName] = useState<string>('Google Spreadsheet Live');
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
 
-  // Tri-Relasi State (Largo <-> SAP <-> Target)
+  // Tri-Relasi State (Largo <-> SAP <-> Target) - strictly computed from spreadsheet sheets
   const [triRelasiResult, setTriRelasiResult] = useState<{
     items: TriRelasiItem[];
     summary: TriRelasiSummary;
-  } | null>(() => {
-    // Initialize with sample 3-sheet reconciliation
-    return reconcileTriRelasi(SAMPLE_LARGO_ROWS, SAMPLE_SAP_ROWS, SAMPLE_TARGET_ROWS);
-  });
-  const [activeMainTab, setActiveMainTab] = useState<'tri-relasi' | 'largo' | 'sap' | 'target' | 'explorer'>('tri-relasi');
-  const [detectedLargoSheet, setDetectedLargoSheet] = useState<string | undefined>('largo');
-  const [detectedSapSheet, setDetectedSapSheet] = useState<string | undefined>('Sap');
-  const [detectedTargetSheet, setDetectedTargetSheet] = useState<string | undefined>('target');
-  const [largoRowsCount, setLargoRowsCount] = useState<number>(SAMPLE_LARGO_ROWS.length);
-  const [sapRowsCount, setSapRowsCount] = useState<number>(SAMPLE_SAP_ROWS.length);
-  const [targetRowsCount, setTargetRowsCount] = useState<number>(SAMPLE_TARGET_ROWS.length);
+  } | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<'tri-relasi' | 'target-monitoring' | 'largo-sap' | 'explorer'>('tri-relasi');
+  const [detectedLargoSheet, setDetectedLargoSheet] = useState<string | undefined>(undefined);
+  const [detectedSapSheet, setDetectedSapSheet] = useState<string | undefined>(undefined);
+  const [detectedTargetSheet, setDetectedTargetSheet] = useState<string | undefined>(undefined);
+  const [largoRowsCount, setLargoRowsCount] = useState<number>(0);
+  const [sapRowsCount, setSapRowsCount] = useState<number>(0);
+  const [targetRowsCount, setTargetRowsCount] = useState<number>(0);
 
   // Loading & Alerts
   const [isLoading, setIsLoading] = useState(false);
@@ -145,11 +139,22 @@ export function GoogleSpreadsheetDashboardModule() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Detect Column Names
+  // Detect Column Names directly from spreadsheet rows
   const availableColumns = useMemo(() => {
     if (tableData.length === 0) return [];
-    const keys = Object.keys(tableData[0]);
-    return keys;
+    const colSet = new Set<string>();
+    const limit = Math.min(tableData.length, 100);
+    for (let i = 0; i < limit; i++) {
+      const row = tableData[i];
+      if (row) {
+        Object.keys(row).forEach(k => {
+          if (k && !k.startsWith('__EMPTY')) {
+            colSet.add(k);
+          }
+        });
+      }
+    }
+    return Array.from(colSet);
   }, [tableData]);
 
   // Dynamic Column Mapping for Visualizations
@@ -287,13 +292,23 @@ export function GoogleSpreadsheetDashboardModule() {
     setCurrentPage(1);
   };
 
-  // Load sample 3-sheet workbook
-  const loadSampleTriRelasi = () => {
-    const sampleWb = createSampleTriRelasiWorkbook();
-    processWorkbook(sampleWb);
-    setSourceType('sample');
-    setSourceName('Sampel 3 Sheet: Largo, SAP & Target');
-    setSuccessMessage('Berhasil memuat dataset sampel 3 sheet: Largo, SAP, dan Target dengan rekonsiliasi & persentase target.');
+  // Reset and clear loaded spreadsheet data and cache
+  const clearSpreadsheetData = () => {
+    setTableData([]);
+    setRawWorkbook(null);
+    setAvailableSheets([]);
+    setActiveSheetName('');
+    setTriRelasiResult(null);
+    setDetectedLargoSheet(undefined);
+    setDetectedSapSheet(undefined);
+    setDetectedTargetSheet(undefined);
+    setLargoRowsCount(0);
+    setSapRowsCount(0);
+    setTargetRowsCount(0);
+    localStorage.removeItem(STORAGE_KEY_DATA);
+    localStorage.removeItem(STORAGE_KEY_MAP);
+    setSuccessMessage('Data spreadsheet dan cache telah dibersihkan.');
+    setErrorMessage(null);
   };
 
   // Parse CSV text into table data
@@ -460,17 +475,12 @@ export function GoogleSpreadsheetDashboardModule() {
     }
   };
 
-  // Load Demo Data
-  const loadDemoData = () => {
-    setTableData(SAMPLE_SPREADSHEET_DATA);
-    setSourceType('sample');
-    setSourceName('Data Contoh Logistik & Distribusi');
-    setAvailableSheets(['Master_Logistik_Sample']);
-    setActiveSheetName('Master_Logistik_Sample');
-    setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
-    setSuccessMessage('Data contoh berhasil dimuat.');
-    setCurrentPage(1);
-  };
+  // Auto-fetch real spreadsheet on initial mount if URL is configured and no data loaded yet
+  useEffect(() => {
+    if (spreadsheetUrl && tableData.length === 0 && !triRelasiResult && !isLoading) {
+      fetchFromGoogleSpreadsheet(spreadsheetUrl);
+    }
+  }, []);
 
   // Auto-refresh timer
   useEffect(() => {
@@ -775,15 +785,17 @@ export function GoogleSpreadsheetDashboardModule() {
               <span>Petakan Kolom</span>
             </button>
 
-            <button
-              type="button"
-              onClick={loadDemoData}
-              className="px-3 py-2 text-xs font-semibold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Muat data contoh logistik & distribusi"
-            >
-              <Sparkles size={15} className="text-amber-600" />
-              <span>Data Contoh</span>
-            </button>
+            {tableData.length > 0 && (
+              <button
+                type="button"
+                onClick={clearSpreadsheetData}
+                className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 hover:border-rose-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Bersihkan cache dan putuskan data saat ini"
+              >
+                <Trash2 size={15} className="text-slate-400 hover:text-rose-600" />
+                <span>Reset Data</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -804,22 +816,12 @@ export function GoogleSpreadsheetDashboardModule() {
               />
               {spreadsheetUrl && (
                 <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
-                  {spreadsheetUrl !== DEFAULT_SPREADSHEET_URL && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSpreadsheetUrl(DEFAULT_SPREADSHEET_URL);
-                        localStorage.setItem(STORAGE_KEY_URL, DEFAULT_SPREADSHEET_URL);
-                      }}
-                      className="text-[11px] text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer"
-                      title="Kembalikan ke Link Contoh Default"
-                    >
-                      Reset Default
-                    </button>
-                  )}
                   <button
                     type="button"
-                    onClick={() => setSpreadsheetUrl('')}
+                    onClick={() => {
+                      setSpreadsheetUrl('');
+                      localStorage.removeItem(STORAGE_KEY_URL);
+                    }}
                     className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
                     title="Hapus tautan"
                   >
@@ -840,7 +842,7 @@ export function GoogleSpreadsheetDashboardModule() {
             </button>
           </div>
 
-          {/* Local File Upload, Sample 3-Sheet Loader & Auto-Sync selector */}
+          {/* Local File Upload & Auto-Sync selector */}
           <div className="lg:col-span-4 flex items-center gap-2">
             <input
               type="file"
@@ -852,25 +854,15 @@ export function GoogleSpreadsheetDashboardModule() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 px-2.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200/80"
+              className="flex-1 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200/80"
               title="Upload file spreadsheet lokal dari komputer"
             >
               <UploadCloud size={15} className="text-slate-600" />
-              <span className="truncate">Upload File</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={loadSampleTriRelasi}
-              className="px-2.5 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-indigo-200/80 shrink-0"
-              title="Muat Data Sampel 3 Sheet (Largo, SAP, Target)"
-            >
-              <Sparkles size={14} className="text-indigo-600" />
-              <span>Sampel 3 Sheet</span>
+              <span className="truncate">Upload File Excel / CSV</span>
             </button>
 
             {/* Auto-sync Interval */}
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 shrink-0">
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 shrink-0">
               <Clock size={13} className="text-slate-400" />
               <select
                 value={autoSyncMinutes}
@@ -974,27 +966,6 @@ export function GoogleSpreadsheetDashboardModule() {
                     <HelpCircle size={14} />
                     <span>Panduan Setting Link Publik</span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSpreadsheetUrl(DEFAULT_SPREADSHEET_URL);
-                      fetchFromGoogleSpreadsheet(DEFAULT_SPREADSHEET_URL);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs border border-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <RefreshCw size={13} />
-                    <span>Gunakan Spreadsheet Default</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={loadDemoData}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs border border-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Sparkles size={14} className="text-amber-500" />
-                    <span>Coba Data Contoh</span>
-                  </button>
                 </div>
               </div>
 
@@ -1028,96 +999,181 @@ export function GoogleSpreadsheetDashboardModule() {
         )}
       </div>
 
-      {/* Main Tab Navigation: Tri-Relasi vs Individual Sheets */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
-        {triRelasiResult && (
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('tri-relasi')}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activeMainTab === 'tri-relasi'
-                ? 'bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-sm ring-2 ring-indigo-500/20'
-                : 'bg-indigo-50 text-indigo-900 hover:bg-indigo-100 border border-indigo-200'
-            }`}
-          >
-            <Layers size={16} className={activeMainTab === 'tri-relasi' ? 'text-emerald-400' : 'text-indigo-600'} />
-            <span>Dashboard Tri-Relasi (Largo ⟷ SAP ⟷ Target)</span>
-            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] px-2 py-0.5 rounded-full font-bold">
-              {triRelasiResult.summary.matchRatePct.toFixed(0)}% Match
-            </span>
-          </button>
-        )}
+      {/* Main Tab Navigation: Tri-Relasi or All Detected Sheets from Spreadsheet */}
+      {(availableSheets.length > 0 || triRelasiResult) && (
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
+          {triRelasiResult && (
+            <>
+              {/* Tab 1: Tri-Relasi All-in-one */}
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('tri-relasi')}
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  activeMainTab === 'tri-relasi'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Layers size={15} className={activeMainTab === 'tri-relasi' ? 'text-indigo-400' : 'text-indigo-600'} />
+                <span>Tri-Relasi</span>
+                <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeMainTab === 'tri-relasi' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  Ringkasan
+                </span>
+              </button>
 
-        {detectedLargoSheet && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMainTab('largo');
-              handleSheetChange(detectedLargoSheet);
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeMainTab === 'largo'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <Warehouse size={15} />
-            <span>Sheet Largo ({largoRowsCount})</span>
-          </button>
-        )}
+              {/* Tab 2: Monitoring Target (Qty Convert) */}
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('target-monitoring')}
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  activeMainTab === 'target-monitoring'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Target size={15} className={activeMainTab === 'target-monitoring' ? 'text-emerald-300' : 'text-emerald-600'} />
+                <span>Monitoring Target</span>
+                <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeMainTab === 'target-monitoring' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}>
+                  {triRelasiResult.summary.targetReadyFulfilledPct.toFixed(0)}%
+                </span>
+              </button>
 
-        {detectedSapSheet && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMainTab('sap');
-              handleSheetChange(detectedSapSheet);
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeMainTab === 'sap'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <Building2 size={15} />
-            <span>Sheet SAP ({sapRowsCount})</span>
-          </button>
-        )}
+              {/* Tab 3: Perbandingan Largo vs SAP */}
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('largo-sap')}
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  activeMainTab === 'largo-sap'
+                    ? 'bg-blue-700 text-white shadow-xs'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Boxes size={15} className={activeMainTab === 'largo-sap' ? 'text-blue-300' : 'text-blue-600'} />
+                <span>Largo vs SAP</span>
+                <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeMainTab === 'largo-sap' ? 'bg-blue-800 text-blue-100' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                }`}>
+                  {triRelasiResult.summary.matchRatePct.toFixed(0)}%
+                </span>
+              </button>
+            </>
+          )}
 
-        {detectedTargetSheet && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMainTab('target');
-              handleSheetChange(detectedTargetSheet);
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeMainTab === 'target'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <Target size={15} />
-            <span>Sheet Target ({targetRowsCount})</span>
-          </button>
-        )}
+          {/* Dynamic Sheet Buttons directly from Spreadsheet */}
+          {availableSheets.map((sheetName) => {
+            const isActive = activeMainTab === 'explorer' && activeSheetName === sheetName;
+            const isLargo = /largo/i.test(sheetName);
+            const isSap = /^sap$|sap[\s_-]/i.test(sheetName) || /sap/i.test(sheetName);
+            const isTarget = /target/i.test(sheetName);
 
-        <button
-          type="button"
-          onClick={() => setActiveMainTab('explorer')}
-          className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeMainTab === 'explorer'
-              ? 'bg-slate-800 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <FileSpreadsheet size={15} />
-          <span>Eksplorasi Per Sheet</span>
-        </button>
-      </div>
+            let rowCount = 0;
+            if (isLargo && largoRowsCount > 0) rowCount = largoRowsCount;
+            else if (isSap && sapRowsCount > 0) rowCount = sapRowsCount;
+            else if (isTarget && targetRowsCount > 0) rowCount = targetRowsCount;
+            else if (activeSheetName === sheetName) rowCount = tableData.length;
 
-      {activeMainTab === 'tri-relasi' && triRelasiResult ? (
+            return (
+              <button
+                key={sheetName}
+                type="button"
+                onClick={() => {
+                  setActiveMainTab('explorer');
+                  handleSheetChange(sheetName);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-slate-800 text-white shadow-sm ring-2 ring-slate-700'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                {isLargo ? <Warehouse size={14} /> : isSap ? <Building2 size={14} /> : isTarget ? <Target size={14} /> : <FileSpreadsheet size={14} />}
+                <span>Sheet: {sheetName}</span>
+                {rowCount > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                    isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {rowCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {tableData.length === 0 && !triRelasiResult ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-xs space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
+            <FileSpreadsheet size={32} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold text-slate-900">Belum Ada Data Spreadsheet Terhubung</h3>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+              Aplikasi membaca seluruh data secara langsung dari Google Spreadsheet atau file Excel/CSV lokal tanpa mock / data dummy. Nama sheet, kolom, dan isi tabel dibaca secara otomatis.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+                <FileSpreadsheet size={16} />
+                <span>Opsi 1: Google Spreadsheet</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Tempel link Google Spreadsheet pada kolom input di atas lalu klik tombol <strong>Sinkronkan</strong>. Pastikan akses disetel ke <em>"Siapa saja yang memiliki link"</em> dengan peran <em>"Pelihat"</em>.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs">
+                <UploadCloud size={16} />
+                <span>Opsi 2: Upload File Excel / CSV</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Gunakan tombol <strong>Upload File</strong> di atas untuk membaca file <code>.xlsx</code>, <code>.xls</code>, atau <code>.csv</code> langsung dari perangkat Anda.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+            >
+              <UploadCloud size={16} />
+              <span>Upload File Excel / CSV Sekarang</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <HelpCircle size={16} />
+              <span>Panduan Akses Spreadsheet</span>
+            </button>
+          </div>
+        </div>
+      ) : activeMainTab === 'tri-relasi' && triRelasiResult ? (
         <TriRelasiDashboardView
+          items={triRelasiResult.items}
+          summary={triRelasiResult.summary}
+          sourceName={sourceName}
+          lastSyncTime={lastSyncTime}
+        />
+      ) : activeMainTab === 'target-monitoring' && triRelasiResult ? (
+        <TargetMonitoringReportView
+          items={triRelasiResult.items}
+          summary={triRelasiResult.summary}
+          sourceName={sourceName}
+          lastSyncTime={lastSyncTime}
+        />
+      ) : activeMainTab === 'largo-sap' && triRelasiResult ? (
+        <LargoSapComparisonView
           items={triRelasiResult.items}
           summary={triRelasiResult.summary}
           sourceName={sourceName}
@@ -1419,7 +1475,7 @@ export function GoogleSpreadsheetDashboardModule() {
             <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 select-none">
               <tr>
                 <th className="p-3 w-12 text-center">No</th>
-                {availableColumns.slice(0, 10).map((col) => (
+                {availableColumns.map((col) => (
                   <th
                     key={col}
                     onClick={() => handleSort(col)}
@@ -1445,7 +1501,7 @@ export function GoogleSpreadsheetDashboardModule() {
                   return (
                     <tr key={idx} className="hover:bg-emerald-50/40 transition-colors">
                       <td className="p-3 text-center font-mono text-slate-400">{actualIndex}</td>
-                      {availableColumns.slice(0, 10).map((col) => {
+                      {availableColumns.map((col) => {
                         const val = row[col];
                         const isStatus = col === mapping.statusCol;
                         return (

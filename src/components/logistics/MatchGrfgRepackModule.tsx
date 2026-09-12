@@ -40,9 +40,7 @@ const RULES = {
 const KONVERSI_SHEET_NAME = 'KONVERSI';
 const STORAGE_KEY_KONVERSI = 'match_grfg_master_konversi_cache';
 const STORAGE_KEY_LAST_SYNC = 'match_grfg_last_sync';
-const DEFAULT_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4/edit?gid=901676227#gid=901676227';
-const DEFAULT_SHEET_ID = '1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4';
-const DEFAULT_GID = '901676227';
+const STORAGE_KEY_SPREADSHEET_URL = 'match_grfg_spreadsheet_url';
 
 const FIELDS_REQUIRED = {
   material: ['Material', 'Material Number', 'No. Material', 'Mat', 'Material No'],
@@ -77,6 +75,10 @@ export function MatchGrfgRepackModule() {
   const [hasAnalyzed, setHasAnalyzed] = useState<boolean>(false);
 
   // Master Konversi state (Map: materialKey -> factor)
+  const [customSpreadsheetUrl, setCustomSpreadsheetUrl] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_SPREADSHEET_URL) || '';
+  });
+  const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
   const [konversiMap, setKonversiMap] = useState<Map<string, number>>(() => {
     try {
       const cached = localStorage.getItem(STORAGE_KEY_KONVERSI);
@@ -535,10 +537,34 @@ export function MatchGrfgRepackModule() {
   /* =========================================================
      SINKRONISASI KONVERSI DARI GOOGLE SPREADSHEET (ONLINE)
      ========================================================= */
-  const syncKonversiFromGoogleSheets = async (forceRefresh = false) => {
+  const parseGoogleSpreadsheetUrl = (url: string): { sheetId: string; gid: string } | null => {
+    if (!url) return null;
+    const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
+    if (!idMatch) return null;
+    return {
+      sheetId: idMatch[1],
+      gid: gidMatch ? gidMatch[1] : '0'
+    };
+  };
+
+  const syncKonversiFromGoogleSheets = async (forceRefresh = false, targetUrl?: string) => {
+    const url = (targetUrl !== undefined ? targetUrl : customSpreadsheetUrl).trim();
+    if (!url) {
+      showToast('Harap masukkan URL Google Spreadsheet publik terlebih dahulu.', 'warning');
+      setIsEditingUrl(true);
+      return;
+    }
+
+    const parsedInfo = parseGoogleSpreadsheetUrl(url);
+    if (!parsedInfo) {
+      showToast('Format URL Google Spreadsheet tidak valid. Contoh: https://docs.google.com/spreadsheets/d/...', 'error');
+      return;
+    }
+
     setIsSyncingKonversi(true);
     try {
-      const csvText = await fetchKonversiCsv(DEFAULT_SHEET_ID, DEFAULT_GID, forceRefresh);
+      const csvText = await fetchKonversiCsv(parsedInfo.sheetId, parsedInfo.gid, forceRefresh);
 
       const workbook = XLSX.read(csvText, { type: 'string' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -546,10 +572,11 @@ export function MatchGrfgRepackModule() {
       const extracted = extractKonversiFromSheet(parsed.rows);
 
       if (extracted.size === 0) {
-        throw new Error('Tidak ada data material yang ditemukan dalam sheet KONVERSI Google Spreadsheet.');
+        throw new Error('Tidak ada data material yang ditemukan dalam sheet Google Spreadsheet.');
       }
 
       setKonversiMap(extracted);
+      localStorage.setItem(STORAGE_KEY_SPREADSHEET_URL, url);
       const nowStr = new Date().toLocaleString('id-ID', { 
         day: '2-digit', 
         month: 'short', 
@@ -565,6 +592,7 @@ export function MatchGrfgRepackModule() {
       if (detailRows.length > 0) {
         recalculateWithNewKonversi(extracted);
       }
+      setIsEditingUrl(false);
     } catch (err: any) {
       console.warn('Sync Konversi notice:', err?.message || err);
       showToast(`Gagal sinkronisasi konversi: ${err.message}`, 'error');
@@ -573,10 +601,10 @@ export function MatchGrfgRepackModule() {
     }
   };
 
-  // Auto-sync on component mount if cache is empty
+  // Only sync on component mount if user has already configured a custom spreadsheet URL
   useEffect(() => {
-    if (konversiMap.size === 0) {
-      syncKonversiFromGoogleSheets(false);
+    if (customSpreadsheetUrl && konversiMap.size === 0) {
+      syncKonversiFromGoogleSheets(false, customSpreadsheetUrl);
     }
   }, []);
 
@@ -973,15 +1001,17 @@ export function MatchGrfgRepackModule() {
                 <RefreshCw size={13} className={isSyncingKonversi ? 'animate-spin' : ''} />
                 {isSyncingKonversi ? 'Menyinkronkan...' : 'Sinkronkan Ulang'}
               </button>
-              <a
-                href={DEFAULT_SPREADSHEET_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs"
-              >
-                <ExternalLink size={13} className="text-slate-500" />
-                Buka Spreadsheet
-              </a>
+              {customSpreadsheetUrl && (
+                <a
+                  href={customSpreadsheetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <ExternalLink size={13} className="text-slate-500" />
+                  Buka Spreadsheet
+                </a>
+              )}
               <input 
                 ref={konversiFileInputRef}
                 type="file"
@@ -1486,15 +1516,17 @@ export function MatchGrfgRepackModule() {
                       <RefreshCw size={13} className={isSyncingKonversi ? 'animate-spin' : ''} />
                       {isSyncingKonversi ? 'Menyinkronkan...' : 'Sinkronkan Ulang'}
                     </button>
-                    <a
-                      href={DEFAULT_SPREADSHEET_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-2xs transition-colors"
-                    >
-                      <ExternalLink size={13} className="text-slate-500" />
-                      Buka Spreadsheet
-                    </a>
+                    {customSpreadsheetUrl && (
+                      <a
+                        href={customSpreadsheetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-2xs transition-colors"
+                      >
+                        <ExternalLink size={13} className="text-slate-500" />
+                        Buka Spreadsheet
+                      </a>
+                    )}
                     <button
                       type="button"
                       onClick={() => konversiFileInputRef.current?.click()}

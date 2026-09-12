@@ -52,7 +52,9 @@ interface HeroProps {
   isOperator?: boolean;
   todos?: TodoData[];
   onOpenTodo?: () => void;
+  isTodoOpen?: boolean;
   onOpenSidebar?: () => void;
+  isSidebarOpen?: boolean;
   onOpenLogin?: () => void;
   onOpenUserManagement?: () => void;
   onOpenSqlScript?: () => void;
@@ -78,7 +80,9 @@ export function Hero({
   isOperator = false,
   todos = [], 
   onOpenTodo,
+  isTodoOpen = false,
   onOpenSidebar,
+  isSidebarOpen = true,
   onOpenLogin,
   onOpenUserManagement,
   onOpenSqlScript,
@@ -1113,11 +1117,15 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onOpenSidebar}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-blue-50 to-blue-100/80 hover:from-white hover:to-blue-100 text-blue-900 border border-blue-200 hover:border-blue-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Buka / Tutup Sidebar Tools & Utilitas"
+                className={`px-2.5 py-1.5 rounded-xl border font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isSidebarOpen
+                    ? 'bg-blue-100 text-blue-900 border-blue-300 hover:bg-blue-200/80'
+                    : 'bg-gradient-to-r from-white via-blue-50 to-blue-100/80 hover:from-white hover:to-blue-100 text-blue-900 border-blue-200 hover:border-blue-300'
+                }`}
+                title={isSidebarOpen ? 'Tutup Sidebar Tools & Utilitas' : 'Buka Sidebar Tools & Utilitas'}
               >
                 <Wrench size={12} className="text-blue-700" />
-                <span>Tools & Utilitas</span>
+                <span>{isSidebarOpen ? 'Tutup Sidebar' : 'Buka Sidebar'}</span>
               </button>
             )}
 
@@ -1126,11 +1134,15 @@ export function Hero({
               <button 
                 type="button"
                 onClick={onOpenTodo}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-white via-orange-50 to-orange-100/80 hover:from-white hover:to-orange-100 text-orange-900 border border-orange-200 hover:border-orange-300 font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer relative"
-                title="Buka Panel Public Todo Tim"
+                className={`px-2.5 py-1.5 rounded-xl border font-bold text-[10px] sm:text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer relative ${
+                  isTodoOpen
+                    ? 'bg-orange-100 text-orange-950 border-orange-300 ring-1 ring-orange-400'
+                    : 'bg-gradient-to-r from-white via-orange-50 to-orange-100/80 hover:from-white hover:to-orange-100 text-orange-900 border-orange-200 hover:border-orange-300'
+                }`}
+                title={isTodoOpen ? 'Tutup Public Todo Tim' : 'Buka Panel Public Todo Tim'}
               >
                 <ListTodo size={12} className="text-orange-700" />
-                <span>Public Todo</span>
+                <span>{isTodoOpen ? 'Tutup Todo' : 'Public Todo'}</span>
                 {todos && todos.filter(t => t.status !== 'close').length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-orange-100 border border-orange-200 text-orange-800 text-[9px] font-black">
                     {todos.filter(t => t.status !== 'close').length}
