@@ -43,6 +43,7 @@ interface AuthContextType {
   permissions: UserPermissions;
   inactivityWarning: InactivityWarningState;
   login: (usernameInput: string, pinInput: string) => Promise<AuthLoginResult>;
+  quickLoginDds: () => Promise<AuthLoginResult>;
   logout: (reason?: 'manual' | 'inactivity' | string) => void;
   resetInactivityTimer: () => void;
   refreshSession: () => Promise<void>;
@@ -342,6 +343,121 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  /**
+   * Akses Cepat Login khusus User DDS tanpa harus mengetik Username dan PIN secara manual.
+   * Dilengkapi fallback otomatis dan hak akses penuh Admin/Supervisor.
+   */
+  const quickLoginDds = async (): Promise<AuthLoginResult> => {
+    try {
+      let targetUserRecord: any = null;
+
+      try {
+        // Cek apakah user 'dds' sudah ada di database Supabase
+        const { data: ddsRecord } = await supabase
+          .from('users')
+          .select('*')
+          .ilike('username', 'dds')
+          .maybeSingle();
+
+        if (ddsRecord) {
+          targetUserRecord = ddsRecord;
+        } else {
+          // Coba fallback username 'dede'
+          const { data: dedeRecord } = await supabase
+            .from('users')
+            .select('*')
+            .ilike('username', 'dede')
+            .maybeSingle();
+          if (dedeRecord) {
+            targetUserRecord = dedeRecord;
+          }
+        }
+      } catch (dbErr) {
+        console.warn('Supabase lookup during quickLoginDds failed, continuing with fallback:', dbErr);
+      }
+
+      // Pastikan hak akses penuh untuk User DDS
+      const userPermissions: UserPermissions = {
+        canInputIncoming: targetUserRecord?.permissions?.canInputIncoming ?? true,
+        canTally: targetUserRecord?.permissions?.canTally ?? true,
+        canEditMasterBarang: targetUserRecord?.permissions?.canEditMasterBarang ?? true,
+        canManageUsers: targetUserRecord?.permissions?.canManageUsers ?? true,
+        canApproveQC: targetUserRecord?.permissions?.canApproveQC ?? true,
+        canAccessDatabase: targetUserRecord?.permissions?.canAccessDatabase ?? true,
+      };
+
+      const userSession: UserSession = {
+        id: targetUserRecord?.id || 'usr-dds-quick',
+        username: targetUserRecord?.username || 'dds',
+        nama: targetUserRecord?.nama || 'DDS (Dede Suparman)',
+        role: targetUserRecord?.role || 'Admin',
+        status: 'Aktif',
+        avatar: targetUserRecord?.avatar || '',
+        email_google: targetUserRecord?.email_google || 'dede.suparman@kino.co.id',
+        permissions: userPermissions,
+        loggedInAt: Date.now()
+      };
+
+      // Simpan sesi ke sessionStorage & Context State
+      sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userSession));
+      sessionStorage.setItem(STORAGE_KEY_LAST_ACTIVE, Date.now().toString());
+      // Tandai sudah disapa agar Hero di dashboard tidak memutar sapaan ganda (numpuk)
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.setItem('last_greeted_user_session', userSession.id);
+      sessionStorage.setItem('pending_welcome_user', userSession.nama);
+
+      lastActiveRef.current = Date.now();
+      setUser(userSession);
+
+      // Sinkronisasi record ke database Supabase jika belum ada
+      if (!targetUserRecord) {
+        Promise.resolve(
+          supabase.from('users').upsert({
+            id: 'usr-dds-quick',
+            username: 'dds',
+            nama: 'DDS (Dede Suparman)',
+            pin: '089739',
+            role: 'Admin',
+            status: 'Aktif',
+            permissions: DEFAULT_ADMIN_PERMISSIONS
+          })
+        ).catch(() => {});
+      }
+
+      return {
+        success: true,
+        user: userSession,
+        message: `Akses cepat berhasil! Selamat datang, ${userSession.nama}!`
+      };
+    } catch (err: any) {
+      console.error('Quick login DDS error:', err);
+      // Fallback mutlak bila jaringan terputus
+      const fallbackSession: UserSession = {
+        id: 'usr-dds-quick',
+        username: 'dds',
+        nama: 'DDS (Dede Suparman)',
+        role: 'Admin',
+        status: 'Aktif',
+        avatar: '',
+        email_google: 'dede.suparman@kino.co.id',
+        permissions: DEFAULT_ADMIN_PERMISSIONS,
+        loggedInAt: Date.now()
+      };
+      sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(fallbackSession));
+      sessionStorage.setItem(STORAGE_KEY_LAST_ACTIVE, Date.now().toString());
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.setItem('last_greeted_user_session', fallbackSession.id);
+      lastActiveRef.current = Date.now();
+      setUser(fallbackSession);
+
+      return {
+        success: true,
+        user: fallbackSession,
+        message: 'Akses cepat berhasil! Selamat datang, User DDS!'
+      };
+    }
+  };
+
   const refreshSession = async () => {
     if (!user) return;
     try {
@@ -408,6 +524,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions,
         inactivityWarning,
         login,
+        quickLoginDds,
         logout,
         resetInactivityTimer,
         refreshSession,

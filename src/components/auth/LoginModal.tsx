@@ -11,10 +11,12 @@ import {
   X, 
   ArrowRight,
   RotateCcw,
-  XCircle
+  XCircle,
+  Zap,
+  Volume2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
-import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
+import { unlockAudioAndSpeech, playWelcomeChime, playWelcomeVoice, getDdsQuickGreetingText } from '../../utils/welcomeVoice';
 import { InitialDLogo } from '../common/InitialDLogo';
 
 interface LoginModalProps {
@@ -24,12 +26,14 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalProps) {
-  const { login, user } = useAuth();
+  const { login, quickLoginDds, user } = useAuth();
   
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -126,6 +130,60 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
     }
   };
 
+  /**
+   * Akses Cepat Login khusus User DDS langsung dari Login Modal dengan sapaan suara
+   */
+  const handleQuickLoginDds = async () => {
+    if (quickLoading) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setQuickLoading(true);
+
+    unlockAudioAndSpeech();
+
+    try {
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.setItem('last_greeted_user_session', 'usr-dds-quick');
+    } catch {}
+
+    const greetingText = getDdsQuickGreetingText();
+
+    playWelcomeVoice({
+      text: greetingText,
+      userName: 'User DDS',
+      roleTitle: 'Logistik Supervisor',
+      playChime: true,
+      chimeDelayMs: 1000,
+      onStart: () => setIsVoiceSpeaking(true),
+      onEnd: () => setIsVoiceSpeaking(false),
+      onError: () => setIsVoiceSpeaking(false)
+    });
+
+    try {
+      const result = await quickLoginDds();
+      if (result.success) {
+        setSuccessMessage(result.message || 'Akses cepat terverifikasi!');
+        setUsername('');
+        setPin('');
+        if (usernameRef.current) usernameRef.current.value = '';
+        if (pinRef.current) pinRef.current.value = '';
+
+        setTimeout(() => {
+          onClose();
+          setSuccessMessage(null);
+        }, 700);
+      } else {
+        setErrorMessage(result.message || 'Gagal memproses akses cepat DDS.');
+        setIsVoiceSpeaking(false);
+      }
+    } catch (err: any) {
+      setErrorMessage('Terjadi kendala akses cepat: ' + (err?.message || 'Gagal'));
+      setIsVoiceSpeaking(false);
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in"
@@ -154,9 +212,15 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
           )}
 
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner shrink-0 p-1.5">
+            <button
+              type="button"
+              onClick={handleQuickLoginDds}
+              disabled={loading || quickLoading}
+              className="w-12 h-12 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner shrink-0 p-1.5 cursor-pointer active:scale-90 transition-all disabled:opacity-50"
+              title="Logistik Tools"
+            >
               <InitialDLogo className="w-8 h-8" glow />
-            </div>
+            </button>
             <div>
               <div className="flex items-center gap-1 text-[10px] uppercase font-black tracking-widest text-amber-300">
                 <ShieldCheck size={12} />

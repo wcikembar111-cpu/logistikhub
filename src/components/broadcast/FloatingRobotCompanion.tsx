@@ -44,6 +44,7 @@ export interface FloatingRobotCompanionProps {
   isSidebarOpen?: boolean;
   onOpenProfileDetail?: () => void;
   isSpeaking?: boolean;
+  onRobotClick?: () => void;
 }
 
 export function FloatingRobotCompanion({
@@ -58,7 +59,8 @@ export function FloatingRobotCompanion({
   mode = 'dashboard',
   className = '',
   isSidebarOpen = false,
-  isSpeaking = false
+  isSpeaking = false,
+  onRobotClick
 }: FloatingRobotCompanionProps) {
   // Modal Open State
   const [isOpen, setIsOpen] = useState(false);
@@ -212,11 +214,20 @@ export function FloatingRobotCompanion({
       >
         {/* ROBOT MASKOT RESMI PT KINO INDONESIA (KINOBOT) */}
         <div 
-          className="relative cursor-pointer group flex flex-col items-center justify-center"
-          onClick={() => setIsOpen(true)}
+          className="relative cursor-pointer group flex flex-col items-center justify-center active:scale-95 transition-transform"
+          onClick={() => {
+            if (onRobotClick) {
+              onRobotClick();
+              return;
+            }
+            if (mode === 'login' || !currentUser) {
+              return;
+            }
+            setIsOpen(true);
+          }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          title="Robot Maskot DDS (Klik untuk kirim pesan siaran)"
+          title={mode === 'login' ? 'DDS Bot • Logistik Tools' : 'Robot Maskot DDS (Klik untuk kirim pesan siaran)'}
         >
           <KinoRobotAvatar
             size={mode === 'profile-avatar' || mode === 'inline' ? 'sm' : 'md'}
@@ -234,7 +245,7 @@ export function FloatingRobotCompanion({
       {/* ========================================================================= */}
       {/* MODAL: ROBOT KOMUNIKATOR SIARAN - FORM SIMPLE (PENGIRIM, KEPADA, ISI, RIWAYAT) */}
       {/* ========================================================================= */}
-      {isOpen && (
+      {isOpen && currentUser && (
         <div 
           className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => setIsOpen(false)}

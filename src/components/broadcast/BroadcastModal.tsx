@@ -83,7 +83,7 @@ export function BroadcastModal({
   // Dynamic user profile resolution for active logged-in user
   const currentUsername = (currentUser?.username || '').toLowerCase();
   const isSuperAdminUser = (currentUser?.role || '').toLowerCase() === 'superadmin' || currentUsername === 'superadmin';
-  const isDedeUser = currentUsername === 'dede' || currentUser?.nama?.toLowerCase().includes('dede') || currentUser?.nama_lengkap?.toLowerCase().includes('dede');
+  const isDedeUser = currentUsername === 'dede' || currentUsername === 'dds' || currentUser?.nama?.toLowerCase().includes('dede') || currentUser?.nama?.toLowerCase().includes('dds') || currentUser?.nama_lengkap?.toLowerCase().includes('dede') || currentUser?.nama_lengkap?.toLowerCase().includes('dds');
   const isAdminUser = !isSuperAdminUser && ((currentUser?.role || '').toLowerCase() === 'admin' || currentUsername === 'admin');
   const isOperatorUser = (currentUser?.role || '').toLowerCase() === 'operator';
 

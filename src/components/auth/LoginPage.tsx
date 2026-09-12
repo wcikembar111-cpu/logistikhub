@@ -17,15 +17,16 @@ import {
   Building2, 
   Calendar,
   RotateCcw,
-  XCircle
+  XCircle,
+  Zap,
+  Volume2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
 import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
-import { FloatingRobotBroadcast } from '../broadcast/FloatingRobotBroadcast';
 import { KinoEmblemSvg } from '../broadcast/KinoRobotAvatar';
 import { InitialDLogo } from '../common/InitialDLogo';
-import { unlockAudioAndSpeech } from '../../utils/welcomeVoice';
+import { unlockAudioAndSpeech, playWelcomeChime, playWelcomeVoice, getDdsQuickGreetingText } from '../../utils/welcomeVoice';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 
 interface LoginPageProps {
@@ -46,26 +47,26 @@ interface LoginPageProps {
 export function LoginPage({ 
   onOpenSqlScript: _onOpenSqlScript,
   broadcastMessages = [],
-  incomingBroadcast = null,
+  incomingBroadcast: _incomingBroadcast = null,
   broadcastSoundEnabled = true,
   onToggleBroadcastSound = () => {},
   onSendBroadcast = async () => {},
   onDismissIncomingBroadcast = () => {}
 }: LoginPageProps) {
-  const { login } = useAuth();
+  const { login, quickLoginDds } = useAuth();
   const { canInstall, promptInstall } = usePwa();
 
   const messages = broadcastMessages;
-  const incoming = incomingBroadcast;
   const soundEnabled = broadcastSoundEnabled;
   const toggleSound = onToggleBroadcastSound;
   const sendBroadcast = onSendBroadcast;
-  const dismissIncoming = onDismissIncomingBroadcast;
 
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -194,6 +195,56 @@ export function LoginPage({
     }
   };
 
+  /**
+   * Handler Akses Cepat Login khusus User DDS dengan sapaan suara interaktif
+   */
+  const handleQuickLoginDds = async () => {
+    if (quickLoading) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setQuickLoading(true);
+
+    // 1. Langsung buka kunci AudioContext & SpeechSynthesis browser
+    unlockAudioAndSpeech();
+
+    // 2. Tandai agar Hero di Dashboard tidak memicu sapaan ganda (numpuk)
+    try {
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.setItem('last_greeted_user_session', 'usr-dds-quick');
+    } catch {}
+
+    // 3. Putar melodi chime robot terlebih dahulu, lalu beri jeda 1000ms sebelum suara sapaan berbicara
+    const greetingText = getDdsQuickGreetingText();
+
+    playWelcomeVoice({
+      text: greetingText,
+      userName: 'User DDS',
+      roleTitle: 'Logistik Supervisor',
+      playChime: true,
+      chimeDelayMs: 1000, // Memberikan jeda 1 detik penuh: melodi chime berdering tuntas, lalu ada jeda hening nyaman sebelum sapaan dimulai
+      onStart: () => setIsVoiceSpeaking(true),
+      onEnd: () => setIsVoiceSpeaking(false),
+      onError: () => setIsVoiceSpeaking(false)
+    });
+
+    try {
+      const result = await quickLoginDds();
+      if (result.success) {
+        setSuccessMessage(result.message || 'Akses cepat terverifikasi! Mengalihkan ke Halaman Utama...');
+        setUsername('');
+        setPin('');
+      } else {
+        setErrorMessage(result.message || 'Gagal memproses akses cepat DDS.');
+        setIsVoiceSpeaking(false);
+      }
+    } catch (err: any) {
+      setErrorMessage('Terjadi kendala akses cepat: ' + (err?.message || 'Gagal'));
+      setIsVoiceSpeaking(false);
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
       {/* Background Decorative Ambient Lighting (Light Theme) */}
@@ -314,21 +365,29 @@ export function LoginPage({
             <div className="relative flex flex-col items-center z-20">
               <div className="flex flex-col items-center">
                 {/* Speech Bubble / Badge Sambutan Robot di atas form */}
-                <div className="mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 bg-white/95 border border-blue-200 text-slate-700 hover:border-blue-400">
+                <button
+                  type="button"
+                  onClick={handleQuickLoginDds}
+                  disabled={loading || quickLoading}
+                  className="mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 bg-white/95 border border-blue-200 text-slate-700 hover:border-amber-400 hover:shadow-xs active:scale-95 cursor-pointer disabled:opacity-60"
+                  title="DDS Bot"
+                >
                   <KinoEmblemSvg className="w-4 h-4" />
                   <span className="font-black bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
                     DDS Bot • Logistik Tools
                   </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
+                  <span className={`w-1.5 h-1.5 rounded-full ${quickLoading ? 'bg-amber-500 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
+                </button>
 
-                {/* Robot Avatar Component */}
+                {/* Robot Avatar Component (Klik Robot untuk Masuk User DDS) */}
                 <LoginFloatingRobot 
                   onSendBroadcast={sendBroadcast}
                   latestBroadcast={messages[0] || null}
                   recentMessages={messages}
                   soundEnabled={soundEnabled}
                   onToggleSound={toggleSound}
+                  onRobotClick={handleQuickLoginDds}
+                  isSpeaking={isVoiceSpeaking}
                 />
               </div>
             </div>
@@ -362,7 +421,6 @@ export function LoginPage({
               </div>
 
               {/* Card Form Body */}
-              {/* Card Form Body (Div container to prevent Chrome form submission password leak checks) */}
               <div 
                 className="p-6 sm:p-7 space-y-4"
                 role="region"
@@ -600,13 +658,6 @@ export function LoginPage({
           </div>
         </div>
       </main>
-
-      {/* Incoming broadcast notification dialog on Login Page if someone sends a message */}
-      <FloatingRobotBroadcast
-        broadcast={incoming}
-        onClose={dismissIncoming}
-        soundEnabled={soundEnabled}
-      />
 
       {/* Footer */}
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-slate-500 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">

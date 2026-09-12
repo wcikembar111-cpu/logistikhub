@@ -93,7 +93,7 @@ export function Hero({
 }: HeroProps) {
   // Dynamic user profile resolution
   const currentUsername = (user?.username || '').toLowerCase();
-  const isDedeUser = currentUsername === 'dede' || user?.nama?.toLowerCase().includes('dede') || user?.nama_lengkap?.toLowerCase().includes('dede');
+  const isDedeUser = currentUsername === 'dede' || currentUsername === 'dds' || user?.nama?.toLowerCase().includes('dede') || user?.nama?.toLowerCase().includes('dds') || user?.nama_lengkap?.toLowerCase().includes('dede') || user?.nama_lengkap?.toLowerCase().includes('dds');
   const isSuperAdminUser = isSuperAdmin || (user?.role || '').toLowerCase() === 'superadmin' || currentUsername === 'superadmin';
   const isAdminUser = !isSuperAdminUser && (isAdmin || (user?.role || '').toLowerCase() === 'admin' || currentUsername === 'admin');
   const isOperatorUser = isOperator || (user?.role || '').toLowerCase() === 'operator';

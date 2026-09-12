@@ -81,6 +81,19 @@ export function getWelcomeGreetingText(userName?: string, _roleTitle?: string): 
 }
 
 /**
+ * Specifically tailored voice greeting text for User DDS Quick Access Login
+ */
+export function getDdsQuickGreetingText(): string {
+  const hour = new Date().getHours();
+  let waktu = 'Malam';
+  if (hour >= 4 && hour < 11) waktu = 'Pagi';
+  else if (hour >= 11 && hour < 15) waktu = 'Siang';
+  else if (hour >= 15 && hour < 18) waktu = 'Sore';
+
+  return `Akses cepat terverifikasi. Selamat ${waktu.toLowerCase()}, User DDS! Sistem logistik siap digunakan.`;
+}
+
+/**
  * Plays futuristic chime melody accompanying the voice greeting
  */
 export function playWelcomeChime() {
@@ -183,8 +196,21 @@ function pickIndonesianVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoi
   return voices.find(v => v.default) || voices[0] || null;
 }
 
+export interface PlayWelcomeVoiceOptions {
+  onStart?: () => void;
+  onEnd?: () => void;
+  onError?: () => void;
+  text?: string;
+  userName?: string;
+  roleTitle?: string;
+  playChime?: boolean;
+  chimeDelayMs?: number;
+}
+
 /**
- * Speaks greeting/announcement using browser SpeechSynthesis with full Chromium anti-bug protections
+ * Speaks greeting/announcement using browser SpeechSynthesis with full Chromium anti-bug protections.
+ * Menjamin melodi nada konfirmasi (chime) selesai berdering dan ada jeda jeda hening sejenak
+ * sebelum suara ucapan kata-kata mulai menyapa, sehingga suara tidak pernah bertumpuk.
  */
 export async function playWelcomeVoice({
   onStart,
@@ -192,17 +218,18 @@ export async function playWelcomeVoice({
   onError,
   text,
   userName,
-  roleTitle
-}: {
-  onStart?: () => void;
-  onEnd?: () => void;
-  onError?: () => void;
-  text?: string;
-  userName?: string;
-  roleTitle?: string;
-} = {}): Promise<boolean> {
-  // Always play harmonic welcoming chime immediately for audio responsiveness
-  playWelcomeChime();
+  roleTitle,
+  playChime = true,
+  chimeDelayMs = 950
+}: PlayWelcomeVoiceOptions = {}): Promise<boolean> {
+  // 1. Putar nada melodi robot terlebih dahulu jika diminta
+  if (playChime) {
+    playWelcomeChime();
+    // Beri jeda waktu teratur agar nada selesai berdering (durasi nada ~810ms + ~140ms hening)
+    if (chimeDelayMs > 0) {
+      await new Promise(r => setTimeout(r, chimeDelayMs));
+    }
+  }
 
   if (!isSpeechSupported()) {
     if (onStart) onStart();
