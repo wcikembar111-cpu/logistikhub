@@ -153,6 +153,7 @@ export interface ReturInventoryItem {
 }
 
 export type LogisticsTab = 
+  | 'voice-calculator'
   | 'ed-checker' 
   | 'stock-opname' 
   | 'sn-generator' 

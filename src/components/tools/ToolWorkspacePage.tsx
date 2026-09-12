@@ -17,7 +17,8 @@ import {
   Volume2,
   VolumeX,
   Wrench,
-  ListTodo
+  ListTodo,
+  Calculator
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
@@ -53,6 +54,12 @@ interface ToolWorkspacePageProps {
 }
 
 const toolMetadata: Record<MainToolTab, { title: string; category: string; icon: React.ReactNode; iconBg: string }> = {
+  'voice-calculator': {
+    title: 'Kalkulator Suara',
+    category: 'Hitung Voice & Akumulator',
+    icon: <Calculator size={18} className="text-white" />,
+    iconBg: 'bg-indigo-600'
+  },
   'qr-generator': {
     title: 'Generator QR Code',
     category: 'Satuan & Massal',

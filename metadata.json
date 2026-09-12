@@ -1,6 +1,6 @@
 {
   "name": "Logistik Tools",
-  "description": "Aplikasi Logistics Studio, Rekonsiliasi Tri-Relasi (Largo, SAP, Target), Ecomm Live Sync, Match GRFG Repack, Data Pemusnahan, Retur Inventory, dan Tools Operasional.",
+  "description": "Aplikasi Logistics Studio, Rekonsiliasi Tri-Relasi (Largo, SAP, Target), Ecomm Live Sync, Match GRFG Repack, Kalkulator Suara Akumulator, Data Pemusnahan, Retur Inventory, dan Tools Operasional.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

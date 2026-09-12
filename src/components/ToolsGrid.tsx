@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud, Calculator } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -32,6 +32,14 @@ export function ToolsGrid({
       keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf',
       icon: <QrCode size={20} className="text-white" />,
       iconBg: 'bg-blue-600'
+    },
+    {
+      id: 'voice-calculator',
+      title: 'Kalkulator Suara',
+      category: 'Hitung Voice & Akumulator',
+      keywords: 'kalkulator suara voice calculator hitung bicara mic tambah kurang kali bagi sama dengan akumulator angka math formula',
+      icon: <Calculator size={20} className="text-white" />,
+      iconBg: 'bg-indigo-600'
     },
     {
       id: 'ed-checker',

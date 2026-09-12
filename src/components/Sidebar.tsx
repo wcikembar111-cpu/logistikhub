@@ -29,7 +29,8 @@ import {
   Lock,
   FileSpreadsheet,
   Cloud,
-  Radio
+  Radio,
+  Calculator
 } from 'lucide-react';
 import { MainToolTab, BroadcastMessage } from '../types';
 import { InitialDLogo } from './common/InitialDLogo';
@@ -134,6 +135,19 @@ export const TOOLS_LIST: ToolItemDef[] = [
     iconBg: 'bg-sky-600',
     badge: 'Generator',
     badgeColor: 'bg-sky-50 text-sky-700 border-sky-200'
+  },
+  {
+    id: 'voice-calculator',
+    title: 'Kalkulator Suara',
+    category: 'Hitung Voice & Akumulator',
+    group: 'audit',
+    hasDatabase: false,
+    desc: 'Kalkulator input suara cerdas; menampung rantai angka sebelum perintah "sama dengan", fitur jeda/mute dan stop',
+    keywords: 'kalkulator suara voice calculator hitung bicara mic tambah kurang kali bagi sama dengan akumulator angka math formula mute jeda stop',
+    icon: <Calculator size={15} className="text-white" />,
+    iconBg: 'bg-indigo-600',
+    badge: 'Voice',
+    badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200'
   },
   {
     id: 'ed-checker',

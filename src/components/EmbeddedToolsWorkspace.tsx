@@ -15,6 +15,7 @@ import { DataPemusnahanModule } from './logistics/DataPemusnahanModule';
 import { OutboundLrgModule } from './logistics/OutboundLrgModule';
 import { MatchGrfgRepackModule } from './logistics/MatchGrfgRepackModule';
 import { GoogleSpreadsheetDashboardModule } from './logistics/GoogleSpreadsheetDashboardModule';
+import { VoiceCalculatorModule } from './logistics/VoiceCalculatorModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -39,6 +40,7 @@ export function EmbeddedToolsWorkspace({
             fallbackTitle="Gagal Membuka Menu Modul"
             fallbackMessage="Terjadi kendala saat memuat data modul ini. Silakan klik tombol di bawah untuk mencoba kembali."
           >
+            {activeTool === 'voice-calculator' && <VoiceCalculatorModule />}
             {activeTool === 'qr-generator' && (
               <QrGeneratorHoneywellModule onExportBatchItems={onSetBatchItems} />
             )}
