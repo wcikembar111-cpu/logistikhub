@@ -12,6 +12,9 @@ export interface KinoRobotAvatarProps {
   headTilt?: { rotateX: number; rotateY: number };
   showFloatingBadges?: boolean;
   className?: string;
+  onEyesClick?: (e: React.MouseEvent) => void;
+  onEyesDoubleClick?: (e: React.MouseEvent) => void;
+  isEyeClickable?: boolean;
 }
 
 /**
@@ -37,7 +40,10 @@ export function KinoRobotAvatar({
   eyeOffset = { x: 0, y: 0 },
   headTilt = { rotateX: 0, rotateY: 0 },
   showFloatingBadges = true,
-  className = ''
+  className = '',
+  onEyesClick,
+  onEyesDoubleClick,
+  isEyeClickable = false
 }: KinoRobotAvatarProps) {
 
   // Scale map according to size preset
@@ -152,8 +158,27 @@ export function KinoRobotAvatar({
               <div className="w-0.5 h-2 bg-blue-900 rounded-full" />
             </div>
 
-            {/* Dark Glossy OLED Visor Screen */}
-            <div className="w-full h-full rounded-xl bg-[#09111e] border border-sky-400/40 flex items-center justify-between px-1.5 py-0.5 shadow-inner relative overflow-hidden">
+            {/* Dark Glossy OLED Visor Screen (Area Mata Robot - Target Akses Cepat DDS) */}
+            <div 
+              onClick={(e) => {
+                if (onEyesClick) {
+                  e.stopPropagation();
+                  onEyesClick(e);
+                }
+              }}
+              onDoubleClick={(e) => {
+                if (onEyesDoubleClick) {
+                  e.stopPropagation();
+                  onEyesDoubleClick(e);
+                }
+              }}
+              className={`w-full h-full rounded-xl bg-[#09111e] border flex items-center justify-between px-1.5 py-0.5 shadow-inner relative overflow-hidden transition-all duration-200 ${
+                isEyeClickable
+                  ? 'cursor-pointer border-sky-400/80 hover:border-amber-400 hover:ring-2 hover:ring-amber-400/60 active:scale-90 z-30 shadow-[0_0_8px_rgba(56,189,248,0.4)]'
+                  : 'border-sky-400/40 pointer-events-none'
+              }`}
+              title={isEyeClickable ? "Area Mata Robot: Klik 2x untuk Akses Cepat DDS" : undefined}
+            >
               
               {/* Visor Glare Reflection Curved Line */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />

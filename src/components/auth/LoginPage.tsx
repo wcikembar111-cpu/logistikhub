@@ -26,7 +26,7 @@ import { usePwa } from '../../context/PwaContext';
 import { LoginFloatingRobot } from '../broadcast/LoginFloatingRobot';
 import { KinoEmblemSvg } from '../broadcast/KinoRobotAvatar';
 import { InitialDLogo } from '../common/InitialDLogo';
-import { unlockAudioAndSpeech, playWelcomeChime, playWelcomeVoice, getDdsQuickGreetingText } from '../../utils/welcomeVoice';
+import { unlockAudioAndSpeech, playWelcomeChime, playWelcomeVoice, getDdsQuickGreetingText, subscribeVoiceState } from '../../utils/welcomeVoice';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 
 interface LoginPageProps {
@@ -69,6 +69,23 @@ export function LoginPage({
   const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Live real-time sapaan teks sesuai jadwal resmi
+  const [currentDdsGreeting, setCurrentDdsGreeting] = useState<string>(() => getDdsQuickGreetingText());
+
+  useEffect(() => {
+    const updateGreeting = () => setCurrentDdsGreeting(getDdsQuickGreetingText());
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sinkronisasi status robot bersuara secara global
+  useEffect(() => {
+    return subscribeVoiceState((speaking) => {
+      setIsVoiceSpeaking(speaking);
+    });
+  }, []);
 
   // Dynamic session token to prevent browsers from autofilling previously saved credentials
   const [formFieldKey, setFormFieldKey] = useState(() => Math.random().toString(36).substring(2, 8));
@@ -213,15 +230,20 @@ export function LoginPage({
       sessionStorage.setItem('last_greeted_user_session', 'usr-dds-quick');
     } catch {}
 
-    // 3. Putar melodi chime robot terlebih dahulu, lalu beri jeda 1000ms sebelum suara sapaan berbicara
+    // 3. Putar suara sapaan singkat sesuai waktu resmi
     const greetingText = getDdsQuickGreetingText();
+    try {
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.setItem('last_greeted_user_session', 'usr-dds-quick');
+      sessionStorage.setItem('dds_last_greeting', greetingText);
+    } catch {}
 
     playWelcomeVoice({
       text: greetingText,
-      userName: 'User DDS',
+      userName: 'Dede Suparman',
       roleTitle: 'Logistik Supervisor',
       playChime: true,
-      chimeDelayMs: 1000, // Memberikan jeda 1 detik penuh: melodi chime berdering tuntas, lalu ada jeda hening nyaman sebelum sapaan dimulai
+      chimeDelayMs: 350,
       onStart: () => setIsVoiceSpeaking(true),
       onEnd: () => setIsVoiceSpeaking(false),
       onError: () => setIsVoiceSpeaking(false)
@@ -244,6 +266,46 @@ export function LoginPage({
       setQuickLoading(false);
     }
   };
+
+  // Deteksi 2x Klik di Bagian Mata Robot untuk Akses Cepat DDS
+  const lastEyeClickRef = useRef<number>(0);
+  const eyeHintTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [eyeClickHint, setEyeClickHint] = useState<string | null>(null);
+
+  const handleEyesTrigger = useCallback(() => {
+    if (loading || quickLoading) return;
+    setEyeClickHint(null);
+    lastEyeClickRef.current = 0;
+    handleQuickLoginDds();
+  }, [loading, quickLoading, handleQuickLoginDds]);
+
+  const handleEyesClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (loading || quickLoading) return;
+
+    const now = Date.now();
+    const timeSinceLast = now - lastEyeClickRef.current;
+
+    if (timeSinceLast > 0 && timeSinceLast < 600) {
+      // 2x Klik terdeteksi! Jalankan akses cepat DDS
+      handleEyesTrigger();
+    } else {
+      // Klik ke-1: Simpan timestamp dan beri feedback visual ramah
+      lastEyeClickRef.current = now;
+      setEyeClickHint('Klik 1x lagi untuk Masuk');
+      if (eyeHintTimerRef.current) {
+        clearTimeout(eyeHintTimerRef.current);
+      }
+      eyeHintTimerRef.current = setTimeout(() => {
+        setEyeClickHint(null);
+      }, 1500);
+    }
+  }, [loading, quickLoading, handleEyesTrigger]);
+
+  const handleEyesDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleEyesTrigger();
+  }, [handleEyesTrigger]);
 
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
@@ -364,31 +426,95 @@ export function LoginPage({
             {/* Robot Companion tepat di atas form login */}
             <div className="relative flex flex-col items-center z-20">
               <div className="flex flex-col items-center">
-                {/* Speech Bubble / Badge Sambutan Robot di atas form */}
-                <button
-                  type="button"
-                  onClick={handleQuickLoginDds}
-                  disabled={loading || quickLoading}
-                  className="mb-2 px-3.5 py-1.5 backdrop-blur-xs rounded-full shadow-2xs flex items-center gap-2 text-xs font-medium transition-all duration-300 bg-white/95 border border-blue-200 text-slate-700 hover:border-amber-400 hover:shadow-xs active:scale-95 cursor-pointer disabled:opacity-60"
-                  title="DDS Bot"
+                {/* BALON TEKS ROBOT: Format Sapaan Singkat User DDS (Bukan Area Klik / Non-Clickable Display) */}
+                <div
+                  className={`relative mb-3 px-4 py-2 rounded-2xl shadow-sm border transition-all duration-300 flex items-center gap-2.5 select-none cursor-default ${
+                    isVoiceSpeaking || quickLoading
+                      ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-indigo-400 ring-2 ring-indigo-300/60 shadow-indigo-500/20'
+                      : 'bg-white/95 border-blue-200 shadow-sm'
+                  }`}
+                  role="status"
+                  aria-label="Balon Teks Sapaan DDS"
                 >
-                  <KinoEmblemSvg className="w-4 h-4" />
-                  <span className="font-black bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
-                    DDS Bot • Logistik Tools
-                  </span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${quickLoading ? 'bg-amber-500 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
-                </button>
+                  {/* Icon Avatar / Status */}
+                  <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+                    isVoiceSpeaking
+                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                      : 'bg-blue-50 text-blue-600 border border-blue-200'
+                  }`}>
+                    {isVoiceSpeaking ? (
+                      <Volume2 size={14} className="animate-bounce" />
+                    ) : (
+                      <KinoEmblemSvg className="w-4 h-4" />
+                    )}
+                  </div>
 
-                {/* Robot Avatar Component (Klik Robot untuk Masuk User DDS) */}
-                <LoginFloatingRobot 
-                  onSendBroadcast={sendBroadcast}
-                  latestBroadcast={messages[0] || null}
-                  recentMessages={messages}
-                  soundEnabled={soundEnabled}
-                  onToggleSound={toggleSound}
-                  onRobotClick={handleQuickLoginDds}
-                  isSpeaking={isVoiceSpeaking}
-                />
+                  {/* Isi Balon Teks (Hanya Display Informasi) */}
+                  <div className="flex flex-col text-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+                        Akses Cepat DDS
+                      </span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        quickLoading ? 'bg-amber-500 animate-ping' : isVoiceSpeaking ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500'
+                      }`} />
+                    </div>
+                    <span className="text-xs sm:text-[13px] font-black text-slate-800">
+                      &ldquo;{currentDdsGreeting}&rdquo;
+                    </span>
+                  </div>
+
+                  {/* Equalizer Bar saat Robot bersuara */}
+                  {isVoiceSpeaking && (
+                    <div className="flex items-center gap-0.5 pl-1 shrink-0">
+                      {[14, 20, 12, 18].map((h, i) => (
+                        <span
+                          key={i}
+                          className="w-0.5 bg-indigo-600 rounded-full animate-pulse"
+                          style={{ height: `${h}px`, animationDelay: `${i * 120}ms` }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Ekor Balon Teks menunjuk langsung ke kepala robot */}
+                  <div className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-b border-r transition-colors ${
+                    isVoiceSpeaking || quickLoading
+                      ? 'bg-blue-50 border-indigo-400'
+                      : 'bg-white border-blue-200'
+                  }`} />
+                </div>
+
+                {/* Robot Avatar Component (Area Klik HANYA di Bagian Mata Robot - 2x Klik) */}
+                <div className="relative flex flex-col items-center">
+                  <LoginFloatingRobot 
+                    onSendBroadcast={sendBroadcast}
+                    latestBroadcast={messages[0] || null}
+                    recentMessages={messages}
+                    soundEnabled={soundEnabled}
+                    onToggleSound={toggleSound}
+                    onEyesClick={handleEyesClick}
+                    onEyesDoubleClick={handleEyesDoubleClick}
+                    isEyeClickable={true}
+                    isSpeaking={isVoiceSpeaking}
+                  />
+
+                  {/* Feedback Tooltip saat Klik ke-1 pada Mata Robot */}
+                  {eyeClickHint && (
+                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 z-40 animate-bounce pointer-events-none">
+                      <div className="px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-black tracking-wide shadow-lg whitespace-nowrap flex items-center gap-1.5 border border-amber-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                        <span>{eyeClickHint}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Petunjuk Interaktif Ramah: Klik 2x pada Mata Robot */}
+                <div className="mt-2.5 text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 select-none bg-blue-50/80 border border-blue-100/90 px-3 py-1 rounded-full shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Klik <strong className="text-blue-700 font-extrabold">2x pada mata robot</strong> untuk Akses Cepat</span>
+                </div>
               </div>
             </div>
 

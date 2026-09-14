@@ -67,30 +67,65 @@ export function unlockAudioAndSpeech() {
   }
 }
 
-export function getWelcomeGreetingText(userName?: string, _roleTitle?: string): string {
-  const hour = new Date().getHours();
-  let waktu = 'Malam';
-  if (hour >= 4 && hour < 11) waktu = 'Pagi';
-  else if (hour >= 11 && hour < 15) waktu = 'Siang';
-  else if (hour >= 15 && hour < 18) waktu = 'Sore';
-
-  const cleanName = (userName || '').trim();
-  const displayName = cleanName ? cleanName : 'Rekan Logistik';
-
-  return `Selamat ${waktu.toLowerCase()}, ${displayName}!`;
+/**
+ * Helper penentuan periode waktu sapaan sesuai ketentuan:
+ * - Pagi  : 04.00 – 10.59
+ * - Siang : 11.00 – 14.59
+ * - Sore  : 15.00 – 17.59
+ * - Malam : 18.00 – 03.59
+ */
+export function getTimeGreeting(date: Date = new Date()): 'pagi' | 'siang' | 'sore' | 'malam' {
+  const hour = date.getHours();
+  if (hour >= 4 && hour < 11) return 'pagi';
+  if (hour >= 11 && hour < 15) return 'siang';
+  if (hour >= 15 && hour < 18) return 'sore';
+  return 'malam';
 }
 
 /**
- * Specifically tailored voice greeting text for User DDS Quick Access Login
+ * Format Suara & Balon Teks khusus Akses Cepat User DDS:
+ * - Pagi (04.00 – 10.59): "Selamat pagi, Dede Suparman"
+ * - Siang (11.00 – 14.59): "Selamat siang, Dede Suparman"
+ * - Sore (15.00 – 17.59): "Selamat sore, Dede Suparman"
+ * - Malam (18.00 – 03.59): "Selamat malam, Dede Suparman"
  */
-export function getDdsQuickGreetingText(): string {
-  const hour = new Date().getHours();
-  let waktu = 'Malam';
-  if (hour >= 4 && hour < 11) waktu = 'Pagi';
-  else if (hour >= 11 && hour < 15) waktu = 'Siang';
-  else if (hour >= 15 && hour < 18) waktu = 'Sore';
+export function getDdsQuickGreetingText(date: Date = new Date()): string {
+  const waktu = getTimeGreeting(date);
+  return `Selamat ${waktu}, Dede Suparman`;
+}
 
-  return `Akses cepat terverifikasi. Selamat ${waktu.toLowerCase()}, User DDS! Sistem logistik siap digunakan.`;
+/**
+ * Format Suara & Balon Teks Sapaan Pengguna Logistik
+ */
+export function getWelcomeGreetingText(userName?: string, _roleTitle?: string): string {
+  const waktu = getTimeGreeting();
+  const cleanName = (userName || '').trim();
+
+  // Khusus User DDS / Dede Suparman gunakan format resmi sapaan singkat
+  if (/dede|suparman|^dds$/i.test(cleanName)) {
+    return `Selamat ${waktu}, Dede Suparman`;
+  }
+
+  const displayName = cleanName ? cleanName : 'Rekan Logistik';
+  return `Selamat ${waktu}, ${displayName}!`;
+}
+
+type VoiceStateListener = (isSpeaking: boolean, text?: string) => void;
+const voiceStateListeners = new Set<VoiceStateListener>();
+
+export function subscribeVoiceState(listener: VoiceStateListener): () => void {
+  voiceStateListeners.add(listener);
+  return () => {
+    voiceStateListeners.delete(listener);
+  };
+}
+
+function notifyVoiceState(isSpeaking: boolean, text?: string) {
+  voiceStateListeners.forEach(fn => {
+    try {
+      fn(isSpeaking, text);
+    } catch {}
+  });
 }
 
 /**
@@ -220,20 +255,24 @@ export async function playWelcomeVoice({
   userName,
   roleTitle,
   playChime = true,
-  chimeDelayMs = 950
+  chimeDelayMs = 350
 }: PlayWelcomeVoiceOptions = {}): Promise<boolean> {
+  const speechText = text || getWelcomeGreetingText(userName, roleTitle);
+
   // 1. Putar nada melodi robot terlebih dahulu jika diminta
   if (playChime) {
     playWelcomeChime();
-    // Beri jeda waktu teratur agar nada selesai berdering (durasi nada ~810ms + ~140ms hening)
+    // Beri jeda singkat agar nada mulai berdering manis
     if (chimeDelayMs > 0) {
       await new Promise(r => setTimeout(r, chimeDelayMs));
     }
   }
 
   if (!isSpeechSupported()) {
+    notifyVoiceState(true, speechText);
     if (onStart) onStart();
     setTimeout(() => {
+      notifyVoiceState(false);
       if (onEnd) onEnd();
     }, 1800);
     return false;
@@ -254,7 +293,6 @@ export async function playWelcomeVoice({
     const voices = await getVoicesAsync();
     const idVoice = pickIndonesianVoice(voices);
 
-    const speechText = text || getWelcomeGreetingText(userName, roleTitle);
     const utterance = new SpeechSynthesisUtterance(speechText);
     utterance.lang = 'id-ID';
     utterance.rate = 0.96; // clear and natural cadence
@@ -282,12 +320,14 @@ export async function playWelcomeVoice({
       if (hasEnded) return;
       hasEnded = true;
       stopKeepAlive();
+      notifyVoiceState(false);
       if (window.__activeSpeechUtterances) {
         window.__activeSpeechUtterances.delete(utterance);
       }
     };
 
     utterance.onstart = () => {
+      notifyVoiceState(true, speechText);
       if (onStart) onStart();
 
       // Chromium keepalive: resume every 2 seconds without calling pause()
@@ -343,6 +383,7 @@ export async function playWelcomeVoice({
     return true;
   } catch (err) {
     console.warn('Speech synthesis playback error:', err);
+    notifyVoiceState(false);
     if (onError) onError();
     if (onEnd) onEnd();
     return false;
@@ -354,17 +395,18 @@ export async function playWelcomeVoice({
  */
 export function stopWelcomeVoice() {
   try {
+    notifyVoiceState(false);
     if (window.__speechKeepAliveTimer) {
       clearInterval(window.__speechKeepAliveTimer);
       window.__speechKeepAliveTimer = null;
     }
-    if (isSpeechSupported()) {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     if (window.__activeSpeechUtterances) {
       window.__activeSpeechUtterances.clear();
     }
   } catch (e) {
-    // ignore
+    console.warn('Error stopping speech synthesis:', e);
   }
 }

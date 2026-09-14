@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { TodoData, UserPermissions } from '../types';
 import { InstallPwaButton } from './common/InstallPwaButton';
-import { playWelcomeVoice, stopWelcomeVoice, getWelcomeGreetingText } from '../utils/welcomeVoice';
+import { playWelcomeVoice, stopWelcomeVoice, getWelcomeGreetingText, subscribeVoiceState } from '../utils/welcomeVoice';
 import { useOnlineUsers } from '../hooks/useOnlineUsers';
 import { OnlineUsersModal } from './auth/OnlineUsersModal';
 
@@ -479,6 +479,13 @@ export function Hero({
     stopWelcomeVoice();
     setIsVoiceSpeaking(false);
   };
+
+  // Sinkronisasi status bersuara global
+  useEffect(() => {
+    return subscribeVoiceState((speaking) => {
+      setIsVoiceSpeaking(speaking);
+    });
+  }, []);
 
   // Bersihkan audio synthesizer saat unmount jika masih aktif berbicara
   useEffect(() => {

@@ -19,6 +19,7 @@ import { KinoRobotAvatar, KinoEmblemSvg } from './KinoRobotAvatar';
 import { BroadcastMessage, BroadcastCategory } from '../../types';
 import { playBroadcastSound } from '../../utils/broadcastSound';
 import { parseBroadcastPayload, formatBroadcastMessage } from '../../utils/broadcastFormat';
+import { getDdsQuickGreetingText, subscribeVoiceState } from '../../utils/welcomeVoice';
 
 export interface FloatingRobotCompanionProps {
   onSendBroadcast: (data: {
@@ -45,6 +46,9 @@ export interface FloatingRobotCompanionProps {
   onOpenProfileDetail?: () => void;
   isSpeaking?: boolean;
   onRobotClick?: () => void;
+  onEyesClick?: (e: React.MouseEvent) => void;
+  onEyesDoubleClick?: (e: React.MouseEvent) => void;
+  isEyeClickable?: boolean;
 }
 
 export function FloatingRobotCompanion({
@@ -60,7 +64,10 @@ export function FloatingRobotCompanion({
   className = '',
   isSidebarOpen = false,
   isSpeaking = false,
-  onRobotClick
+  onRobotClick,
+  onEyesClick,
+  onEyesDoubleClick,
+  isEyeClickable
 }: FloatingRobotCompanionProps) {
   // Modal Open State
   const [isOpen, setIsOpen] = useState(false);
@@ -105,6 +112,19 @@ export function FloatingRobotCompanion({
 
   // Active User Display Name
   const activeUserDisplayName = currentUser?.nama_lengkap || currentUser?.nama || currentUser?.username || '';
+
+  // Status sinkronisasi suara & teks sambutan Balon Teks
+  const [internalSpeaking, setInternalSpeaking] = useState(false);
+  const [activeSpeechText, setActiveSpeechText] = useState<string>('');
+
+  useEffect(() => {
+    return subscribeVoiceState((speaking, text) => {
+      setInternalSpeaking(speaking);
+      if (text) {
+        setActiveSpeechText(text);
+      }
+    });
+  }, []);
 
   // Blinking animation loop for robot eyes
   useEffect(() => {
@@ -212,22 +232,40 @@ export function FloatingRobotCompanion({
             : `fixed bottom-4 right-4 z-30 transition-all duration-300 select-none ${className}`
         }
       >
+        {/* BALON TEKS ROBOT: Format Sapaan Singkat Sesuai Waktu Resmi */}
+        {(isSpeaking || internalSpeaking || (isHovered && mode === 'dashboard')) && (
+          <div className="absolute bottom-full mb-3 right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-50 pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95">
+            <div className="relative px-3.5 py-1.5 rounded-2xl bg-white/95 border border-indigo-200 shadow-xl backdrop-blur-md text-xs font-bold text-slate-800 whitespace-nowrap flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isSpeaking || internalSpeaking ? 'bg-emerald-500 animate-ping' : 'bg-blue-500'}`} />
+              <span>&ldquo;{activeSpeechText || getDdsQuickGreetingText()}&rdquo;</span>
+              {/* Balon Pointer Tail menunjuk ke kepala robot */}
+              <div className="absolute -bottom-1.5 right-6 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 bg-white border-b border-r border-indigo-200 rotate-45" />
+            </div>
+          </div>
+        )}
+
         {/* ROBOT MASKOT RESMI PT KINO INDONESIA (KINOBOT) */}
         <div 
-          className="relative cursor-pointer group flex flex-col items-center justify-center active:scale-95 transition-transform"
-          onClick={() => {
+          className={`relative flex flex-col items-center justify-center transition-transform ${
+            mode === 'login' ? 'select-none' : 'cursor-pointer group active:scale-95'
+          }`}
+          onClick={(e) => {
+            if (mode === 'login') {
+              // Di mode login, area klik HANYA di bagian mata robot (bukan badan/balon teks)
+              return;
+            }
             if (onRobotClick) {
               onRobotClick();
               return;
             }
-            if (mode === 'login' || !currentUser) {
+            if (!currentUser) {
               return;
             }
             setIsOpen(true);
           }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          title={mode === 'login' ? 'DDS Bot • Logistik Tools' : 'Robot Maskot DDS (Klik untuk kirim pesan siaran)'}
+          title={mode === 'login' ? 'Arahkan kursor ke mata robot lalu klik 2x untuk Akses Cepat DDS' : 'Robot Maskot DDS (Klik untuk kirim pesan siaran)'}
         >
           <KinoRobotAvatar
             size={mode === 'profile-avatar' || mode === 'inline' ? 'sm' : 'md'}
@@ -238,6 +276,9 @@ export function FloatingRobotCompanion({
             eyeOffset={eyeOffset}
             headTilt={headTilt}
             showFloatingBadges={true}
+            onEyesClick={onEyesClick}
+            onEyesDoubleClick={onEyesDoubleClick}
+            isEyeClickable={isEyeClickable ?? (mode === 'login')}
           />
         </div>
       </div>

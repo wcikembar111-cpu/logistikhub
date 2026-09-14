@@ -16,7 +16,7 @@ import {
   Volume2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useSupabase';
-import { unlockAudioAndSpeech, playWelcomeChime, playWelcomeVoice, getDdsQuickGreetingText } from '../../utils/welcomeVoice';
+import { unlockAudioAndSpeech, playWelcomeChime, playWelcomeVoice, getDdsQuickGreetingText, subscribeVoiceState } from '../../utils/welcomeVoice';
 import { InitialDLogo } from '../common/InitialDLogo';
 
 interface LoginModalProps {
@@ -36,6 +36,22 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
   const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Sapaan resmi Akses Cepat User DDS
+  const [currentDdsGreeting, setCurrentDdsGreeting] = useState<string>(() => getDdsQuickGreetingText());
+
+  useEffect(() => {
+    const update = () => setCurrentDdsGreeting(getDdsQuickGreetingText());
+    update();
+    const interval = setInterval(update, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    return subscribeVoiceState((speaking) => {
+      setIsVoiceSpeaking(speaking);
+    });
+  }, []);
 
   // Dynamic session token per modal session
   const [modalKey, setModalKey] = useState(() => Math.random().toString(36).substring(2, 8));
@@ -147,13 +163,18 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
     } catch {}
 
     const greetingText = getDdsQuickGreetingText();
+    try {
+      sessionStorage.removeItem('should_play_welcome_greeting');
+      sessionStorage.setItem('last_greeted_user_session', 'usr-dds-quick');
+      sessionStorage.setItem('dds_last_greeting', greetingText);
+    } catch {}
 
     playWelcomeVoice({
       text: greetingText,
-      userName: 'User DDS',
+      userName: 'Dede Suparman',
       roleTitle: 'Logistik Supervisor',
       playChime: true,
-      chimeDelayMs: 1000,
+      chimeDelayMs: 350,
       onStart: () => setIsVoiceSpeaking(true),
       onEnd: () => setIsVoiceSpeaking(false),
       onError: () => setIsVoiceSpeaking(false)
@@ -231,9 +252,38 @@ export function LoginModal({ isOpen, onClose, forceLogin = false }: LoginModalPr
               </h2>
             </div>
           </div>
-          <p className="text-xs text-blue-200 mt-2 m-0 font-medium">
+          <p className="text-xs text-blue-200 mt-2 mb-3 font-medium">
             Gunakan Username & PIN 4-6 digit Anda untuk mengakses fitur logistik.
           </p>
+
+          {/* Akses Cepat User DDS Balon Teks (Non-Clickable / Teks Display) */}
+          <div
+            className={`w-full px-3.5 py-2 rounded-xl border backdrop-blur-md flex items-center justify-between text-left select-none cursor-default ${
+              isVoiceSpeaking || quickLoading
+                ? 'bg-amber-400/25 border-amber-300 text-amber-100 ring-2 ring-amber-400/40 shadow-lg'
+                : 'bg-white/10 border-white/20 text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-amber-400/30 flex items-center justify-center shrink-0 text-amber-300">
+                <Volume2 size={14} className={isVoiceSpeaking ? 'animate-bounce' : ''} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] uppercase tracking-wider font-extrabold text-amber-300 flex items-center gap-1.5">
+                  <span>Akses Cepat DDS</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${quickLoading ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+                </div>
+                <div className="text-xs font-bold truncate text-white">
+                  &ldquo;{currentDdsGreeting}&rdquo;
+                </div>
+              </div>
+            </div>
+            {isVoiceSpeaking && (
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-200 border border-amber-400/40 shrink-0 ml-2 animate-pulse">
+                Audio Aktif
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Form Body (Div container to prevent Chrome form submission password leak checks) */}
