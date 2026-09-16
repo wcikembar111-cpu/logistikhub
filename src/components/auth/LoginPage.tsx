@@ -407,8 +407,8 @@ export function LoginPage({
                   <ShieldCheck size={16} />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">Keamanan Sesi Ketat</h4>
-                  <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Auto-logout 30 menit & Hak Akses Berbasis Role (RBAC)</p>
+                  <h4 className="text-xs font-bold text-slate-900">Keamanan Sesi Terjamin</h4>
+                  <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Auto-logout 7 jam & Hak Akses Berbasis Role (RBAC)</p>
                 </div>
               </div>
             </div>
@@ -793,7 +793,7 @@ export function LoginPage({
         <div className="flex items-center gap-4 text-slate-500 text-[11px]">
           <span>Enkripsi Sesi Aktif</span>
           <span>&bull;</span>
-          <span>Inactivity Auto-Logout: 30 Menit</span>
+          <span>Inactivity Auto-Logout: 7 Jam</span>
         </div>
       </footer>
     </div>

@@ -24,10 +24,10 @@ const STORAGE_KEY_USER = 'ckb_logistic_session_user';
 const STORAGE_KEY_LAST_ACTIVE = 'ckb_logistic_session_last_active';
 const LEGACY_STORAGE_KEY = 'ckb_logistic_active_user';
 
-// 30 Minutes Inactivity Auto-Logout (1,800,000 ms)
-const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
-// 28 Minutes Warning Threshold (1,680,000 ms -> 120s remaining)
-const WARNING_THRESHOLD_MS = 28 * 60 * 1000;
+// 7 Jam Inactivity Auto-Logout (25,200,000 ms)
+const INACTIVITY_TIMEOUT_MS = 7 * 60 * 60 * 1000;
+// Peringatan 2 Menit sebelum sesi berakhir (6 Jam 58 Menit -> 120s remaining)
+const WARNING_THRESHOLD_MS = INACTIVITY_TIMEOUT_MS - (2 * 60 * 1000);
 
 interface InactivityWarningState {
   show: boolean;
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const lastActiveTime = storedLastActive ? parseInt(storedLastActive, 10) : Date.now();
         const now = Date.now();
 
-        // If inactive for > 30 minutes, force clean logout
+        // If inactive for > 7 jam, force clean logout
         if (now - lastActiveTime >= INACTIVITY_TIMEOUT_MS) {
           sessionStorage.removeItem(STORAGE_KEY_USER);
           sessionStorage.removeItem(STORAGE_KEY_LAST_ACTIVE);
@@ -166,10 +166,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const elapsed = now - lastActiveRef.current;
 
       if (elapsed >= INACTIVITY_TIMEOUT_MS) {
-        // Exceeded 30 minutes -> Auto Logout
+        // Exceeded 7 jam -> Auto Logout
         logout('inactivity');
       } else if (elapsed >= WARNING_THRESHOLD_MS) {
-        // Between 28 and 30 minutes -> Show Warning Modal with ticking remaining seconds
+        // Sisa waktu 2 menit menjelang 7 jam -> Tampilkan Modal Peringatan dengan hitungan mundur
         const remainingMs = INACTIVITY_TIMEOUT_MS - elapsed;
         const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
         setInactivityWarning({

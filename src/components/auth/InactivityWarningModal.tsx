@@ -36,7 +36,7 @@ export function InactivityWarningModal() {
         </h3>
 
         <p className="text-xs text-slate-600 mt-1 mb-4 font-medium leading-relaxed">
-          Tidak ada aktivitas terdeteksi selama 28 menit. Sistem keamanan akan mengeluarkan akun Anda secara otomatis dalam:
+          Tidak ada aktivitas terdeteksi. Sesi kerja Anda (7 jam) akan segera berakhir dan sistem keamanan akan mengeluarkan akun Anda secara otomatis dalam:
         </p>
 
         {/* Countdown Box */}
