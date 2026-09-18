@@ -122,6 +122,7 @@ export function StockOpnameModule() {
   const [unmatchedList, setUnmatchedList] = useState<string[]>([]);
   const [sheetResultsSummary, setSheetResultsSummary] = useState<string>('');
   const [baSearch, setBaSearch] = useState('');
+  const [baAggMode, setBaAggMode] = useState<'material' | 'material_sloc'>('material');
 
   // BA Header Parameters
   const [baNarasi, setBaNarasi] = useState(
@@ -697,16 +698,16 @@ export function StockOpnameModule() {
         }
 
         const sample = json[0];
-        const kSloc = normKey(sample, ['Storage Location', 'Sloc', 'SLOC', 'sloc', 'StorageLoc']);
-        const kMat = normKey(sample, ['Material', 'material', 'Item Code']);
-        const kDesc = normKey(sample, ['Material Description', 'Material Desc', 'Item Name', 'Description']);
+        const kSloc = normKey(sample, ['Storage Location', 'Sloc', 'SLOC', 'sloc', 'StorageLoc', 'Plant SLoc', 'Lokasi']);
+        const kMat = normKey(sample, ['Material', 'material', 'Item Code', 'ItemCode', 'Kode Barang', 'Kode', 'ID Barang', 'ID', 'Part Number', 'Part No']);
+        const kDesc = normKey(sample, ['Material Description', 'Material Desc', 'Item Name', 'Description', 'Nama Barang']);
         const kBun = normKey(sample, ['Base Unit of Measure', 'Base Unit', 'Bun', 'UOM', 'Unit', 'Satuan']);
-        const kUnres = normKey(sample, ['Unrestricted', 'unrestricted', 'Unrestr.']);
-        const kTrans = normKey(sample, ['Transit and Transfer', 'Transit & Transfer', 'Transit', 'InTransit', 'transit']);
-        const kBlock = normKey(sample, ['Blocked', 'blocked', 'Blocked Stock']);
+        const kUnres = normKey(sample, ['Unrestricted', 'unrestricted', 'Unrestr.', 'Stok Unrestricted']);
+        const kTrans = normKey(sample, ['Transit and Transfer', 'Transit & Transfer', 'Transit', 'InTransit', 'transit', 'Transfer']);
+        const kBlock = normKey(sample, ['Blocked', 'blocked', 'Blocked Stock', 'Stok Blocked']);
 
-        if (!kSloc || !kMat) {
-          showToast('Header SAP Tidak Sesuai', 'Kolom Storage Location & Material wajib ada.', 'danger');
+        if (!kMat) {
+          showToast('Header SAP Tidak Sesuai', 'Kolom Material / Item Code wajib ada.', 'danger');
           return;
         }
 
@@ -715,7 +716,7 @@ export function StockOpnameModule() {
           const transit = Number(r[kTrans || '']) || 0;
           const blocked = Number(r[kBlock || '']) || 0;
           return {
-            sloc: String(r[kSloc] ?? '').trim(),
+            sloc: kSloc ? String(r[kSloc] ?? '').trim() : '',
             material: String(r[kMat] ?? '').trim(),
             desc: String(r[kDesc || ''] ?? '').trim(),
             bun: String(r[kBun || ''] ?? '').trim(),
@@ -724,7 +725,7 @@ export function StockOpnameModule() {
             blocked,
             sapQty: unrestricted + transit + blocked
           };
-        }).filter(r => r.sloc && r.material);
+        }).filter(r => r.material);
 
         setSapData(parsed);
         setSapFileName(file.name);
@@ -754,7 +755,7 @@ export function StockOpnameModule() {
         let detectedHeaders: string[] | null = null;
         const sheetResults: string[] = [];
 
-        const HEADER_KEYWORDS = ['no', 'location', 'item code', 'item name', 'material', 'sloc', 'fisik', 'keterangan', 'ket', 'last qty', 'qty'];
+        const HEADER_KEYWORDS = ['no', 'location', 'item code', 'item name', 'material', 'sloc', 'fisik', 'keterangan', 'ket', 'last qty', 'qty', 'id'];
         const MIN_KEYWORD_MATCH = 3;
 
         wb.SheetNames.forEach(sheetName => {
@@ -810,16 +811,16 @@ export function StockOpnameModule() {
         setSheetResultsSummary(sheetResults.join(' | '));
 
         const sample = allRows[0];
-        const kMat = normKey(sample, ['Item Code', 'Material', 'material', 'item code']);
-        const kSloc = normKey(sample, ['Sloc', 'SLOC', 'sloc', 'Storage Location']);
-        const kDesc = normKey(sample, ['Item Name', 'Material Description', 'item name']);
+        const kMat = normKey(sample, ['Item Code', 'Material', 'material', 'item code', 'ItemCode', 'Kode Barang', 'Kode', 'ID Barang', 'ID', 'Part No', 'Part Number']);
+        const kSloc = normKey(sample, ['Sloc', 'SLOC', 'sloc', 'Storage Location', 'Storage Loc', 'StorageLoc', 'Lokasi']);
+        const kDesc = normKey(sample, ['Item Name', 'Material Description', 'item name', 'Nama Barang', 'Description']);
 
-        if (!kMat || !kSloc) {
-          showToast('Header Kolom Kurang', `Kolom Item Code / SLoc tidak ditemukan. Header: ${Object.keys(sample).join(', ')}`, 'danger');
+        if (!kMat) {
+          showToast('Header Kolom Kurang', `Kolom Item Code / Material tidak ditemukan. Header: ${Object.keys(sample).join(', ')}`, 'danger');
           return;
         }
 
-        let kFisik = normKey(sample, ['Fisik', 'fisik', 'FISIK', 'Physical', 'Qty Fisik', 'Qty fisik']);
+        let kFisik = normKey(sample, ['Fisik', 'fisik', 'FISIK', 'Physical', 'Qty Fisik', 'Qty fisik', 'Real Fisik', 'Aktual', 'Hasil Hitung', 'Count', 'Qty']);
         const numCols = Object.keys(sample).filter(k => {
           const lk = k.trim().toLowerCase();
           if (['no', 'sloc', 'material', 'item code', 'item name', 'location', 'bun', 'keterangan', 'ket', 'last qty', 'sap', 'storage location', '__sheet'].includes(lk)) return false;
@@ -833,10 +834,10 @@ export function StockOpnameModule() {
 
         const parsed = allRows.map(r => ({
           material: String(r[kMat] ?? '').trim(),
-          sloc: String(r[kSloc] ?? '').trim(),
+          sloc: String(r[kSloc || ''] ?? (r['__sheet'] ?? '')).trim(),
           desc: kDesc ? String(r[kDesc] ?? '').trim() : '',
           fisik: kFisik ? (Number(r[kFisik]) || 0) : 0
-        })).filter(r => r.material && r.sloc);
+        })).filter(r => r.material);
 
         setSoData(parsed);
         showToast('Form SO Terisi Dimuat', `${parsed.length} baris dari ${sheetResults.length} sheet berhasil dimuat.`, 'success');
@@ -852,16 +853,16 @@ export function StockOpnameModule() {
     setSoFisikCol(col);
     if (!soRawJson) return;
     const sample = soRawJson[0];
-    const kMat = normKey(sample, ['Item Code', 'Material', 'material', 'item code']) || 'material';
-    const kSloc = normKey(sample, ['Sloc', 'SLOC', 'sloc', 'Storage Location']) || 'sloc';
-    const kDesc = normKey(sample, ['Item Name', 'Material Description', 'item name']);
+    const kMat = normKey(sample, ['Item Code', 'Material', 'material', 'item code', 'ItemCode', 'Kode Barang', 'Kode', 'ID Barang', 'ID', 'Part No', 'Part Number']) || 'material';
+    const kSloc = normKey(sample, ['Sloc', 'SLOC', 'sloc', 'Storage Location', 'Storage Loc', 'StorageLoc', 'Lokasi']) || 'sloc';
+    const kDesc = normKey(sample, ['Item Name', 'Material Description', 'item name', 'Nama Barang', 'Description']);
 
     const parsed = soRawJson.map(r => ({
       material: String(r[kMat] ?? '').trim(),
-      sloc: String(r[kSloc] ?? '').trim(),
+      sloc: String(r[kSloc] ?? (r['__sheet'] ?? '')).trim(),
       desc: kDesc ? String(r[kDesc] ?? '').trim() : '',
       fisik: Number(r[col]) || 0
-    })).filter(r => r.material && r.sloc);
+    })).filter(r => r.material);
 
     setSoData(parsed);
   };
@@ -872,47 +873,147 @@ export function StockOpnameModule() {
       return;
     }
 
-    const soMap = new Map<string, any>();
-    soData.forEach(r => {
-      const key = `${r.material.toLowerCase()}||${r.sloc.toLowerCase()}`;
-      if (soMap.has(key)) {
-        soMap.get(key)!.fisik += r.fisik;
-      } else {
-        soMap.set(key, { ...r });
+    // Map untuk menyimpan akumulasi (SUMIF) unik per ID (tanpa duplikasi ID)
+    const resultMap = new Map<string, {
+      material: string;
+      desc: string;
+      bun: string;
+      slocs: Set<string>;
+      sapQty: number;
+      unrestricted: number;
+      transit: number;
+      blocked: number;
+      fisik: number;
+      sapRowsCount: number;
+      soRowsCount: number;
+    }>();
+
+    // 1. SUMIF seluruh baris SAP berdasarkan ID Material (atau ID Material + SLoc)
+    sapData.forEach(r => {
+      const mat = String(r.material ?? '').trim();
+      if (!mat) return;
+      const sloc = String(r.sloc ?? '').trim();
+      const key = baAggMode === 'material_sloc'
+        ? `${mat.toLowerCase()}||${sloc.toLowerCase()}`
+        : mat.toLowerCase();
+
+      if (!resultMap.has(key)) {
+        resultMap.set(key, {
+          material: mat,
+          desc: r.desc || '',
+          bun: r.bun || '',
+          slocs: new Set<string>(sloc ? [sloc] : []),
+          sapQty: 0,
+          unrestricted: 0,
+          transit: 0,
+          blocked: 0,
+          fisik: 0,
+          sapRowsCount: 0,
+          soRowsCount: 0
+        });
       }
+
+      const entry = resultMap.get(key)!;
+      entry.sapQty += (Number(r.sapQty) || 0);
+      entry.unrestricted += (Number(r.unrestricted) || 0);
+      entry.transit += (Number(r.transit) || 0);
+      entry.blocked += (Number(r.blocked) || 0);
+      entry.sapRowsCount += 1;
+      if (sloc) entry.slocs.add(sloc);
+      if (!entry.desc && r.desc) entry.desc = r.desc;
+      if (!entry.bun && r.bun) entry.bun = r.bun;
+    });
+
+    // 2. SUMIF seluruh baris Form SO (Fisik) berdasarkan ID Material (atau ID Material + SLoc)
+    soData.forEach(r => {
+      const mat = String(r.material ?? '').trim();
+      if (!mat) return;
+      const sloc = String(r.sloc ?? '').trim();
+      const key = baAggMode === 'material_sloc'
+        ? `${mat.toLowerCase()}||${sloc.toLowerCase()}`
+        : mat.toLowerCase();
+
+      if (!resultMap.has(key)) {
+        resultMap.set(key, {
+          material: mat,
+          desc: r.desc || '',
+          bun: '',
+          slocs: new Set<string>(sloc ? [sloc] : []),
+          sapQty: 0,
+          unrestricted: 0,
+          transit: 0,
+          blocked: 0,
+          fisik: 0,
+          sapRowsCount: 0,
+          soRowsCount: 0
+        });
+      }
+
+      const entry = resultMap.get(key)!;
+      entry.fisik += (Number(r.fisik) || 0);
+      entry.soRowsCount += 1;
+      if (sloc) entry.slocs.add(sloc);
+      if (!entry.desc && r.desc) entry.desc = r.desc;
+    });
+
+    // 3. Konversi ke array baris unik Berita Acara tanpa duplikasi ID
+    const unmatched: string[] = [];
+    const sortedEntries = Array.from(resultMap.values()).sort((a, b) => {
+      return a.material.localeCompare(b.material, undefined, { numeric: true, sensitivity: 'base' });
     });
 
     let no = 0;
-    const unmatched: string[] = [];
-    const joined = sapData.map(r => {
-      const key = `${r.material.toLowerCase()}||${r.sloc.toLowerCase()}`;
-      const soRow = soMap.get(key);
-      const fisik = soRow ? soRow.fisik : 0;
-      // Formula CKBLogistik: Selisih = Fisik - SAP
-      const selisih = fisik - r.sapQty;
-
-      if (!soRow) unmatched.push(`${r.material} / ${r.sloc}`);
+    const joined = sortedEntries.map(entry => {
       no++;
+      const slocStr = Array.from(entry.slocs).sort().join(', ') || '-';
+      // Formula CKBLogistik: Selisih = Fisik - SAP
+      const selisih = entry.fisik - entry.sapQty;
+
+      if (entry.soRowsCount === 0) {
+        unmatched.push(`${entry.material} (${slocStr})`);
+      }
+
+      let ketAuto = '';
+      if (entry.sapRowsCount === 0 && entry.soRowsCount > 0) {
+        ketAuto = 'Hanya di Fisik (Tidak ada di SAP)';
+      } else if (entry.soRowsCount === 0 && entry.sapRowsCount > 0) {
+        ketAuto = 'Hanya di SAP (Tidak dihitung Fisik)';
+      } else if (selisih === 0) {
+        ketAuto = 'Match';
+      } else if (selisih > 0) {
+        ketAuto = `Lebih Fisik (+${selisih.toLocaleString('id-ID')})`;
+      } else {
+        ketAuto = `Kurang Fisik (${selisih.toLocaleString('id-ID')})`;
+      }
+
       return {
         no,
-        sloc: r.sloc,
-        material: r.material,
-        desc: r.desc || (soRow ? soRow.desc : ''),
-        bun: r.bun,
-        sapQty: r.sapQty,
-        unrestricted: r.unrestricted,
-        transit: r.transit,
-        blocked: r.blocked,
-        fisik,
+        sloc: slocStr,
+        material: entry.material,
+        desc: entry.desc,
+        bun: entry.bun || 'PCS',
+        sapQty: entry.sapQty,
+        unrestricted: entry.unrestricted,
+        transit: entry.transit,
+        blocked: entry.blocked,
+        fisik: entry.fisik,
         selisih,
-        ket: ''
+        ket: ketAuto,
+        sapRowsCount: entry.sapRowsCount,
+        soRowsCount: entry.soRowsCount
       };
     });
 
     setJoinedRows(joined);
     setUnmatchedList(unmatched);
     setBaStep(3);
-    showToast('JOIN Selesai', `${joined.length} item berhasil direkonsiliasi.`, 'success');
+    const totalSAP = joined.reduce((s, r) => s + r.sapQty, 0);
+    const totalFisik = joined.reduce((s, r) => s + r.fisik, 0);
+    showToast(
+      'SUMIF Rekonsiliasi Selesai',
+      `${joined.length} ID unik berhasil direkonsiliasi tanpa duplikat (Total SAP: ${totalSAP.toLocaleString('id-ID')} | Total Fisik: ${totalFisik.toLocaleString('id-ID')}).`,
+      'success'
+    );
   };
 
   // ============================================================
@@ -1566,6 +1667,55 @@ export function StockOpnameModule() {
               </div>
             </div>
 
+            {/* SUMIF Configuration & Aggregation Mode */}
+            <div className="p-3.5 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 rounded-xl border border-blue-200/80 space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+                    <Sliders size={14} className="text-blue-700" />
+                    Logika Rekonsiliasi Berita Acara (SUMIF):
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                    Bebas Duplikat ID
+                  </span>
+                </div>
+
+                <div className="inline-flex rounded-lg border border-blue-300 p-0.5 bg-white shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setBaAggMode('material')}
+                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                      baAggMode === 'material'
+                        ? 'bg-blue-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-blue-900'
+                    }`}
+                  >
+                    ID Material (Bebas Duplikat)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaAggMode('material_sloc')}
+                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                      baAggMode === 'material_sloc'
+                        ? 'bg-blue-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-blue-900'
+                    }`}
+                  >
+                    ID Material + SLoc
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-600 flex items-start gap-1.5">
+                <span className="font-semibold text-blue-900 shrink-0">Aturan SUMIF:</span>
+                <span>
+                  {baAggMode === 'material'
+                    ? 'Setiap ID Material hanya akan tercantum satu baris (tidak ada ID duplikat). Qty kolom SAP dan Fisik otomatis dihitung menggunakan formula SUMIF dari seluruh baris dan lokasi pada file masing-masing.'
+                    : 'ID Material dikelompokkan bersama SLoc. Qty kolom SAP dan Fisik dihitung menggunakan SUMIF per kombinasi Material dan SLoc.'}
+                </span>
+              </div>
+            </div>
+
             {/* JOIN Trigger Button */}
             <div className="pt-2">
               <button
@@ -1579,7 +1729,7 @@ export function StockOpnameModule() {
                 }`}
               >
                 <RefreshCw size={15} />
-                <span>JOIN & Proses Rekonsiliasi Data</span>
+                <span>Jalankan Rekonsiliasi SUMIF (Bebas Duplikat)</span>
               </button>
             </div>
           </div>
@@ -1587,32 +1737,37 @@ export function StockOpnameModule() {
           {/* Panel 2: Hasil JOIN & Preview Table */}
           {joinedRows.length > 0 && (
             <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-blue-100 text-blue-700 font-mono font-bold text-xs flex items-center justify-center">
-                  2
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800 m-0">Hasil JOIN & Rekonsiliasi Selisih</h3>
-                  <p className="text-[11px] text-slate-500 m-0 mt-0.5">
-                    Data siap dicetak ke format resmi Berita Acara Stock Opname.
-                  </p>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-md bg-blue-100 text-blue-700 font-mono font-bold text-xs flex items-center justify-center">
+                    2
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 m-0">Hasil Rekonsiliasi SUMIF & Selisih</h3>
+                    <p className="text-[11px] text-slate-500 m-0 mt-0.5">
+                      Data siap dicetak ke format resmi Berita Acara Stock Opname tanpa duplikasi ID.
+                    </p>
+                  </div>
                 </div>
+                <span className="text-[11px] bg-blue-50 text-blue-800 font-semibold px-2.5 py-1 rounded-lg border border-blue-200">
+                  Mode: {baAggMode === 'material' ? 'ID Material Unik (SUMIF)' : 'ID Material + SLoc (SUMIF)'}
+                </span>
               </div>
 
               {/* Stats Row */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="text-[10px] uppercase font-bold text-slate-500">Total Item</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Total ID Unik</div>
                   <div className="text-lg font-black font-mono text-slate-900">{joinedRows.length}</div>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="text-[10px] uppercase font-bold text-slate-500">Total SAP</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Total SAP (SUMIF)</div>
                   <div className="text-lg font-black font-mono text-slate-900">{baStats.totalSAP.toLocaleString('id-ID')}</div>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="text-[10px] uppercase font-bold text-slate-500">Total Fisik</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Total Fisik (SUMIF)</div>
                   <div className="text-lg font-black font-mono text-slate-900">{baStats.totalFisik.toLocaleString('id-ID')}</div>
                 </div>
 
