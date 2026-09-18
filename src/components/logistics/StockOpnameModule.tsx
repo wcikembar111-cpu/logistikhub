@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSXStyle from 'xlsx-js-style';
+import { exportFormStockOpnameExcel, exportBeritaAcaraExcel } from '../../utils/stockOpnameExcelExporter';
 
 const XLSX: any = (XLSXStyle as any).default || XLSXStyle;
 import { 
@@ -607,168 +608,43 @@ export function StockOpnameModule() {
   };
 
   // ============================================================
-  //  MODUL 1: EXPORT EXCEL FORM SO
+  //  MODUL 1: EXPORT EXCEL FORM SO (+ LOGO RESMI KINO)
   // ============================================================
-  const handleDownloadFormExcel = () => {
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  const handleDownloadFormExcel = async () => {
     if (selectedSlocs.size === 0) {
       showToast('Pilih SLOC', 'Pilih minimal satu SLOC untuk di-export.', 'warning');
       return;
     }
 
-    const THIN = { style: 'thin', color: { rgb: '000000' } };
-    const BOX = { top: THIN, bottom: THIN, left: THIN, right: THIN };
-    const TOPONLY = { top: THIN };
+    try {
+      setIsExportingExcel(true);
+      showToast('Menyiapkan Excel', 'Menyusun Formulir Stock Opname dengan Logo Resmi KINO...', 'info');
 
-    const stTitle = { font: { bold: true, sz: 13 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stDept = { font: { bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stDocNo = { font: { bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stMetaLbl = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'left', vertical: 'center' }, border: BOX };
-    const stMetaVal = { font: { sz: 9 }, alignment: { horizontal: 'left', vertical: 'center' }, border: BOX };
-    const stPicLbl = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stPicVal = { font: { sz: 9 }, alignment: { horizontal: 'left', vertical: 'center' }, border: BOX };
-    const stBox = { border: BOX };
-    const stTh = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stC = { font: { sz: 9 }, alignment: { horizontal: 'center' }, border: BOX };
-    const stL = { font: { sz: 9 }, alignment: { horizontal: 'left' }, border: BOX };
-    const stTotalLbl = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'right' }, border: BOX };
-    const stSignLbl = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'center' } };
-    const stSignName = { font: { sz: 9 }, alignment: { horizontal: 'center' }, border: TOPONLY };
-
-    const numSt = (fmt = '#,##0') => ({ font: { sz: 9 }, alignment: { horizontal: 'right' }, border: BOX, numFmt: fmt });
-    const totalNumSt = (fmt = '#,##0') => ({ font: { bold: true, sz: 9 }, alignment: { horizontal: 'right' }, border: BOX, numFmt: fmt });
-
-    const cell = (v: any, t: string, s: any) => ({ v, t, s });
-    const blankBox = () => cell('', 's', stBox);
-    const blankNone = () => cell('', 's', {});
-
-    const tglDisplay = formTgl ? fmtTglID(formTgl) : '';
-
-    function buildSheetAOA(sloc: string, rows: any[], totalQty: number, qtyColLabel: string) {
-      const aoa: any[][] = [];
-      const merges: any[] = [];
-
-      aoa.push([
-        cell('FORMULIR STOCK OPNAME INTERNAL', 's', stTitle), blankBox(), blankBox(), blankBox(), blankBox(), blankBox(),
-        cell('LOGISTIK DEPARTEMEN', 's', stDept), blankBox()
-      ]);
-      merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
-      merges.push({ s: { r: 0, c: 6 }, e: { r: 0, c: 7 } });
-
-      aoa.push([cell(formDocNo, 's', stDocNo), ...Array(7).fill(0).map(() => cell('', 's', stDocNo))]);
-      merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 7 } });
-
-      aoa.push([
-        cell('Plant', 's', stMetaLbl), cell(formPlant, 's', stMetaVal), blankBox(),
-        cell('PIC SO 1', 's', stPicLbl), cell(formPic1, 's', stPicVal), blankBox(), blankBox(), blankBox()
-      ]);
-
-      aoa.push([
-        cell('SLoc', 's', stMetaLbl), cell(sloc, 's', stMetaVal), blankBox(),
-        cell('PIC SO 2', 's', stPicLbl), cell(formPic2, 's', stPicVal), blankBox(), blankBox(), blankBox()
-      ]);
-
-      aoa.push([
-        cell('Tgl', 's', stMetaLbl), cell(tglDisplay, 's', stMetaVal), blankBox(), blankBox(), blankBox(), blankBox(), blankBox(), blankBox()
-      ]);
-
-      aoa.push([
-        cell('Area', 's', stMetaLbl), cell(formArea, 's', stMetaVal), blankBox(), blankBox(), blankBox(), blankBox(), blankBox(), blankBox()
-      ]);
-
-      aoa.push([]);
-
-      aoa.push(['NO', 'Location', 'Item Code', 'Item Name', 'Sloc', qtyColLabel, 'Fisik', 'Keterangan'].map(h => cell(h, 's', stTh)));
-
-      let running = 0;
-      rows.forEach(r => {
-        running++;
-        aoa.push([
-          cell(running, 'n', stC),
-          cell(r.location !== undefined ? r.location : '', 's', stL),
-          cell(r.itemCode !== undefined ? r.itemCode : r.material, 's', stL),
-          cell(r.itemName !== undefined ? r.itemName : r.desc, 's', stL),
-          cell(r.sloc, 's', stC),
-          cell(r.lastQty, 'n', numSt()),
-          blankBox(),
-          blankBox()
-        ]);
+      await exportFormStockOpnameExcel({
+        selectedSlocs: Array.from(selectedSlocs),
+        slocSummary,
+        uploadFormat,
+        selectedQtyCol,
+        meta: {
+          formDocNo,
+          formPlant,
+          formPic1,
+          formPic2,
+          formTgl,
+          formArea
+        },
+        logoUrl: LOGO_URL
       });
 
-      const rTotal = aoa.length;
-      aoa.push([
-        cell('Total', 's', stTotalLbl), blankBox(), blankBox(), blankBox(), blankBox(),
-        cell(totalQty, 'n', totalNumSt()),
-        blankBox(), blankBox()
-      ]);
-      merges.push({ s: { r: rTotal, c: 0 }, e: { r: rTotal, c: 4 } });
-
-      aoa.push([]);
-
-      const rSignLbl = aoa.length;
-      aoa.push([
-        cell('Pelaksana', 's', stSignLbl), blankNone(), blankNone(),
-        cell('Mengetahui', 's', stSignLbl), blankNone(), blankNone(),
-        cell('Menyetujui', 's', stSignLbl), blankNone()
-      ]);
-      merges.push({ s: { r: rSignLbl, c: 0 }, e: { r: rSignLbl, c: 2 } });
-      merges.push({ s: { r: rSignLbl, c: 3 }, e: { r: rSignLbl, c: 5 } });
-      merges.push({ s: { r: rSignLbl, c: 6 }, e: { r: rSignLbl, c: 7 } });
-
-      aoa.push([]); aoa.push([]); aoa.push([]);
-
-      const rSignName = aoa.length;
-      aoa.push([
-        cell('Inventory', 's', stSignName), cell('', 's', stSignName), cell('', 's', stSignName),
-        cell('SPv Log Distribusi', 's', stSignName), cell('', 's', stSignName), cell('', 's', stSignName),
-        cell('Manager Log Distribusi', 's', stSignName), cell('', 's', stSignName)
-      ]);
-      merges.push({ s: { r: rSignName, c: 0 }, e: { r: rSignName, c: 2 } });
-      merges.push({ s: { r: rSignName, c: 3 }, e: { r: rSignName, c: 5 } });
-      merges.push({ s: { r: rSignName, c: 6 }, e: { r: rSignName, c: 7 } });
-
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = [{ wch: 5 }, { wch: 20 }, { wch: 20 }, { wch: 40 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 22 }];
-      ws['!merges'] = merges;
-      return ws;
+      showToast('Download Sukses', 'Formulir Stock Opname Excel (+ Logo Resmi KINO) berhasil diunduh.', 'success');
+    } catch (err: any) {
+      console.error('Gagal export Form SO Excel:', err);
+      showToast('Gagal Export', err.message || 'Terjadi kesalahan saat membuat file Excel.', 'danger');
+    } finally {
+      setIsExportingExcel(false);
     }
-
-    const wb = XLSX.utils.book_new();
-    const slocsSorted: string[] = Array.from<string>(selectedSlocs).sort();
-    const usedSheetNames = new Set<string>();
-
-    function appendSheetUnique(ws: any, baseName: string) {
-      let name = baseName.substring(0, 31);
-      let i = 2;
-      while (usedSheetNames.has(name)) {
-        name = (baseName + '_' + i).substring(0, 31);
-        i++;
-      }
-      usedSheetNames.add(name);
-      XLSX.utils.book_append_sheet(wb, ws, name);
-    }
-
-    if (uploadFormat === 'mb52') {
-      slocsSorted.forEach(sloc => {
-        const s = slocSummary[sloc];
-        if (!s) return;
-        ['FG', 'PACKAGING'].forEach(grp => {
-          const gRows = s.groups[grp]?.rows || [];
-          if (!gRows.length) return;
-          const ws = buildSheetAOA(sloc, gRows, s.groups[grp].totalQty, 'Last Qty');
-          appendSheetUnique(ws, `${sloc}-${grp}`);
-        });
-      });
-    } else {
-      slocsSorted.forEach(sloc => {
-        const sData = slocSummary[sloc];
-        if (!sData) return;
-        const ws = buildSheetAOA(sloc, sData.rows, sData.totalQty, selectedQtyCol);
-        appendSheetUnique(ws, sloc);
-      });
-    }
-
-    XLSX.writeFile(wb, `FormSO_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast('Download Sukses', 'File Form SO Excel berhasil diunduh.', 'success');
   };
 
   // ============================================================
@@ -1122,124 +998,38 @@ export function StockOpnameModule() {
     return baNarasi.replace(/\[TGL\]/g, tglStr);
   };
 
-  const handleDownloadBaExcel = () => {
+  const handleDownloadBaExcel = async () => {
     if (!joinedRows.length) {
       showToast('Belum Ada Data JOIN', 'Lakukan proses JOIN terlebih dahulu.', 'warning');
       return;
     }
 
-    const narasi = getCompiledNarasi();
+    try {
+      setIsExportingExcel(true);
+      showToast('Menyiapkan Excel', 'Menyusun Berita Acara Excel dengan Logo Resmi KINO...', 'info');
 
-    const THIN = { style: 'thin', color: { rgb: '000000' } };
-    const BOX = { top: THIN, bottom: THIN, left: THIN, right: THIN };
-    const TOPONLY = { top: THIN };
+      await exportBeritaAcaraExcel({
+        joinedRows,
+        meta: {
+          narasi: getCompiledNarasi(),
+          baTgl,
+          baGudang
+        },
+        stats: {
+          totalSAP: baStats.totalSAP,
+          totalFisik: baStats.totalFisik,
+          totalSelisih: baStats.totalSelisih
+        },
+        logoUrl: LOGO_URL
+      });
 
-    const stTitle = { font: { bold: true, sz: 13 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stDept = { font: { bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stBox = { border: BOX };
-    const stNarasi = { font: { sz: 9 }, alignment: { horizontal: 'left', vertical: 'top', wrapText: true }, border: BOX };
-    const stTh = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'center', vertical: 'center' }, border: BOX };
-    const stC = { font: { sz: 9 }, alignment: { horizontal: 'center' }, border: BOX };
-    const stL = { font: { sz: 9 }, alignment: { horizontal: 'left' }, border: BOX };
-    const stTotalLbl = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'right' }, border: BOX };
-    const stSignLbl = { font: { bold: true, sz: 9 }, alignment: { horizontal: 'center' } };
-    const stSignName = { font: { sz: 9 }, alignment: { horizontal: 'center' }, border: TOPONLY };
-
-    const numSt = (fmt = '#,##0') => ({ font: { sz: 9 }, alignment: { horizontal: 'right' }, border: BOX, numFmt: fmt });
-    const totalNumSt = (fmt = '#,##0') => ({ font: { bold: true, sz: 9 }, alignment: { horizontal: 'right' }, border: BOX, numFmt: fmt });
-    const selisihSt = (val: number, bold = false) => ({
-      font: { sz: 9, bold: bold || val !== 0, color: { rgb: val > 0 ? '1F9D55' : val < 0 ? 'C0392B' : '000000' } },
-      alignment: { horizontal: 'right' },
-      border: BOX,
-      numFmt: '+#,##0;-#,##0;0'
-    });
-
-    const cell = (v: any, t: string, s: any) => ({ v, t, s });
-    const blankBox = () => cell('', 's', stBox);
-    const blankNone = () => cell('', 's', {});
-
-    const aoa: any[][] = [];
-    const merges: any[] = [];
-
-    // Header 0
-    aoa.push([
-      blankBox(), blankBox(),
-      cell('BERITA ACARA STOCK OPNAME', 's', stTitle), blankBox(), blankBox(), blankBox(),
-      cell('LOGISTIK DEPARTEMEN', 's', stDept), blankBox(), blankBox()
-    ]);
-    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } });
-    merges.push({ s: { r: 0, c: 2 }, e: { r: 0, c: 5 } });
-    merges.push({ s: { r: 0, c: 6 }, e: { r: 0, c: 8 } });
-
-    // Narasi 1
-    aoa.push([cell(narasi, 's', stNarasi), ...Array(8).fill(0).map(() => cell('', 's', stNarasi))]);
-    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 8 } });
-
-    // Table Header 2
-    aoa.push(['NO', 'Sloc', 'Material', 'Material Description', 'Bun', 'SAP', 'Fisik', 'Selisih', 'Keterangan'].map(h => cell(h, 's', stTh)));
-
-    // Data rows
-    joinedRows.forEach(rw => {
-      aoa.push([
-        cell(rw.no, 'n', stC),
-        cell(rw.sloc, 's', stC),
-        cell(rw.material, 's', stL),
-        cell(rw.desc, 's', stL),
-        cell(rw.bun, 's', stC),
-        cell(rw.sapQty, 'n', numSt()),
-        cell(rw.fisik, 'n', numSt()),
-        cell(rw.selisih, 'n', selisihSt(rw.selisih)),
-        cell(rw.ket, 's', stL)
-      ]);
-    });
-
-    // Total row
-    const totSAP = joinedRows.reduce((s, x) => s + x.sapQty, 0);
-    const totFisik = joinedRows.reduce((s, x) => s + x.fisik, 0);
-    const totSel = joinedRows.reduce((s, x) => s + x.selisih, 0);
-    const rTotal = aoa.length;
-    aoa.push([
-      cell('Total', 's', stTotalLbl), blankBox(), blankBox(), blankBox(), blankBox(),
-      cell(totSAP, 'n', totalNumSt()),
-      cell(totFisik, 'n', totalNumSt()),
-      cell(totSel, 'n', selisihSt(totSel, true)),
-      blankBox()
-    ]);
-    merges.push({ s: { r: rTotal, c: 0 }, e: { r: rTotal, c: 4 } });
-
-    aoa.push([]);
-
-    // Signatures
-    const rSignLbl = aoa.length;
-    aoa.push([
-      cell('Pelaksana', 's', stSignLbl), blankNone(), blankNone(),
-      cell('Mengetahui', 's', stSignLbl), blankNone(), blankNone(),
-      cell('Menyetujui', 's', stSignLbl), blankNone(), blankNone()
-    ]);
-    merges.push({ s: { r: rSignLbl, c: 0 }, e: { r: rSignLbl, c: 2 } });
-    merges.push({ s: { r: rSignLbl, c: 3 }, e: { r: rSignLbl, c: 5 } });
-    merges.push({ s: { r: rSignLbl, c: 6 }, e: { r: rSignLbl, c: 8 } });
-
-    aoa.push([]); aoa.push([]); aoa.push([]);
-
-    const rSignName = aoa.length;
-    aoa.push([
-      cell('Inventory', 's', stSignName), cell('', 's', stSignName), cell('', 's', stSignName),
-      cell('SPv Log Distribusi', 's', stSignName), cell('', 's', stSignName), cell('', 's', stSignName),
-      cell('Manager Log Distribusi', 's', stSignName), cell('', 's', stSignName), cell('', 's', stSignName)
-    ]);
-    merges.push({ s: { r: rSignName, c: 0 }, e: { r: rSignName, c: 2 } });
-    merges.push({ s: { r: rSignName, c: 3 }, e: { r: rSignName, c: 5 } });
-    merges.push({ s: { r: rSignName, c: 6 }, e: { r: rSignName, c: 8 } });
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 5 }, { wch: 8 }, { wch: 16 }, { wch: 38 }, { wch: 6 }, { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 20 }];
-    ws['!merges'] = merges;
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Berita Acara');
-    XLSX.writeFile(wb, `BA_StockOpname_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast('Download Sukses', 'File Berita Acara Excel berhasil diunduh.', 'success');
+      showToast('Download Sukses', 'File Berita Acara Excel (+ Logo Resmi KINO) berhasil diunduh.', 'success');
+    } catch (err: any) {
+      console.error('Gagal export BA Excel:', err);
+      showToast('Gagal Export', err.message || 'Terjadi kesalahan saat membuat file Excel.', 'danger');
+    } finally {
+      setIsExportingExcel(false);
+    }
   };
 
   // Filtered rows for BA preview
@@ -1613,10 +1403,15 @@ export function StockOpnameModule() {
                 <button
                   type="button"
                   onClick={handleDownloadFormExcel}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                  disabled={isExportingExcel}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
                 >
-                  <Download size={15} />
-                  <span>Download Excel Form SO</span>
+                  {isExportingExcel ? (
+                    <RefreshCw size={15} className="animate-spin" />
+                  ) : (
+                    <Download size={15} />
+                  )}
+                  <span>Download Excel Form SO (+ Logo Kino)</span>
                 </button>
 
                 <button
@@ -2093,10 +1888,15 @@ export function StockOpnameModule() {
                 <button
                   type="button"
                   onClick={handleDownloadBaExcel}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
+                  disabled={isExportingExcel}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
                 >
-                  <Download size={15} />
-                  <span>Download Excel Berita Acara</span>
+                  {isExportingExcel ? (
+                    <RefreshCw size={15} className="animate-spin" />
+                  ) : (
+                    <Download size={15} />
+                  )}
+                  <span>Download Excel Berita Acara (+ Logo Kino)</span>
                 </button>
 
                 <button
