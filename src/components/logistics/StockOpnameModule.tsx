@@ -28,7 +28,8 @@ import {
   Clock, 
   ShieldCheck,
   RotateCcw,
-  Trash2
+  Trash2,
+  ExternalLink
 } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../hooks/useSupabase';
@@ -76,6 +77,103 @@ export function StockOpnameModule() {
 
   // Preview overlay state
   const [previewMode, setPreviewMode] = useState<'none' | 'form' | 'ba'>('none');
+
+  // Auto add/remove print-so-active class to body when preview modal is active
+  useEffect(() => {
+    if (previewMode !== 'none') {
+      document.body.classList.add('print-so-active');
+      return () => {
+        document.body.classList.remove('print-so-active');
+      };
+    }
+  }, [previewMode]);
+
+  const handleTriggerPrint = () => {
+    document.body.classList.add('print-so-active');
+    window.focus();
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const handleOpenPrintWindow = () => {
+    const printContent = document.getElementById('stock-opname-printable');
+    if (!printContent) {
+      handleTriggerPrint();
+      return;
+    }
+
+    const title = previewMode === 'form' 
+      ? `Form_SO_${formPlant}_${formTgl}` 
+      : `Berita_Acara_SO_${baGudang || 'Gudang'}_${baTgl}`;
+
+    try {
+      const pWin = window.open('', '_blank', 'width=1100,height=850');
+      if (!pWin) {
+        showToast('Info Cetak', 'Popup tab baru diblokir oleh peramban. Mengalihkan ke dialog cetak browser langsung.', 'info');
+        handleTriggerPrint();
+        return;
+      }
+
+      const styles = `
+        @page { size: auto; margin: 8mm; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #000; background: #fff; }
+        .so-print-page { page-break-after: always; break-after: page; break-inside: avoid; margin-bottom: 20px; }
+        .so-print-page:last-child { page-break-after: auto; break-after: auto; margin-bottom: 0; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        th, td { border: 1px solid #000; padding: 4px 6px; font-size: 11px; }
+        th { background-color: #f1f5f9; font-weight: bold; text-align: center; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+        .font-bold { font-weight: bold; }
+        .font-mono { font-family: monospace; }
+        .font-black { font-weight: 900; }
+        .border-2 { border: 2px solid #000 !important; }
+        .border-t-0 { border-top: 0 !important; }
+        .border-b-2 { border-bottom: 2px solid #000 !important; }
+        .w-full { width: 100%; }
+        .w-8 { width: 2rem; }
+        .w-10 { width: 2.5rem; }
+        .w-14 { width: 3.5rem; }
+        .w-16 { width: 4rem; }
+        .w-20 { width: 5rem; }
+        .w-24 { width: 6rem; }
+        .w-28 { width: 7rem; }
+        .w-40 { width: 10rem; }
+        .w-1\\/3 { width: 33.333%; }
+        .pb-12 { padding-bottom: 3rem; }
+        .pt-1 { padding-top: 0.25rem; }
+        .pt-4 { padding-top: 1rem; }
+        .pt-6 { padding-top: 1.5rem; }
+        .p-1 { padding: 0.25rem; }
+        .p-2 { padding: 0.5rem; }
+        .p-3 { padding: 0.75rem; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        .leading-relaxed { line-height: 1.625; }
+        .tracking-wide { letter-spacing: 0.025em; }
+        .tracking-wider { letter-spacing: 0.05em; }
+        .text-xs { font-size: 0.75rem; }
+        .text-sm { font-size: 0.875rem; }
+        .text-base { font-size: 1rem; }
+        .max-h-10 { max-height: 2.5rem; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .object-contain { object-fit: contain; }
+        @media print {
+          body { padding: 0; }
+          .no-print { display: none !important; }
+        }
+      `;
+
+      pWin.document.open();
+      pWin.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + title + '</title><style>' + styles + '</style></head><body>' + printContent.innerHTML + '<script>window.addEventListener("DOMContentLoaded", function() { setTimeout(function() { window.focus(); window.print(); }, 250); });</script></body></html>');
+      pWin.document.close();
+    } catch (e) {
+      console.warn('Popup window error, fallback to direct print', e);
+      handleTriggerPrint();
+    }
+  };
 
   // Admin Mass Delete State (Berita Acara Result Table)
   const [selectedBaNos, setSelectedBaNos] = useState<number[]>([]);
@@ -2027,9 +2125,9 @@ export function StockOpnameModule() {
       {/* 4. MODAL PRATINJAU & PRINT FULLSCREEN (FORM SO & BERITA ACARA) */}
       {/* ============================================================ */}
       {previewMode !== 'none' && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xs flex flex-col overflow-hidden animate-fade-in text-black">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xs flex flex-col overflow-hidden animate-fade-in text-black print:static print:inset-auto print:bg-white print:overflow-visible print:z-auto print:block">
           {/* Topbar Action */}
-          <div className="bg-slate-900 text-white p-3.5 px-6 flex items-center justify-between gap-3 shadow-md">
+          <div className="bg-slate-900 text-white p-3.5 px-6 flex items-center justify-between gap-3 shadow-md print:hidden">
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm">
                 {previewMode === 'form' ? 'Pratinjau Form Hitung Stock Opname' : 'Pratinjau Berita Acara Stock Opname'}
@@ -2039,7 +2137,7 @@ export function StockOpnameModule() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setPreviewMode('none')}
@@ -2051,18 +2149,29 @@ export function StockOpnameModule() {
 
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={handleTriggerPrint}
                 className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                title="Cetak atau Simpan PDF via Dialog Browser (Ctrl + P)"
               >
                 <Printer size={14} />
                 <span>Print / Save PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenPrintWindow}
+                className="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                title="Buka dokumen di tab baru khusus cetak jika ingin menyimpan PDF terpisah"
+              >
+                <ExternalLink size={14} />
+                <span>Buka di Tab Cetak</span>
               </button>
             </div>
           </div>
 
           {/* Scrollable Printable Pages */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200">
-            <div className="max-w-4xl mx-auto space-y-8 print:space-y-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200 print:overflow-visible print:p-0 print:m-0 print:bg-white print:block">
+            <div id="stock-opname-printable" className="max-w-4xl mx-auto space-y-8 print:space-y-6 print:max-w-none print:w-full print:m-0 print:p-0">
               {/* PRINT VIEW FORM SO */}
               {previewMode === 'form' && (
                 <>
@@ -2079,7 +2188,7 @@ export function StockOpnameModule() {
                       const totalQty = rowsToRender.reduce((sum: number, r: any) => sum + r.lastQty, 0);
 
                       return (
-                        <div key={`${sloc}-${grp}`} className="bg-white p-6 sm:p-8 rounded-lg shadow-xl print:shadow-none print:p-0 print:m-0 border border-slate-300 font-sans text-xs space-y-4 print:page-break-after-always">
+                        <div key={`${sloc}-${grp}`} className="so-print-page bg-white p-6 sm:p-8 rounded-lg shadow-xl print:shadow-none print:p-2 print:m-0 print:border-none font-sans text-xs space-y-4 print:page-break-after-always">
                           {/* Kop Form */}
                           <table className="w-full border-collapse border-2 border-black text-center font-bold">
                             <tbody>
@@ -2194,7 +2303,7 @@ export function StockOpnameModule() {
 
               {/* PRINT VIEW BERITA ACARA */}
               {previewMode === 'ba' && (
-                <div className="bg-white p-6 sm:p-8 rounded-lg shadow-xl print:shadow-none print:p-0 print:m-0 border border-slate-300 font-sans text-xs space-y-4">
+                <div className="so-print-page bg-white p-6 sm:p-8 rounded-lg shadow-xl print:shadow-none print:p-2 print:m-0 print:border-none font-sans text-xs space-y-4">
                   {/* Header BA */}
                   <table className="w-full border-collapse border-2 border-black text-center font-bold">
                     <tbody>

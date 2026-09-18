@@ -165,17 +165,98 @@ button, a, input, select, textarea {
   background: #94a3b8;
 }
 
-/* Print Styles for Honeywell PM42 Thermal Printer & Barcode Sticker Labels */
+/* ========================================================================= */
+/* Comprehensive Print Styles (Stock Opname, Surat Jalan, Reports, & Labels) */
+/* ========================================================================= */
 @media print {
-  body * {
+  /* Default page settings */
+  @page {
+    margin: 8mm;
+    size: auto;
+  }
+
+  /* Reset body and background for printing */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Universal hide utility for print */
+  .no-print,
+  .print\:hidden,
+  [data-no-print="true"] {
+    display: none !important;
     visibility: hidden !important;
   }
 
-  #printable-thermal-area, #printable-thermal-area * {
+  /* ======================================================================= */
+  /* CASE 1: Stock Opname Printable Modal is Active                          */
+  /* ======================================================================= */
+  body.print-so-active *,
+  body:has(#stock-opname-printable) * {
+    visibility: hidden;
+  }
+
+  body.print-so-active #stock-opname-printable,
+  body.print-so-active #stock-opname-printable *,
+  body:has(#stock-opname-printable) #stock-opname-printable,
+  body:has(#stock-opname-printable) #stock-opname-printable * {
     visibility: visible !important;
   }
 
-  #printable-thermal-area {
+  body.print-so-active #stock-opname-printable,
+  body:has(#stock-opname-printable) #stock-opname-printable {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+  }
+
+  /* ======================================================================= */
+  /* CASE 2: Surat Jalan Printable Area                                     */
+  /* ======================================================================= */
+  body:has(#surat-jalan-printable) * {
+    visibility: hidden;
+  }
+  body:has(#surat-jalan-printable) #surat-jalan-printable,
+  body:has(#surat-jalan-printable) #surat-jalan-printable * {
+    visibility: visible !important;
+  }
+  body:has(#surat-jalan-printable) #surat-jalan-printable {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    z-index: 999999 !important;
+  }
+
+  /* ======================================================================= */
+  /* CASE 3: Honeywell PM42 Thermal Sticker Label Area                      */
+  /* ======================================================================= */
+  body:has(#printable-thermal-area) * {
+    visibility: hidden;
+  }
+  body:has(#printable-thermal-area) #printable-thermal-area,
+  body:has(#printable-thermal-area) #printable-thermal-area * {
+    visibility: visible !important;
+  }
+  body:has(#printable-thermal-area) #printable-thermal-area {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
@@ -197,5 +278,39 @@ button, a, input, select, textarea {
     border: 1px solid #000000 !important;
     margin: 0 auto 10px auto !important;
     padding: 8px !important;
+  }
+
+  /* ======================================================================= */
+  /* General Printable Document Rules                                        */
+  /* ======================================================================= */
+  .so-print-page {
+    box-sizing: border-box !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    margin: 0 0 20px 0 !important;
+    padding: 0 !important;
+  }
+
+  .so-print-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  /* Ensure table borders and headers print crisply in black */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

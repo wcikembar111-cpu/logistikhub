@@ -2090,7 +2090,7 @@ export function SuratJalanModule() {
           </div>
 
           {/* Printable Sheet */}
-          <div className={`mx-auto bg-white p-8 border border-slate-300 shadow-lg text-slate-900 ${paperSize === 'A4' ? 'max-w-[210mm]' : 'max-w-[215.9mm]'} font-sans`}>
+          <div id="surat-jalan-printable" className={`mx-auto bg-white p-8 border border-slate-300 shadow-lg text-slate-900 ${paperSize === 'A4' ? 'max-w-[210mm]' : 'max-w-[215.9mm]'} font-sans`}>
             {/* Header / Kop */}
             <div className="flex items-start justify-between pb-3 border-b-2 border-slate-900 gap-4">
               <img src={KINO_LOGO_URL} alt="Kino Logo" className="h-10 object-contain" />
