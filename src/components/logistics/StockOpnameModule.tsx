@@ -1993,21 +1993,11 @@ export function StockOpnameModule() {
 
               <button
                 type="button"
-                onClick={handleTriggerPrint}
+                onClick={handleOpenPrintWindow}
                 className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                title="Cetak atau Simpan PDF via Dialog Browser (Ctrl + P)"
+                title="Buka dokumen di tab baru khusus cetak untuk menyimpan sebagai PDF atau mencetak langsung"
               >
                 <Printer size={14} />
-                <span>Print / Save PDF</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenPrintWindow}
-                className="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                title="Buka dokumen di tab baru khusus cetak jika ingin menyimpan PDF terpisah"
-              >
-                <ExternalLink size={14} />
                 <span>Buka di Tab Cetak</span>
               </button>
             </div>
