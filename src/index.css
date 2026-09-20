@@ -196,23 +196,60 @@ button, a, input, select, textarea {
   /* ======================================================================= */
   /* CASE 1: Stock Opname Printable Modal is Active                          */
   /* ======================================================================= */
-  body.print-so-active *,
-  body:has(#stock-opname-printable) * {
-    visibility: hidden;
+  html.print-so-active,
+  body.print-so-active {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  body.print-so-active #stock-opname-printable,
-  body.print-so-active #stock-opname-printable *,
-  body:has(#stock-opname-printable) #stock-opname-printable,
-  body:has(#stock-opname-printable) #stock-opname-printable * {
-    visibility: visible !important;
+  body.print-so-active > #root,
+  body.print-so-active > *:not(#stock-opname-modal-portal) {
+    display: none !important;
   }
 
-  body.print-so-active #stock-opname-printable,
-  body:has(#stock-opname-printable) #stock-opname-printable {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  body.print-so-active #stock-opname-modal-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  /* Sembunyikan topbar aksi saat cetak */
+  body.print-so-active #stock-opname-modal-portal > div:first-child {
+    display: none !important;
+  }
+
+  /* Reset container scroll modal agar tidak ada offset/margin kosong di atas */
+  body.print-so-active #stock-opname-modal-portal > div:last-child {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  body.print-so-active #stock-opname-printable {
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -220,7 +257,23 @@ button, a, input, select, textarea {
     background: #ffffff !important;
     color: #000000 !important;
     overflow: visible !important;
-    z-index: 999999 !important;
+  }
+
+  body.print-so-active .so-print-page {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 0 20px 0 !important;
+    background: #ffffff !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    break-inside: avoid !important;
+  }
+
+  body.print-so-active .so-print-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+    margin-bottom: 0 !important;
   }
 
   /* ======================================================================= */

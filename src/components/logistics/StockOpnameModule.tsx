@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import * as XLSXStyle from 'xlsx-js-style';
 import { exportFormStockOpnameExcel, exportBeritaAcaraExcel } from '../../utils/stockOpnameExcelExporter';
 
@@ -90,11 +91,44 @@ export function StockOpnameModule() {
   }, [previewMode]);
 
   const handleTriggerPrint = () => {
+    // Pastikan class print aktif di body & html
+    document.documentElement.classList.add('print-so-active');
     document.body.classList.add('print-so-active');
-    window.focus();
+
+    // Reset posisi scroll modal & window ke paling atas agar tidak ada offset kosong di atas kertas
+    const scrollContainer = document.querySelector('#stock-opname-modal-portal .overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+
+    // Suntikkan style @page dinamis sesuai ukuran kertas yang dipilih (A4 / Letter)
+    const paperSize = previewMode === 'form' ? formPaperSize : baPaperSize;
+    let pageStyle = document.getElementById('so-dynamic-page-size') as HTMLStyleElement | null;
+    if (!pageStyle) {
+      pageStyle = document.createElement('style');
+      pageStyle.id = 'so-dynamic-page-size';
+      document.head.appendChild(pageStyle);
+    }
+    pageStyle.innerHTML = `
+      @media print {
+        @page {
+          size: ${paperSize} portrait !important;
+          margin: 8mm 8mm 8mm 8mm !important;
+        }
+      }
+    `;
+
+    // Beri jeda 80ms untuk sinkronisasi layout DOM sebelum membuka dialog print browser
     setTimeout(() => {
-      window.print();
-    }, 100);
+      try {
+        window.focus();
+        window.print();
+      } catch (err) {
+        console.warn('Direct print encountered error, opening print window tab', err);
+        handleOpenPrintWindow();
+      }
+    }, 80);
   };
 
   const handleOpenPrintWindow = () => {
@@ -108,67 +142,77 @@ export function StockOpnameModule() {
       ? `Form_SO_${formPlant}_${formTgl}` 
       : `Berita_Acara_SO_${baGudang || 'Gudang'}_${baTgl}`;
 
+    const paperSize = previewMode === 'form' ? formPaperSize : baPaperSize;
+
     try {
       const pWin = window.open('', '_blank', 'width=1100,height=850');
       if (!pWin) {
-        showToast('Info Cetak', 'Popup tab baru diblokir oleh peramban. Mengalihkan ke dialog cetak browser langsung.', 'info');
+        showToast('Info Cetak', 'Popup tab baru diblokir oleh peramban. Menjalankan dialog cetak langsung.', 'info');
         handleTriggerPrint();
         return;
       }
 
-      const styles = `
-        @page { size: auto; margin: 8mm; }
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #000; background: #fff; }
-        .so-print-page { page-break-after: always; break-after: page; break-inside: avoid; margin-bottom: 20px; }
-        .so-print-page:last-child { page-break-after: auto; break-after: auto; margin-bottom: 0; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        th, td { border: 1px solid #000; padding: 4px 6px; font-size: 11px; }
-        th { background-color: #f1f5f9; font-weight: bold; text-align: center; }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-left { text-align: left; }
-        .font-bold { font-weight: bold; }
-        .font-mono { font-family: monospace; }
-        .font-black { font-weight: 900; }
-        .border-2 { border: 2px solid #000 !important; }
-        .border-t-0 { border-top: 0 !important; }
-        .border-b-2 { border-bottom: 2px solid #000 !important; }
-        .w-full { width: 100%; }
-        .w-8 { width: 2rem; }
-        .w-10 { width: 2.5rem; }
-        .w-14 { width: 3.5rem; }
-        .w-16 { width: 4rem; }
-        .w-20 { width: 5rem; }
-        .w-24 { width: 6rem; }
-        .w-28 { width: 7rem; }
-        .w-40 { width: 10rem; }
-        .w-1\\/3 { width: 33.333%; }
-        .pb-12 { padding-bottom: 3rem; }
-        .pt-1 { padding-top: 0.25rem; }
-        .pt-4 { padding-top: 1rem; }
-        .pt-6 { padding-top: 1.5rem; }
-        .p-1 { padding: 0.25rem; }
-        .p-2 { padding: 0.5rem; }
-        .p-3 { padding: 0.75rem; }
-        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .leading-relaxed { line-height: 1.625; }
-        .tracking-wide { letter-spacing: 0.025em; }
-        .tracking-wider { letter-spacing: 0.05em; }
-        .text-xs { font-size: 0.75rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-base { font-size: 1rem; }
-        .max-h-10 { max-height: 2.5rem; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .object-contain { object-fit: contain; }
-        @media print {
-          body { padding: 0; }
-          .no-print { display: none !important; }
-        }
+      let stylesHtml = '';
+      const styleNodes = document.querySelectorAll('style, link[rel="stylesheet"]');
+      styleNodes.forEach((node) => {
+        stylesHtml += node.outerHTML;
+      });
+
+      const customStyles = `
+        <style>
+          @page { size: ${paperSize} portrait; margin: 8mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #000; background: #fff; }
+          .so-print-page { page-break-after: always; break-after: page; break-inside: avoid; margin-bottom: 20px; }
+          .so-print-page:last-child { page-break-after: auto; break-after: auto; margin-bottom: 0; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          th, td { border: 1px solid #000; padding: 4px 6px; font-size: 10px; }
+          th { background-color: #f1f5f9 !important; font-weight: bold; text-align: center; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
+          .font-bold { font-weight: bold; }
+          .font-mono { font-family: monospace; }
+          .font-black { font-weight: 900; }
+          .border-2 { border: 2px solid #000 !important; }
+          .border-t-0 { border-top: 0 !important; }
+          .border-b-2 { border-bottom: 2px solid #000 !important; }
+          .w-full { width: 100%; }
+          .w-8 { width: 2rem; }
+          .w-10 { width: 2.5rem; }
+          .w-14 { width: 3.5rem; }
+          .w-16 { width: 4rem; }
+          .w-20 { width: 5rem; }
+          .w-24 { width: 6rem; }
+          .w-28 { width: 7rem; }
+          .w-40 { width: 10rem; }
+          .w-1\\/3 { width: 33.333%; }
+          .pb-12 { padding-bottom: 3rem; }
+          .pt-1 { padding-top: 0.25rem; }
+          .pt-4 { padding-top: 1rem; }
+          .pt-6 { padding-top: 1.5rem; }
+          .p-1 { padding: 0.25rem; }
+          .p-2 { padding: 0.5rem; }
+          .p-3 { padding: 0.75rem; }
+          .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+          .leading-relaxed { line-height: 1.625; }
+          .tracking-wide { letter-spacing: 0.025em; }
+          .tracking-wider { letter-spacing: 0.05em; }
+          .text-xs { font-size: 0.75rem; }
+          .text-sm { font-size: 0.875rem; }
+          .text-base { font-size: 1rem; }
+          .max-h-10 { max-height: 2.5rem; }
+          .mx-auto { margin-left: auto; margin-right: auto; }
+          .object-contain { object-fit: contain; }
+          @media print {
+            body { padding: 0; }
+            .no-print { display: none !important; }
+          }
+        </style>
       `;
 
       pWin.document.open();
-      pWin.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + title + '</title><style>' + styles + '</style></head><body>' + printContent.innerHTML + '<script>window.addEventListener("DOMContentLoaded", function() { setTimeout(function() { window.focus(); window.print(); }, 250); });</script></body></html>');
+      pWin.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + title + '</title>' + stylesHtml + customStyles + '</head><body><div id="stock-opname-printable">' + printContent.innerHTML + '</div><script>window.addEventListener("DOMContentLoaded", function() { setTimeout(function() { window.focus(); window.print(); }, 350); });</script></body></html>');
       pWin.document.close();
     } catch (e) {
       console.warn('Popup window error, fallback to direct print', e);
@@ -1924,8 +1968,8 @@ export function StockOpnameModule() {
       {/* ============================================================ */}
       {/* 4. MODAL PRATINJAU & PRINT FULLSCREEN (FORM SO & BERITA ACARA) */}
       {/* ============================================================ */}
-      {previewMode !== 'none' && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xs flex flex-col overflow-hidden animate-fade-in text-black print:static print:inset-auto print:bg-white print:overflow-visible print:z-auto print:block">
+      {previewMode !== 'none' && typeof document !== 'undefined' && createPortal(
+        <div id="stock-opname-modal-portal" className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xs flex flex-col overflow-hidden animate-fade-in text-black print:static print:inset-auto print:bg-white print:overflow-visible print:z-auto print:block">
           {/* Topbar Action */}
           <div className="bg-slate-900 text-white p-3.5 px-6 flex items-center justify-between gap-3 shadow-md print:hidden">
             <div className="flex items-center gap-2">
@@ -2194,7 +2238,8 @@ export function StockOpnameModule() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
