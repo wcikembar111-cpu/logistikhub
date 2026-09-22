@@ -143,6 +143,12 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'Live Sync & Visualisasi KPI',
     icon: <FileSpreadsheet size={18} className="text-white" />,
     iconBg: 'bg-emerald-600'
+  },
+  'sheet-splitter': {
+    title: 'Sheet Spliter',
+    category: 'Split Sheet by SLOC',
+    icon: <FileSpreadsheet size={18} className="text-white" />,
+    iconBg: 'bg-teal-600'
   }
 };
 

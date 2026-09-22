@@ -239,6 +239,19 @@ export const TOOLS_LIST: ToolItemDef[] = [
     iconBg: 'bg-emerald-600',
     badge: 'Ecomm',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+  {
+    id: 'sheet-splitter',
+    title: 'Sheet Spliter',
+    category: 'Split Sheet by SLOC',
+    group: 'doc',
+    hasDatabase: false,
+    desc: 'Upload file Excel & otomatis memecah data menjadi multi-sheet per kode SLOC (maksimal 4 karakter)',
+    keywords: 'sheet spliter splitter excel sloc storage location pecah sheet download generate sap largo multi sheet',
+    icon: <FileSpreadsheet size={15} className="text-white" />,
+    iconBg: 'bg-teal-600',
+    badge: 'Splitter',
+    badgeColor: 'bg-teal-50 text-teal-700 border-teal-200'
   }
 ];
 

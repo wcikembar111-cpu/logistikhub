@@ -136,6 +136,14 @@ export function ToolsGrid({
       keywords: 'ecomm ecommerce dashboard google spreadsheet gsheets visualisasi grafik chart kpi pivot rekap laporan spreadsheet table read only online',
       icon: <FileSpreadsheet size={20} className="text-white" />,
       iconBg: 'bg-emerald-600'
+    },
+    {
+      id: 'sheet-splitter',
+      title: 'Sheet Spliter',
+      category: 'Split Sheet by SLOC',
+      keywords: 'sheet spliter splitter excel sloc storage location pecah sheet download generate sap largo multi sheet',
+      icon: <FileSpreadsheet size={20} className="text-white" />,
+      iconBg: 'bg-teal-600'
     }
   ];
 

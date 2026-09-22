@@ -16,6 +16,7 @@ import { OutboundLrgModule } from './logistics/OutboundLrgModule';
 import { MatchGrfgRepackModule } from './logistics/MatchGrfgRepackModule';
 import { GoogleSpreadsheetDashboardModule } from './logistics/GoogleSpreadsheetDashboardModule';
 import { VoiceCalculatorModule } from './logistics/VoiceCalculatorModule';
+import { SheetSplitterModule } from './logistics/SheetSplitterModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -55,6 +56,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}
             {activeTool === 'outbound-lrg' && <OutboundLrgModule />}
             {activeTool === 'match-grfg-repack' && <MatchGrfgRepackModule />}
+            {activeTool === 'sheet-splitter' && <SheetSplitterModule />}
             {(activeTool === 'spreadsheet-dashboard' || activeTool === 'onedrive-dashboard') && (
               <GoogleSpreadsheetDashboardModule />
             )}

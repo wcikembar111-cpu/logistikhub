@@ -166,7 +166,8 @@ export type LogisticsTab =
   | 'outbound-lrg'
   | 'match-grfg-repack'
   | 'spreadsheet-dashboard'
-  | 'onedrive-dashboard';
+  | 'onedrive-dashboard'
+  | 'sheet-splitter';
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
 
