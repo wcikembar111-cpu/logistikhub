@@ -19,7 +19,8 @@ import {
   FileCheck2,
   Table,
   Eye,
-  Database
+  Database,
+  Calendar
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { playBroadcastSound } from '../../utils/broadcastSound';
@@ -28,12 +29,114 @@ interface ParsedRow {
   [key: string]: any;
 }
 
+/**
+ * Extract yyyy/mm format from any expired date value
+ * Handles Excel serial numbers, Date instances, ISO dates, DD/MM/YYYY, text month names, etc.
+ */
+export function extractYearMonthFromDate(val: any): string {
+  if (val === undefined || val === null) return '';
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    return `${y}/${m}`;
+  }
+
+  let s = String(val).trim();
+  if (!s) return '';
+
+  // Check Excel serial number (numeric or 5-digit string like 45980)
+  if (typeof val === 'number' || /^\d{5}$/.test(s)) {
+    const num = typeof val === 'number' ? val : parseInt(s, 10);
+    if (num >= 20000 && num <= 70000) {
+      // Excel epoch: 1899-12-30
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        return `${y}/${m}`;
+      }
+    }
+  }
+
+  // Already yyyy/mm or yyyy-mm
+  const ymMatch = s.match(/^(\d{4})[\/\-](\d{1,2})$/);
+  if (ymMatch) {
+    return `${ymMatch[1]}/${ymMatch[2].padStart(2, '0')}`;
+  }
+
+  // mm/yyyy or mm-yyyy
+  const myMatch = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+  if (myMatch) {
+    return `${myMatch[2]}/${myMatch[1].padStart(2, '0')}`;
+  }
+
+  // yyyy-mm-dd or yyyy/mm/dd or yyyy.mm.dd (with optional time or T...)
+  const ymdMatch = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+  if (ymdMatch) {
+    const year = ymdMatch[1];
+    const month = parseInt(ymdMatch[2], 10);
+    return `${year}/${String(month).padStart(2, '0')}`;
+  }
+
+  // dd/mm/yyyy or dd-mm-yyyy or dd.mm.yyyy
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if (dmyMatch) {
+    const p1 = parseInt(dmyMatch[1], 10);
+    const p2 = parseInt(dmyMatch[2], 10);
+    const year = dmyMatch[3];
+    let month = p2;
+    // If p2 > 12 and p1 <= 12, format was MM/DD/YYYY
+    if (p2 > 12 && p1 <= 12) {
+      month = p1;
+    }
+    return `${year}/${String(month).padStart(2, '0')}`;
+  }
+
+  // yyyymmdd (8 digits)
+  const compactMatch = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compactMatch) {
+    return `${compactMatch[1]}/${compactMatch[2]}`;
+  }
+
+  // Month names like "15-Aug-2026" or "Nov 2026" or "10 Oktober 2026"
+  const monthMap: Record<string, string> = {
+    jan: '01', feb: '02', mar: '03', apr: '04', mei: '05', may: '05', jun: '06',
+    jul: '07', agu: '08', ags: '08', aug: '08', sep: '09', okt: '10', oct: '10',
+    nop: '11', nov: '11', des: '12', dec: '12'
+  };
+  const yearMatch = s.match(/\b(19\d\d|20\d\d)\b/);
+  if (yearMatch) {
+    const y = yearMatch[1];
+    const lower = s.toLowerCase();
+    for (const [key, mm] of Object.entries(monthMap)) {
+      if (lower.includes(key)) {
+        return `${y}/${mm}`;
+      }
+    }
+  }
+
+  // Fallback to standard JS Date parsing
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    if (y >= 1990 && y <= 2100) {
+      const m = String(parsed.getMonth() + 1).padStart(2, '0');
+      return `${y}/${m}`;
+    }
+  }
+
+  return '';
+}
+
 export function SheetSplitterModule() {
   const [fileName, setFileName] = useState<string>('');
   const [fileSize, setFileSize] = useState<number>(0);
   const [headers, setHeaders] = useState<string[]>([]);
   const [allRows, setAllRows] = useState<ParsedRow[]>([]);
   const [slocColumn, setSlocColumn] = useState<string>('');
+  const [expiredDateColumn, setExpiredDateColumn] = useState<string>('');
+  const [sourceColumn, setSourceColumn] = useState<string>('Source');
+  const [autoFormatSourceFromEd, setAutoFormatSourceFromEd] = useState<boolean>(true);
   const [unassignedSlocName, setUnassignedSlocName] = useState<string>('NOSL');
   const [maxSheetNameLength, setMaxSheetNameLength] = useState<number>(4);
   const [includeAllDataSheet, setIncludeAllDataSheet] = useState<boolean>(true);
@@ -56,7 +159,7 @@ export function SheetSplitterModule() {
     // Priority 1: Exact matches for "sloc", "storage_location", "storage location"
     const exactMatch = columnNames.find(c => {
       const lower = c.trim().toLowerCase();
-      return lower === 'sloc' || lower === 'storage location' || lower === 'storage_location' || lower === 'storageloc';
+      return lower === 'sloc' || lower === 'storage location' || lower === 'storage_location' || lower === 'storageloc' || lower === 'slc';
     });
     if (exactMatch) return exactMatch;
 
@@ -73,6 +176,44 @@ export function SheetSplitterModule() {
 
     // Fallback: first column
     return columnNames[0];
+  };
+
+  // Auto-detect Expired Date column from headers
+  const autoDetectExpiredDateColumn = (columnNames: string[]): string => {
+    if (!columnNames || columnNames.length === 0) return '';
+    
+    // Priority 1: Exact / clean matches for "expireddate", "expirydate", "expdate", "ed", etc.
+    const exactMatch = columnNames.find(c => {
+      const clean = c.trim().toLowerCase().replace(/[_\s\-\.]/g, '');
+      return ['expireddate', 'expirydate', 'expirationdate', 'tglexpired', 'tanggalkadaluarsa', 'expdate', 'tangled', 'tgled'].includes(clean);
+    });
+    if (exactMatch) return exactMatch;
+
+    // Priority 2: Contains "expired" or "expiry" or "kadaluarsa" or "sled"
+    const containsExpired = columnNames.find(c => {
+      const lower = c.trim().toLowerCase();
+      return lower.includes('expired') || lower.includes('expiry') || lower.includes('kadaluarsa') || lower.includes('sled');
+    });
+    if (containsExpired) return containsExpired;
+
+    // Priority 3: Contains "ed" as standalone token or header name
+    const edMatch = columnNames.find(c => {
+      const lower = c.trim().toLowerCase();
+      return lower === 'ed' || /\b(ed)\b/i.test(lower);
+    });
+    if (edMatch) return edMatch;
+
+    return '';
+  };
+
+  // Auto-detect Source column from headers
+  const autoDetectSourceColumn = (columnNames: string[]): string => {
+    if (!columnNames || columnNames.length === 0) return 'Source';
+    const match = columnNames.find(c => {
+      const lower = c.trim().toLowerCase();
+      return lower === 'source' || lower === 'src' || lower === 'sumber';
+    });
+    return match || 'Source';
   };
 
   // Sanitize sheet name for Excel rules (forbidden: \ / ? * [ ] : and max chars)
@@ -93,7 +234,7 @@ export function SheetSplitterModule() {
     setExportSuccessMessage(null);
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
 
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
         throw new Error('File Excel tidak memiliki sheet yang valid.');
@@ -119,12 +260,16 @@ export function SheetSplitterModule() {
       });
 
       const detectedSloc = autoDetectSlocColumn(detectedHeaders);
+      const detectedEd = autoDetectExpiredDateColumn(detectedHeaders);
+      const detectedSource = autoDetectSourceColumn(detectedHeaders);
 
       setFileName(file.name);
       setFileSize(file.size);
       setHeaders(detectedHeaders);
       setAllRows(jsonData);
       setSlocColumn(detectedSloc);
+      setExpiredDateColumn(detectedEd);
+      setSourceColumn(detectedSource);
       setSelectedPreviewSheet('ALL');
       setCurrentPage(1);
 
@@ -163,27 +308,29 @@ export function SheetSplitterModule() {
 
   // Demo sample dataset loader for instant testing
   const handleLoadSampleData = () => {
-    const sampleHeaders = ['Material', 'Deskripsi_Barang', 'SLOC', 'Batch', 'Qty_Pcs', 'UoM', 'Status'];
+    const sampleHeaders = ['Material', 'Deskripsi_Barang', 'SLOC', 'Batch', 'Expired Date', 'Qty_Pcs', 'UoM', 'Source', 'Status'];
     const sampleRows: ParsedRow[] = [
-      { Material: 'FG-100201', Deskripsi_Barang: 'Larutan Jeruk Nipis 200ml', SLOC: '1001', Batch: 'B260901', Qty_Pcs: 120, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-100202', Deskripsi_Barang: 'Larutan Jambu 200ml', SLOC: '1001', Batch: 'B260902', Qty_Pcs: 85, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-200105', Deskripsi_Barang: 'Kino Candy Kopi Susu', SLOC: '1002', Batch: 'B260903', Qty_Pcs: 340, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-200108', Deskripsi_Barang: 'Kino Candy Mint Fresh', SLOC: '1002', Batch: 'B260904', Qty_Pcs: 210, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-300401', Deskripsi_Barang: 'Ellips Hair Vitamin Morrocan', SLOC: '8A12', Batch: 'B260905', Qty_Pcs: 450, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-300402', Deskripsi_Barang: 'Ellips Hair Vitamin Smooth', SLOC: '8A12', Batch: 'B260906', Qty_Pcs: 310, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-400901', Deskripsi_Barang: 'Cap Kaki Tiga Lychee Can', SLOC: '1200', Batch: 'B260907', Qty_Pcs: 95, UoM: 'PCS', Status: 'Quarantine' },
-      { Material: 'FG-400902', Deskripsi_Barang: 'Cap Kaki Tiga Original Can', SLOC: '1200', Batch: 'B260908', Qty_Pcs: 140, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-500101', Deskripsi_Barang: 'Ovale Facial Mask Bengkoang', SLOC: '1800', Batch: 'B260909', Qty_Pcs: 75, UoM: 'PCS', Status: 'Available' },
-      { Material: 'FG-600201', Deskripsi_Barang: 'Sleek Baby Bottle Cleanser', SLOC: '', Batch: 'B260910', Qty_Pcs: 60, UoM: 'PCS', Status: 'Unassigned' },
-      { Material: 'FG-600202', Deskripsi_Barang: 'Sleek Baby Laundry Liquid', SLOC: '', Batch: 'B260911', Qty_Pcs: 45, UoM: 'PCS', Status: 'Unassigned' },
-      { Material: 'FG-700101', Deskripsi_Barang: 'Ristra Peeling Treatment', SLOC: '1001', Batch: 'B260912', Qty_Pcs: 190, UoM: 'PCS', Status: 'Available' }
+      { Material: 'FG-100201', Deskripsi_Barang: 'Larutan Jeruk Nipis 200ml', SLOC: '1001', Batch: 'B260901', 'Expired Date': '2026-11-15', Qty_Pcs: 120, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-100202', Deskripsi_Barang: 'Larutan Jambu 200ml', SLOC: '1001', Batch: 'B260902', 'Expired Date': '2026-12-30', Qty_Pcs: 85, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-200105', Deskripsi_Barang: 'Kino Candy Kopi Susu', SLOC: '1002', Batch: 'B260903', 'Expired Date': '2027-04-18', Qty_Pcs: 340, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-200108', Deskripsi_Barang: 'Kino Candy Mint Fresh', SLOC: '1002', Batch: 'B260904', 'Expired Date': '2027-05-22', Qty_Pcs: 210, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-300401', Deskripsi_Barang: 'Ellips Hair Vitamin Morrocan', SLOC: '8A12', Batch: 'B260905', 'Expired Date': '2026-08-20', Qty_Pcs: 450, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-300402', Deskripsi_Barang: 'Ellips Hair Vitamin Smooth', SLOC: '8A12', Batch: 'B260906', 'Expired Date': '2026-09-10', Qty_Pcs: 310, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-400901', Deskripsi_Barang: 'Cap Kaki Tiga Lychee Can', SLOC: '1200', Batch: 'B260907', 'Expired Date': '2026-10-05', Qty_Pcs: 95, UoM: 'PCS', Source: '', Status: 'Quarantine' },
+      { Material: 'FG-400902', Deskripsi_Barang: 'Cap Kaki Tiga Original Can', SLOC: '1200', Batch: 'B260908', 'Expired Date': '2026-10-28', Qty_Pcs: 140, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-500101', Deskripsi_Barang: 'Ovale Facial Mask Bengkoang', SLOC: '1800', Batch: 'B260909', 'Expired Date': '2027-02-14', Qty_Pcs: 75, UoM: 'PCS', Source: '', Status: 'Available' },
+      { Material: 'FG-600201', Deskripsi_Barang: 'Sleek Baby Bottle Cleanser', SLOC: '', Batch: 'B260910', 'Expired Date': '2027-08-30', Qty_Pcs: 60, UoM: 'PCS', Source: '', Status: 'Unassigned' },
+      { Material: 'FG-600202', Deskripsi_Barang: 'Sleek Baby Laundry Liquid', SLOC: '', Batch: 'B260911', 'Expired Date': '2027-09-15', Qty_Pcs: 45, UoM: 'PCS', Source: '', Status: 'Unassigned' },
+      { Material: 'FG-700101', Deskripsi_Barang: 'Ristra Peeling Treatment', SLOC: '1001', Batch: 'B260912', 'Expired Date': '2026-07-25', Qty_Pcs: 190, UoM: 'PCS', Source: '', Status: 'Available' }
     ];
 
     setFileName('Sample_Stock_Logistik.xlsx');
-    setFileSize(14500);
+    setFileSize(15200);
     setHeaders(sampleHeaders);
     setAllRows(sampleRows);
     setSlocColumn('SLOC');
+    setExpiredDateColumn('Expired Date');
+    setSourceColumn('Source');
     setSelectedPreviewSheet('ALL');
     setCurrentPage(1);
     setExportSuccessMessage(null);
@@ -197,6 +344,8 @@ export function SheetSplitterModule() {
     setHeaders([]);
     setAllRows([]);
     setSlocColumn('');
+    setExpiredDateColumn('');
+    setSourceColumn('Source');
     setSelectedPreviewSheet('ALL');
     setSearchQuery('');
     setExportSuccessMessage(null);
@@ -205,16 +354,51 @@ export function SheetSplitterModule() {
     }
   };
 
-  // Group rows by mapped sheet name (strict 4 characters)
+  // Transformed rows: Replace Source cell value with yyyy/mm from Expired Date
+  const processedRows = useMemo(() => {
+    if (!autoFormatSourceFromEd || !expiredDateColumn || allRows.length === 0) {
+      return allRows;
+    }
+    const targetSourceKey = sourceColumn || 'Source';
+    return allRows.map(row => {
+      const edVal = row[expiredDateColumn];
+      const ym = extractYearMonthFromDate(edVal);
+      return {
+        ...row,
+        [targetSourceKey]: ym || (row[targetSourceKey] !== undefined ? String(row[targetSourceKey]) : '')
+      };
+    });
+  }, [allRows, autoFormatSourceFromEd, expiredDateColumn, sourceColumn]);
+
+  // Effective headers list: ensuring Source column exists and is ordered cleanly
+  const effectiveHeaders = useMemo(() => {
+    if (!autoFormatSourceFromEd || !expiredDateColumn || headers.length === 0) {
+      return headers;
+    }
+    const targetSourceKey = sourceColumn || 'Source';
+    if (headers.includes(targetSourceKey)) {
+      return headers;
+    }
+    // If Source was not present in raw headers, insert right after expiredDateColumn or at end
+    const edIdx = headers.indexOf(expiredDateColumn);
+    if (edIdx !== -1) {
+      const copy = [...headers];
+      copy.splice(edIdx + 1, 0, targetSourceKey);
+      return copy;
+    }
+    return [...headers, targetSourceKey];
+  }, [headers, autoFormatSourceFromEd, expiredDateColumn, sourceColumn]);
+
+  // Group rows by mapped sheet name (strict 4 characters) using processed rows
   const groupedSheets = useMemo(() => {
-    if (!slocColumn || allRows.length === 0) {
+    if (!slocColumn || processedRows.length === 0) {
       return { sheetMap: new Map<string, ParsedRow[]>(), sheetList: [] };
     }
 
     const map = new Map<string, ParsedRow[]>();
     const usedNames = new Set<string>();
 
-    allRows.forEach(row => {
+    processedRows.forEach(row => {
       const rawVal = row[slocColumn];
       let sheetName = '';
 
@@ -240,13 +424,13 @@ export function SheetSplitterModule() {
       sheetMap: map,
       sheetList: sortedSheetNames
     };
-  }, [allRows, slocColumn, unassignedSlocName, maxSheetNameLength]);
+  }, [processedRows, slocColumn, unassignedSlocName, maxSheetNameLength]);
 
   // Rows currently visible in preview
   const previewRows = useMemo(() => {
     let source: ParsedRow[] = [];
     if (selectedPreviewSheet === 'ALL') {
-      source = allRows;
+      source = processedRows;
     } else {
       source = groupedSheets.sheetMap.get(selectedPreviewSheet) || [];
     }
@@ -259,7 +443,7 @@ export function SheetSplitterModule() {
         String(val ?? '').toLowerCase().includes(query)
       );
     });
-  }, [allRows, groupedSheets, selectedPreviewSheet, searchQuery]);
+  }, [processedRows, groupedSheets, selectedPreviewSheet, searchQuery]);
 
   // Paginated preview rows
   const paginatedRows = useMemo(() => {
@@ -313,7 +497,7 @@ export function SheetSplitterModule() {
 
   // Generate and Download Excel for All SLOCs
   const handleExportExcel = () => {
-    if (allRows.length === 0 || !slocColumn) {
+    if (processedRows.length === 0 || !slocColumn) {
       alert('Tidak ada data atau kolom SLOC belum dipilih.');
       return;
     }
@@ -321,24 +505,23 @@ export function SheetSplitterModule() {
     try {
       const wb = XLSX.utils.book_new();
 
-      // 1. Pilihan A: Sheet pertama adalah "ALL DATA" (atau nama yang dikonfigurasi <= 4 karakter, e.g. DATA)
+      // 1. Sheet pertama: ALL DATA
       if (includeAllDataSheet) {
         const cleanAllSheetName = sanitizeSheetName(allDataSheetName || 'DATA', maxSheetNameLength);
-        const wsAll = XLSX.utils.json_to_sheet(allRows);
-        wsAll['!cols'] = calculateAutoColWidths(allRows, headers);
+        const wsAll = XLSX.utils.json_to_sheet(processedRows, { header: effectiveHeaders });
+        wsAll['!cols'] = calculateAutoColWidths(processedRows, effectiveHeaders);
         XLSX.utils.book_append_sheet(wb, wsAll, cleanAllSheetName);
       }
 
       // 2. Tambahkan sheet-sheet per SLOC (masing-masing 4 karakter)
       groupedSheets.sheetList.forEach(sheetName => {
-        // Jangan duplikat jika sheet name sama dengan allDataSheetName
         const targetSheetName = sheetName === sanitizeSheetName(allDataSheetName || 'DATA', maxSheetNameLength) 
           ? `${sheetName}_S`.substring(0, maxSheetNameLength) 
           : sheetName;
 
         const rowsForSheet = groupedSheets.sheetMap.get(sheetName) || [];
-        const wsSloc = XLSX.utils.json_to_sheet(rowsForSheet);
-        wsSloc['!cols'] = calculateAutoColWidths(rowsForSheet, headers);
+        const wsSloc = XLSX.utils.json_to_sheet(rowsForSheet, { header: effectiveHeaders });
+        wsSloc['!cols'] = calculateAutoColWidths(rowsForSheet, effectiveHeaders);
         XLSX.utils.book_append_sheet(wb, wsSloc, targetSheetName);
       });
 
@@ -346,13 +529,13 @@ export function SheetSplitterModule() {
       XLSX.writeFile(wb, outputFileName);
 
       playBroadcastSound('announcement');
-      setExportSuccessMessage(`File "${outputFileName}" berhasil dibuat dengan ${groupedSheets.sheetList.length + (includeAllDataSheet ? 1 : 0)} sheet!`);
+      setExportSuccessMessage(`File "${outputFileName}" berhasil dibuat dengan ${groupedSheets.sheetList.length + (includeAllDataSheet ? 1 : 0)} sheet! (Kolom Source terisi yyyy/mm dari Expired Date)`);
     } catch (err: any) {
       alert(`Gagal membuat file Excel: ${err.message || 'Unknown error'}`);
     }
   };
 
-  // Generate and Download Excel for a Single Selected SLOC (Only 1 sheet, filename matching the SLOC)
+  // Generate and Download Excel for a Single Selected SLOC (Only 1 sheet)
   const handleExportSingleSloc = (targetSloc?: string) => {
     const effectiveSloc = targetSloc || selectedDownloadSloc || (groupedSheets.sheetList.length > 0 ? groupedSheets.sheetList[0] : '');
 
@@ -370,17 +553,16 @@ export function SheetSplitterModule() {
     try {
       const wb = XLSX.utils.book_new();
       const cleanSheetName = sanitizeSheetName(effectiveSloc, maxSheetNameLength);
-      const wsSloc = XLSX.utils.json_to_sheet(rowsForSheet);
-      wsSloc['!cols'] = calculateAutoColWidths(rowsForSheet, headers);
+      const wsSloc = XLSX.utils.json_to_sheet(rowsForSheet, { header: effectiveHeaders });
+      wsSloc['!cols'] = calculateAutoColWidths(rowsForSheet, effectiveHeaders);
       
-      // HANYA 1 SHEET yang dibuat sesuai SLOC yang dipilih
       XLSX.utils.book_append_sheet(wb, wsSloc, cleanSheetName);
 
       const outputFileName = generateSingleExportFileName(cleanSheetName);
       XLSX.writeFile(wb, outputFileName);
 
       playBroadcastSound('announcement');
-      setExportSuccessMessage(`File "${outputFileName}" berhasil diunduh (1 Sheet: ${cleanSheetName}, ${rowsForSheet.length} baris)!`);
+      setExportSuccessMessage(`File "${outputFileName}" berhasil diunduh (1 Sheet: ${cleanSheetName}, ${rowsForSheet.length} baris)! (Kolom Source terisi yyyy/mm dari Expired Date)`);
     } catch (err: any) {
       alert(`Gagal membuat file Excel SLOC ${effectiveSloc}: ${err.message || 'Unknown error'}`);
     }
@@ -403,12 +585,12 @@ export function SheetSplitterModule() {
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase">
                   Generator SLOC
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
-                  Role: Bebas
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                  Source: yyyy/mm ED
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Upload file Excel, otomatis pecah baris data menjadi multi-sheet per kode SLOC (maks 4 karakter) dalam 1 file baru siap unduh.
+                Upload file Excel, otomatis pecah baris data menjadi multi-sheet per kode SLOC (maks 4 karakter), dan isi kolom <strong>Source</strong> dengan format <strong>yyyy/mm</strong> dari <strong>Expired Date</strong>.
               </p>
             </div>
           </div>
@@ -464,7 +646,7 @@ export function SheetSplitterModule() {
               Klik atau Seret File Excel ke Sini
             </h3>
             <p className="text-xs text-slate-500 mb-4">
-              Mendukung format <strong>.xlsx</strong>, <strong>.xls</strong>, atau <strong>.csv</strong>. Sistem akan otomatis mendeteksi kolom SLOC.
+              Mendukung format <strong>.xlsx</strong>, <strong>.xls</strong>, atau <strong>.csv</strong>. Sistem otomatis mendeteksi kolom SLOC dan mengisi kolom <strong>Source</strong> dengan nilai <strong>yyyy/mm</strong> dari kolom <strong>Expired Date</strong>.
             </p>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-2xs transition">
               <Upload size={14} />
@@ -503,11 +685,11 @@ export function SheetSplitterModule() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Total Baris:</span>
-                <span className="text-emerald-700 font-bold">{allRows.length} Baris</span>
+                <span className="text-emerald-700 font-bold">{processedRows.length} Baris</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Total Kolom:</span>
-                <span className="text-slate-700 font-semibold">{headers.length} Kolom</span>
+                <span className="text-slate-700 font-semibold">{effectiveHeaders.length} Kolom</span>
               </div>
             </div>
 
@@ -531,8 +713,74 @@ export function SheetSplitterModule() {
                 ))}
               </select>
               <p className="text-[11px] text-slate-500">
-                Pilih kolom yang berisi kode SLOC (Storage Location).
+                Pilih kolom pemecah sheet (Storage Location).
               </p>
+            </div>
+
+            {/* SOURCE & EXPIRED DATE TRANSFORMATION CARD */}
+            <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={14} className="text-indigo-600" />
+                  <span className="text-xs font-bold text-indigo-900">
+                    Otomatis Isi Kolom "Source"
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={autoFormatSourceFromEd}
+                  onChange={(e) => setAutoFormatSourceFromEd(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded border-indigo-300 focus:ring-indigo-500 cursor-pointer"
+                  title="Aktifkan penggantian isi kolom Source dengan yyyy/mm dari Expired Date"
+                />
+              </div>
+
+              <p className="text-[10px] text-indigo-800/90 leading-tight">
+                Mengambil angka <strong>yyyy/mm</strong> dari kolom Expired Date lalu menuliskannya ke kolom <strong>Source</strong> pada hasil download Excel.
+              </p>
+
+              {autoFormatSourceFromEd && (
+                <div className="space-y-2 pt-1 border-t border-indigo-200/60">
+                  <div>
+                    <label className="text-[11px] font-semibold text-indigo-950 flex items-center justify-between mb-1">
+                      <span>Kolom Expired Date</span>
+                      {expiredDateColumn && (
+                        <span className="text-[9px] text-indigo-700 bg-indigo-100 px-1.5 py-0.2 rounded font-medium">
+                          Terdeteksi
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      value={expiredDateColumn}
+                      onChange={(e) => setExpiredDateColumn(e.target.value)}
+                      className="w-full text-xs font-semibold px-2.5 py-1.5 bg-white border border-indigo-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                    >
+                      <option value="">-- Pilih Kolom Expired Date --</option>
+                      {headers.map(h => {
+                        const isEd = h.toLowerCase().includes('exp') || h.toLowerCase().includes('ed') || h.toLowerCase().includes('kadaluarsa');
+                        return (
+                          <option key={h} value={h}>
+                            {h} {isEd ? '★ (Terdeteksi ED)' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-indigo-950 block mb-1">
+                      Target Kolom Output (Default: Source)
+                    </label>
+                    <input
+                      type="text"
+                      value={sourceColumn}
+                      onChange={(e) => setSourceColumn(e.target.value)}
+                      placeholder="Source"
+                      className="w-full text-xs font-semibold px-2.5 py-1.5 bg-white border border-indigo-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Configuration Options */}
@@ -583,7 +831,7 @@ export function SheetSplitterModule() {
                     <div className="pr-2">
                       <div className="text-xs font-bold text-slate-800">Sheet Pertama: ALL DATA</div>
                       <div className="text-[10px] text-slate-500 leading-tight">
-                        Sertakan 1 sheet data lengkap (Opsi A) sebelum sheet per SLOC.
+                        Sertakan 1 sheet data lengkap sebelum sheet per SLOC.
                       </div>
                     </div>
                     <input
@@ -743,7 +991,7 @@ export function SheetSplitterModule() {
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                   selectedPreviewSheet === 'ALL' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800'
                 }`}>
-                  {allRows.length}
+                  {processedRows.length}
                 </span>
               </button>
 
@@ -788,13 +1036,20 @@ export function SheetSplitterModule() {
             {/* PREVIEW TABLE CONTAINER */}
             <div className="flex-1 border border-slate-200 rounded-xl overflow-hidden flex flex-col min-h-[260px] bg-slate-50/30">
               <div className="p-2 bg-slate-100/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-                <div className="flex items-center gap-1.5 font-semibold">
+                <div className="flex items-center gap-1.5 font-semibold flex-wrap">
                   <Table size={13} className="text-slate-500" />
                   <span>Preview Sheet: </span>
                   <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
                     {selectedPreviewSheet === 'ALL' ? (allDataSheetName || 'DATA') : selectedPreviewSheet}
                   </span>
                   <span className="text-slate-400">({previewRows.length} baris data)</span>
+
+                  {autoFormatSourceFromEd && expiredDateColumn && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-semibold text-[10px] border border-indigo-200">
+                      <Calendar size={11} />
+                      {sourceColumn || 'Source'}: yyyy/mm dari {expiredDateColumn}
+                    </span>
+                  )}
                 </div>
                 
                 {/* QUICK DOWNLOAD BUTTON ON PREVIEW */}
@@ -832,23 +1087,39 @@ export function SheetSplitterModule() {
                   <thead className="bg-slate-100 sticky top-0 z-10 border-b border-slate-200 text-slate-700 font-bold">
                     <tr>
                       <th className="py-2 px-3 w-10 text-center text-slate-400">#</th>
-                      {headers.map(h => (
-                        <th 
-                          key={h} 
-                          className={`py-2 px-3 whitespace-nowrap ${
-                            h === slocColumn ? 'bg-emerald-100/70 text-emerald-900 font-black' : ''
-                          }`}
-                        >
-                          {h}
-                          {h === slocColumn && ' (SLOC)'}
-                        </th>
-                      ))}
+                      {effectiveHeaders.map(h => {
+                        const isSloc = h === slocColumn;
+                        const isSource = autoFormatSourceFromEd && (h === sourceColumn || h.toLowerCase() === 'source');
+                        const isEd = h === expiredDateColumn;
+
+                        return (
+                          <th 
+                            key={h} 
+                            className={`py-2 px-3 whitespace-nowrap ${
+                              isSloc 
+                                ? 'bg-emerald-100/70 text-emerald-900 font-black' 
+                                : isSource
+                                  ? 'bg-indigo-100/80 text-indigo-900 font-black'
+                                  : isEd
+                                    ? 'bg-amber-100/60 text-amber-900 font-bold'
+                                    : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-1">
+                              <span>{h}</span>
+                              {isSloc && <span className="text-[9px] bg-emerald-200 text-emerald-800 px-1 rounded font-bold">SLOC</span>}
+                              {isSource && <span className="text-[9px] bg-indigo-200 text-indigo-800 px-1 rounded font-bold">yyyy/mm</span>}
+                              {isEd && <span className="text-[9px] bg-amber-200 text-amber-800 px-1 rounded font-bold">ED</span>}
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/70 bg-white">
                     {paginatedRows.length === 0 ? (
                       <tr>
-                        <td colSpan={headers.length + 1} className="py-8 text-center text-slate-400">
+                        <td colSpan={effectiveHeaders.length + 1} className="py-8 text-center text-slate-400">
                           Tidak ada baris data yang cocok dengan filter atau pencarian.
                         </td>
                       </tr>
@@ -860,22 +1131,32 @@ export function SheetSplitterModule() {
                             <td className="py-1.5 px-3 text-center text-slate-400 text-[11px]">
                               {globalIndex}
                             </td>
-                            {headers.map(h => (
-                              <td 
-                                key={h} 
-                                className={`py-1.5 px-3 whitespace-nowrap text-slate-700 ${
-                                  h === slocColumn 
-                                    ? 'bg-emerald-50/40 font-bold text-emerald-800' 
-                                    : ''
-                                }`}
-                              >
-                                {row[h] !== undefined && row[h] !== null && String(row[h]).trim() !== '' ? (
-                                  String(row[h])
-                                ) : (
-                                  <span className="text-slate-300 italic text-[11px]">-</span>
-                                )}
-                              </td>
-                            ))}
+                            {effectiveHeaders.map(h => {
+                              const isSloc = h === slocColumn;
+                              const isSource = autoFormatSourceFromEd && (h === sourceColumn || h.toLowerCase() === 'source');
+                              const isEd = h === expiredDateColumn;
+
+                              return (
+                                <td 
+                                  key={h} 
+                                  className={`py-1.5 px-3 whitespace-nowrap text-slate-700 ${
+                                    isSloc 
+                                      ? 'bg-emerald-50/40 font-bold text-emerald-800' 
+                                      : isSource
+                                        ? 'bg-indigo-50/50 font-bold text-indigo-800 font-mono'
+                                        : isEd
+                                          ? 'bg-amber-50/30 text-amber-900'
+                                          : ''
+                                  }`}
+                                >
+                                  {row[h] !== undefined && row[h] !== null && String(row[h]).trim() !== '' ? (
+                                    String(row[h])
+                                  ) : (
+                                    <span className="text-slate-300 italic text-[11px]">-</span>
+                                  )}
+                                </td>
+                              );
+                            })}
                           </tr>
                         );
                       })
@@ -921,11 +1202,11 @@ export function SheetSplitterModule() {
           <Info size={14} className="text-blue-600" />
           <span>Aturan & Alur Pemecahan Sheet (Sheet Spliter by SLOC)</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
           <div className="p-2.5 bg-white rounded-xl border border-slate-200">
             <div className="font-bold text-slate-800 mb-0.5">1. Deteksi Cerdas Kolom SLOC</div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Sistem otomatis mencari header bernama "sloc", "storage location", atau "gudang" (tidak sensitif huruf besar/kecil). Anda juga bisa memilih kolom secara manual melalui dropdown.
+              Sistem otomatis mencari header bernama "sloc", "storage location", atau "gudang". Anda juga bisa memilih kolom secara manual melalui dropdown.
             </p>
           </div>
           <div className="p-2.5 bg-white rounded-xl border border-slate-200">
@@ -935,10 +1216,16 @@ export function SheetSplitterModule() {
             </p>
           </div>
           <div className="p-2.5 bg-white rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-800 mb-0.5">3. Pilihan Download: Semua vs 1 SLOC</div>
+            <div className="font-bold text-slate-800 mb-0.5">3. Format Source: yyyy/mm dari ED</div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              <strong>Semua SLOC:</strong> Menghasilkan file multi-sheet <code className="bg-slate-100 px-1 rounded text-slate-800 font-mono">[NamaFile]_BY_SLOC_[yymmdd].xlsx</code>.<br />
-              <strong>1 SLOC Saja:</strong> Menghasilkan file 1 sheet bernama SLOC tersebut, dengan nama file <code className="bg-slate-100 px-1 rounded text-slate-800 font-mono">[NamaFile]_[SLOC]_[yymmdd].xlsx</code>.
+              Pada file Excel hasil download, isi kolom <strong>Source</strong> otomatis diganti dengan format tahun/bulan (<strong>yyyy/mm</strong>) yang diekstrak dari kolom <strong>Expired Date</strong>.
+            </p>
+          </div>
+          <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+            <div className="font-bold text-slate-800 mb-0.5">4. Pilihan Download: Semua vs 1 SLOC</div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              <strong>Semua SLOC:</strong> File multi-sheet <code className="bg-slate-100 px-1 rounded text-slate-800 font-mono">[NamaFile]_BY_SLOC_[yymmdd].xlsx</code>.<br />
+              <strong>1 SLOC Saja:</strong> File 1 sheet bernama SLOC tersebut.
             </p>
           </div>
         </div>
