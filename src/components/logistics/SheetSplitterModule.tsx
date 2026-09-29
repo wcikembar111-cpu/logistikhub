@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -20,7 +20,11 @@ import {
   Table,
   Eye,
   Database,
-  Calendar
+  Calendar,
+  CheckSquare,
+  Square,
+  CheckCheck,
+  XCircle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { playBroadcastSound } from '../../utils/broadcastSound';
@@ -148,8 +152,10 @@ export function SheetSplitterModule() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(15);
   const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
-  const [downloadMode, setDownloadMode] = useState<'all' | 'single'>('all');
+  const [downloadMode, setDownloadMode] = useState<'all' | 'custom' | 'single'>('all');
   const [selectedDownloadSloc, setSelectedDownloadSloc] = useState<string>('');
+  const [selectedSlocs, setSelectedSlocs] = useState<string[]>([]);
+  const [slocFilterText, setSlocFilterText] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -349,6 +355,8 @@ export function SheetSplitterModule() {
     setSelectedPreviewSheet('ALL');
     setSearchQuery('');
     setExportSuccessMessage(null);
+    setSelectedSlocs([]);
+    setSlocFilterText('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -426,6 +434,45 @@ export function SheetSplitterModule() {
     };
   }, [processedRows, slocColumn, unassignedSlocName, maxSheetNameLength]);
 
+  // Synchronize selectedSlocs when groupedSheets.sheetList updates
+  useEffect(() => {
+    if (groupedSheets.sheetList.length > 0) {
+      setSelectedSlocs(prev => {
+        // Keep valid existing selections
+        const valid = prev.filter(s => groupedSheets.sheetList.includes(s));
+        return valid.length > 0 ? valid : groupedSheets.sheetList;
+      });
+    } else {
+      setSelectedSlocs([]);
+    }
+  }, [groupedSheets.sheetList]);
+
+  // Toggle selection for a single SLOC
+  const toggleSlocSelection = (slocCode: string) => {
+    setSelectedSlocs(prev =>
+      prev.includes(slocCode) ? prev.filter(s => s !== slocCode) : [...prev, slocCode]
+    );
+  };
+
+  // Select all SLOCs
+  const handleSelectAllSlocs = () => {
+    setSelectedSlocs([...groupedSheets.sheetList]);
+  };
+
+  // Deselect all SLOCs
+  const handleDeselectAllSlocs = () => {
+    setSelectedSlocs([]);
+  };
+
+  // Total rows count for currently selected SLOCs
+  const selectedRowsCount = useMemo(() => {
+    let total = 0;
+    selectedSlocs.forEach(s => {
+      total += groupedSheets.sheetMap.get(s)?.length || 0;
+    });
+    return total;
+  }, [selectedSlocs, groupedSheets.sheetMap]);
+
   // Rows currently visible in preview
   const previewRows = useMemo(() => {
     let source: ParsedRow[] = [];
@@ -476,6 +523,26 @@ export function SheetSplitterModule() {
     const cleanSloc = sanitizeSheetName(targetSloc || 'SLOC', maxSheetNameLength);
 
     return `${rawBaseName}_${cleanSloc}_${yymmdd}.xlsx`;
+  };
+
+  // Format file name for custom selected SLOCs: [NamaFileAsli]_[N]SLOC_[yymmdd].xlsx
+  const generateCustomExportFileName = (chosenSlocs: string[]): string => {
+    const rawBaseName = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'DATA_EXPORT';
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const yymmdd = `${yy}${mm}${dd}`;
+
+    if (chosenSlocs.length === 1) {
+      const cleanSloc = sanitizeSheetName(chosenSlocs[0], maxSheetNameLength);
+      return `${rawBaseName}_${cleanSloc}_${yymmdd}.xlsx`;
+    }
+    if (chosenSlocs.length <= 3) {
+      const slocsJoined = chosenSlocs.map(s => sanitizeSheetName(s, maxSheetNameLength)).join('_');
+      return `${rawBaseName}_SLOC_${slocsJoined}_${yymmdd}.xlsx`;
+    }
+    return `${rawBaseName}_${chosenSlocs.length}SLOC_${yymmdd}.xlsx`;
   };
 
   // Helper to calculate column widths automatically
@@ -565,6 +632,63 @@ export function SheetSplitterModule() {
       setExportSuccessMessage(`File "${outputFileName}" berhasil diunduh (1 Sheet: ${cleanSheetName}, ${rowsForSheet.length} baris)! (Kolom Source terisi yyyy/mm dari Expired Date)`);
     } catch (err: any) {
       alert(`Gagal membuat file Excel SLOC ${effectiveSloc}: ${err.message || 'Unknown error'}`);
+    }
+  };
+
+  // Generate and Download Excel for User-Selected SLOCs (Can be 1 or more SLOCs)
+  const handleExportCustomSlocs = () => {
+    if (selectedSlocs.length === 0) {
+      alert('Silakan pilih minimal 1 kode SLOC yang ingin di-download.');
+      return;
+    }
+
+    try {
+      const wb = XLSX.utils.book_new();
+      const sortedSelectedSlocs = [...selectedSlocs].sort((a, b) => 
+        a.localeCompare(b, undefined, { numeric: true })
+      );
+
+      // 1. Optional Sheet ALL DATA: only rows belonging to selected SLOCs
+      if (includeAllDataSheet && sortedSelectedSlocs.length > 1) {
+        const cleanAllSheetName = sanitizeSheetName(allDataSheetName || 'DATA', maxSheetNameLength);
+        const filteredRows = processedRows.filter(row => {
+          const rawVal = row[slocColumn];
+          const rowSloc = (rawVal === undefined || rawVal === null || String(rawVal).trim() === '')
+            ? sanitizeSheetName(unassignedSlocName || 'NOSL', maxSheetNameLength)
+            : sanitizeSheetName(String(rawVal).trim(), maxSheetNameLength);
+          return sortedSelectedSlocs.includes(rowSloc);
+        });
+
+        if (filteredRows.length > 0) {
+          const wsAll = XLSX.utils.json_to_sheet(filteredRows, { header: effectiveHeaders });
+          wsAll['!cols'] = calculateAutoColWidths(filteredRows, effectiveHeaders);
+          XLSX.utils.book_append_sheet(wb, wsAll, cleanAllSheetName);
+        }
+      }
+
+      // 2. Add individual sheet for each selected SLOC
+      let totalRowsExported = 0;
+      sortedSelectedSlocs.forEach(sheetName => {
+        const targetSheetName = sheetName === sanitizeSheetName(allDataSheetName || 'DATA', maxSheetNameLength) 
+          ? `${sheetName}_S`.substring(0, maxSheetNameLength) 
+          : sheetName;
+
+        const rowsForSheet = groupedSheets.sheetMap.get(sheetName) || [];
+        totalRowsExported += rowsForSheet.length;
+        const wsSloc = XLSX.utils.json_to_sheet(rowsForSheet, { header: effectiveHeaders });
+        wsSloc['!cols'] = calculateAutoColWidths(rowsForSheet, effectiveHeaders);
+        XLSX.utils.book_append_sheet(wb, wsSloc, targetSheetName);
+      });
+
+      const outputFileName = generateCustomExportFileName(sortedSelectedSlocs);
+      XLSX.writeFile(wb, outputFileName);
+
+      playBroadcastSound('announcement');
+      setExportSuccessMessage(
+        `File "${outputFileName}" berhasil diunduh (${sortedSelectedSlocs.length} sheet SLOC${includeAllDataSheet && sortedSelectedSlocs.length > 1 ? ' + 1 sheet DATA' : ''}, total ${totalRowsExported} baris)! (Kolom Source terisi yyyy/mm dari Expired Date)`
+      );
+    } catch (err: any) {
+      alert(`Gagal membuat file Excel SLOC terpilih: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -790,19 +914,38 @@ export function SheetSplitterModule() {
                 <label className="text-xs font-bold text-slate-700 block">
                   Pilihan Mode Download:
                 </label>
-                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
                   <button
                     type="button"
                     onClick={() => setDownloadMode('all')}
-                    className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`py-1.5 px-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                       downloadMode === 'all'
                         ? 'bg-white text-emerald-800 shadow-2xs border border-emerald-200/80'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Layers size={13} className={downloadMode === 'all' ? 'text-emerald-600' : 'text-slate-400'} />
-                    <span>Semua SLOC</span>
+                    <span className="truncate">Semua SLOC</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDownloadMode('custom');
+                      if (selectedSlocs.length === 0 && groupedSheets.sheetList.length > 0) {
+                        setSelectedSlocs([...groupedSheets.sheetList]);
+                      }
+                    }}
+                    className={`py-1.5 px-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      downloadMode === 'custom'
+                        ? 'bg-white text-indigo-800 shadow-2xs border border-indigo-200/80'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <CheckSquare size={13} className={downloadMode === 'custom' ? 'text-indigo-600' : 'text-slate-400'} />
+                    <span className="truncate">Pilih ({selectedSlocs.length})</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -811,20 +954,20 @@ export function SheetSplitterModule() {
                         setSelectedDownloadSloc(groupedSheets.sheetList[0]);
                       }
                     }}
-                    className={`py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`py-1.5 px-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                       downloadMode === 'single'
                         ? 'bg-white text-blue-800 shadow-2xs border border-blue-200/80'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <FileSpreadsheet size={13} className={downloadMode === 'single' ? 'text-blue-600' : 'text-slate-400'} />
-                    <span>1 SLOC Saja</span>
+                    <span className="truncate">1 SLOC</span>
                   </button>
                 </div>
               </div>
 
               {/* OPTIONS BASED ON SELECTED MODE */}
-              {downloadMode === 'all' ? (
+              {downloadMode === 'all' && (
                 <div className="space-y-2.5">
                   {/* Option A Toggle: Include All Data sheet */}
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
@@ -875,8 +1018,114 @@ export function SheetSplitterModule() {
                     </div>
                   </div>
                 </div>
-              ) : (
-                /* SINGLE SLOC DOWNLOAD CONFIGURATION */
+              )}
+
+              {/* MULTI-SLOC CUSTOM SELECTION */}
+              {downloadMode === 'custom' && (
+                <div className="space-y-2.5 bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                      <CheckSquare size={14} className="text-indigo-600" />
+                      <span>Pilih SLOC untuk Di-download:</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                      {selectedSlocs.length} / {groupedSheets.sheetList.length} Dipilih
+                    </span>
+                  </div>
+
+                  {/* Quick action buttons: Pilih Semua / Batal Semua */}
+                  <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllSlocs}
+                        className="text-[10px] font-bold px-2 py-1 bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                      >
+                        <CheckCheck size={12} />
+                        <span>Pilih Semua</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeselectAllSlocs}
+                        className="text-[10px] font-bold px-2 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                      >
+                        <XCircle size={12} />
+                        <span>Batal Semua</span>
+                      </button>
+                    </div>
+
+                    {groupedSheets.sheetList.length > 4 && (
+                      <input
+                        type="text"
+                        value={slocFilterText}
+                        onChange={(e) => setSlocFilterText(e.target.value)}
+                        placeholder="Cari SLOC..."
+                        className="text-[11px] px-2 py-1 bg-white border border-indigo-200 rounded-lg w-24 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                      />
+                    )}
+                  </div>
+
+                  {/* Scrollable list of SLOCs */}
+                  <div className="max-h-44 overflow-y-auto pr-1 space-y-1 bg-white rounded-lg border border-indigo-200/70 p-1.5">
+                    {groupedSheets.sheetList
+                      .filter(code => !slocFilterText || code.toLowerCase().includes(slocFilterText.toLowerCase()))
+                      .map(code => {
+                        const isChecked = selectedSlocs.includes(code);
+                        const count = groupedSheets.sheetMap.get(code)?.length || 0;
+                        return (
+                          <label
+                            key={code}
+                            className={`flex items-center justify-between p-1.5 rounded-md cursor-pointer transition text-xs select-none ${
+                              isChecked 
+                                ? 'bg-indigo-50/90 text-indigo-950 font-bold border border-indigo-200/60' 
+                                : 'hover:bg-slate-50 text-slate-700 border border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleSlocSelection(code)}
+                                className="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                              />
+                              <span className="font-mono">{code}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">
+                              {count} baris
+                            </span>
+                          </label>
+                        );
+                      })}
+                  </div>
+
+                  {/* Include ALL DATA sheet toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-indigo-200/80">
+                    <div className="pr-1">
+                      <div className="text-[11px] font-bold text-slate-800">Sertakan Sheet ALL DATA</div>
+                      <div className="text-[9px] text-slate-500">
+                        Sheet gabungan hanya untuk SLOC yang dipilih.
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={includeAllDataSheet}
+                      onChange={(e) => setIncludeAllDataSheet(e.target.checked)}
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Selected summary */}
+                  <div className="text-[11px] text-indigo-950 font-semibold flex items-center justify-between pt-0.5">
+                    <span>Total Terpilih:</span>
+                    <span className="font-bold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded">
+                      {selectedRowsCount} baris ({selectedSlocs.length} SLOC)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* SINGLE SLOC DOWNLOAD CONFIGURATION */}
+              {downloadMode === 'single' && (
                 <div className="space-y-2 bg-blue-50/60 border border-blue-200/80 rounded-xl p-3">
                   <label className="text-xs font-bold text-blue-900 block">
                     Pilih SLOC yang Ingin Di-download:
@@ -907,7 +1156,7 @@ export function SheetSplitterModule() {
 
             {/* DOWNLOAD BUTTON */}
             <div className="pt-2">
-              {downloadMode === 'all' ? (
+              {downloadMode === 'all' && (
                 <button
                   type="button"
                   onClick={handleExportExcel}
@@ -916,7 +1165,26 @@ export function SheetSplitterModule() {
                   <Download size={15} />
                   <span>Download Semua SLOC ({groupedSheets.sheetList.length + (includeAllDataSheet ? 1 : 0)} Sheet)</span>
                 </button>
-              ) : (
+              )}
+
+              {downloadMode === 'custom' && (
+                <button
+                  type="button"
+                  disabled={selectedSlocs.length === 0}
+                  onClick={handleExportCustomSlocs}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm hover:shadow transition cursor-pointer"
+                >
+                  <Download size={15} />
+                  <span>
+                    {selectedSlocs.length === 0 
+                      ? 'Pilih Minimal 1 SLOC' 
+                      : `Download ${selectedSlocs.length} SLOC Terpilih (${selectedSlocs.length + (includeAllDataSheet && selectedSlocs.length > 1 ? 1 : 0)} Sheet)`
+                    }
+                  </span>
+                </button>
+              )}
+
+              {downloadMode === 'single' && (
                 <button
                   type="button"
                   onClick={() => handleExportSingleSloc(selectedDownloadSloc || groupedSheets.sheetList[0])}
@@ -926,11 +1194,24 @@ export function SheetSplitterModule() {
                   <span>Download Excel SLOC {selectedDownloadSloc || groupedSheets.sheetList[0]} (1 Sheet)</span>
                 </button>
               )}
+
               <div 
                 className="mt-1.5 text-[10px] text-center text-slate-500 font-mono truncate" 
-                title={downloadMode === 'all' ? generateExportFileName() : generateSingleExportFileName(selectedDownloadSloc || groupedSheets.sheetList[0])}
+                title={
+                  downloadMode === 'all' 
+                    ? generateExportFileName() 
+                    : downloadMode === 'custom'
+                      ? generateCustomExportFileName(selectedSlocs)
+                      : generateSingleExportFileName(selectedDownloadSloc || groupedSheets.sheetList[0])
+                }
               >
-                Output: {downloadMode === 'all' ? generateExportFileName() : generateSingleExportFileName(selectedDownloadSloc || groupedSheets.sheetList[0])}
+                Output: {
+                  downloadMode === 'all' 
+                    ? generateExportFileName() 
+                    : downloadMode === 'custom'
+                      ? generateCustomExportFileName(selectedSlocs)
+                      : generateSingleExportFileName(selectedDownloadSloc || groupedSheets.sheetList[0])
+                }
               </div>
             </div>
 
@@ -999,36 +1280,62 @@ export function SheetSplitterModule() {
               {groupedSheets.sheetList.map(sheetCode => {
                 const count = groupedSheets.sheetMap.get(sheetCode)?.length || 0;
                 const isSelected = selectedPreviewSheet === sheetCode;
+                const isCheckedForDownload = selectedSlocs.includes(sheetCode);
                 const isNoSloc = sheetCode === (unassignedSlocName || 'NOSL');
 
                 return (
-                  <button
+                  <div
                     key={sheetCode}
-                    type="button"
-                    onClick={() => {
-                      setSelectedPreviewSheet(sheetCode);
-                      setSelectedDownloadSloc(sheetCode);
-                      setCurrentPage(1);
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                    className={`inline-flex items-center rounded-xl overflow-hidden border transition shadow-2xs ${
                       isSelected
                         ? isNoSloc 
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' 
-                          : 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                          ? 'border-amber-600 bg-amber-600 text-white' 
+                          : 'border-emerald-600 bg-emerald-600 text-white'
                         : isNoSloc
-                          ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200'
+                          ? 'border-amber-200 bg-amber-50 text-amber-900'
+                          : isCheckedForDownload
+                            ? 'border-indigo-200 bg-white text-slate-800'
+                            : 'border-slate-200 bg-slate-50 text-slate-600'
                     }`}
                   >
-                    <span>{sheetCode}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : isNoSloc ? 'bg-amber-200/80 text-amber-900' : 'bg-emerald-200/80 text-emerald-900'
-                    }`}>
-                      {count}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPreviewSheet(sheetCode);
+                        setSelectedDownloadSloc(sheetCode);
+                        setCurrentPage(1);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold transition cursor-pointer"
+                    >
+                      <span>{sheetCode}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                        isSelected 
+                          ? 'bg-white/25 text-white' 
+                          : isNoSloc ? 'bg-amber-200/80 text-amber-900' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+
+                    {/* Quick checkbox button on chip */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSlocSelection(sheetCode);
+                      }}
+                      title={isCheckedForDownload ? `Keluarkan ${sheetCode} dari pilihan download` : `Masukkan ${sheetCode} ke pilihan download`}
+                      className={`px-1.5 py-1.5 text-xs transition cursor-pointer flex items-center justify-center border-l ${
+                        isSelected
+                          ? 'border-white/30 hover:bg-black/10 text-white'
+                          : isCheckedForDownload
+                            ? 'bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700'
+                            : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border-slate-200'
+                      }`}
+                    >
+                      {isCheckedForDownload ? <Check size={11} className="stroke-[3]" /> : <Square size={11} />}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -1053,7 +1360,26 @@ export function SheetSplitterModule() {
                 </div>
                 
                 {/* QUICK DOWNLOAD BUTTON ON PREVIEW */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedPreviewSheet !== 'ALL' && (
+                    <label 
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition select-none ${
+                        selectedSlocs.includes(selectedPreviewSheet)
+                          ? 'bg-indigo-100 text-indigo-900 border-indigo-300'
+                          : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                      }`}
+                      title="Sertakan SLOC ini dalam download multi-SLOC"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSlocs.includes(selectedPreviewSheet)}
+                        onChange={() => toggleSlocSelection(selectedPreviewSheet)}
+                        className="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span>Pilih untuk Download</span>
+                    </label>
+                  )}
+
                   {selectedPreviewSheet !== 'ALL' ? (
                     <button
                       type="button"
@@ -1075,6 +1401,19 @@ export function SheetSplitterModule() {
                       <span>Download Semua ({groupedSheets.sheetList.length} SLOC)</span>
                     </button>
                   )}
+
+                  {selectedSlocs.length > 0 && selectedSlocs.length < groupedSheets.sheetList.length && (
+                    <button
+                      type="button"
+                      onClick={handleExportCustomSlocs}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-[11px] shadow-2xs transition cursor-pointer"
+                      title={`Download ${selectedSlocs.length} SLOC yang telah Anda pilih`}
+                    >
+                      <CheckSquare size={12} />
+                      <span>Download {selectedSlocs.length} SLOC Terpilih</span>
+                    </button>
+                  )}
+
                   <div className="text-[11px] text-slate-500 pl-1 border-l border-slate-200">
                     Halaman {currentPage} dari {totalPages}
                   </div>
@@ -1222,10 +1561,11 @@ export function SheetSplitterModule() {
             </p>
           </div>
           <div className="p-2.5 bg-white rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-800 mb-0.5">4. Pilihan Download: Semua vs 1 SLOC</div>
+            <div className="font-bold text-slate-800 mb-0.5">4. Pilihan Download Fleksibel</div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              <strong>Semua SLOC:</strong> File multi-sheet <code className="bg-slate-100 px-1 rounded text-slate-800 font-mono">[NamaFile]_BY_SLOC_[yymmdd].xlsx</code>.<br />
-              <strong>1 SLOC Saja:</strong> File 1 sheet bernama SLOC tersebut.
+              <strong>Semua SLOC:</strong> Seluruh sheet SLOC dalam 1 file.<br />
+              <strong>Pilih SLOC (Multi):</strong> Checklist SLOC mana saja yang ingin diunduh (bisa 1, 2, atau lebih).<br />
+              <strong>1 SLOC:</strong> Ekspor cepat khusus 1 sheet SLOC pilihan.
             </p>
           </div>
         </div>
