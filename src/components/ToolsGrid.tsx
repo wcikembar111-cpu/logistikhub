@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud, Calculator } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud, Calculator, FlaskConical } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -88,6 +88,14 @@ export function ToolsGrid({
       keywords: 'surat jalan delivery order sj cetak rekap buat kirim expedisi driver pengiriman',
       icon: <FileText size={20} className="text-white" />,
       iconBg: 'bg-sky-600'
+    },
+    {
+      id: 'sample',
+      title: 'Sample',
+      category: 'Pengambilan Sample Gudang',
+      keywords: 'sample pengambilan sample qc lab audit sppj fg barang contoh monitoring spreadsheet online wms sap open close',
+      icon: <FlaskConical size={20} className="text-white" />,
+      iconBg: 'bg-teal-700'
     },
     {
       id: 'retur-inventory',

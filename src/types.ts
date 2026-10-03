@@ -160,6 +160,7 @@ export type LogisticsTab =
   | 'batch-checker' 
   | 'promosi' 
   | 'surat-jalan' 
+  | 'sample'
   | 'retur-inventory' 
   | 'monitoring-pemusnahan'
   | 'data-pemusnahan'
@@ -168,6 +169,23 @@ export type LogisticsTab =
   | 'spreadsheet-dashboard'
   | 'onedrive-dashboard'
   | 'sheet-splitter';
+
+export interface MonitoringSampleItem {
+  id?: string;
+  status: string;      // 'OPEN' | 'CLOSE'
+  tanggal: string;     // 'YYYY-MM-DD'
+  no_sppj: string;     // 'SPPJ/2026/10/001'
+  id_barang: string;   // 'FG11026.218.0050.C'
+  deskripsi: string;   // Nama / Deskripsi barang
+  qty: number;         // Jumlah sample
+  unit: string;        // 'CAR', 'PCS', dll
+  wms: string;         // 'OK', 'PENDING', 'DONE', 'CLOSE'
+  sap: string;         // 'POSTED', 'PENDING', 'DONE', 'CLOSE'
+  pic: string;         // Nama petugas
+  note: string;        // Catatan
+  created_at?: string;
+  updated_at?: string;
+}
 
 export type MainToolTab = 'qr-generator' | LogisticsTab;
 

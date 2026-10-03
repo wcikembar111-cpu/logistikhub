@@ -17,6 +17,7 @@ import { MatchGrfgRepackModule } from './logistics/MatchGrfgRepackModule';
 import { GoogleSpreadsheetDashboardModule } from './logistics/GoogleSpreadsheetDashboardModule';
 import { VoiceCalculatorModule } from './logistics/VoiceCalculatorModule';
 import { SheetSplitterModule } from './logistics/SheetSplitterModule';
+import { SampleMonitoringModule } from './logistics/SampleMonitoringModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -51,6 +52,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'batch-checker' && <BatchCheckerModule />}
             {activeTool === 'promosi' && <PromosiModule />}
             {activeTool === 'surat-jalan' && <SuratJalanModule />}
+            {activeTool === 'sample' && <SampleMonitoringModule />}
             {activeTool === 'retur-inventory' && <ReturInventoryModule />}
             {activeTool === 'monitoring-pemusnahan' && <MonitoringPemusnahanModule />}
             {activeTool === 'data-pemusnahan' && <DataPemusnahanModule />}

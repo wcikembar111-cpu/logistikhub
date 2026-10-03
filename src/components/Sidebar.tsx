@@ -30,7 +30,8 @@ import {
   FileSpreadsheet,
   Cloud,
   Radio,
-  Calculator
+  Calculator,
+  FlaskConical
 } from 'lucide-react';
 import { MainToolTab, BroadcastMessage } from '../types';
 import { InitialDLogo } from './common/InitialDLogo';
@@ -79,6 +80,19 @@ export const TOOLS_LIST: ToolItemDef[] = [
     iconBg: 'bg-teal-600',
     badge: 'Online',
     badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  },
+  {
+    id: 'sample',
+    title: 'Sample',
+    category: 'Monitoring Pengambilan',
+    group: 'audit',
+    hasDatabase: true,
+    desc: 'Monitoring dan kontrol siklus hidup pengambilan barang sample QC, lab, audit dari gudang via Google Spreadsheet',
+    keywords: 'sample pengambilan sample qc lab audit sppj fg barang contoh monitoring spreadsheet online wms sap open close',
+    icon: <FlaskConical size={15} className="text-white" />,
+    iconBg: 'bg-teal-700',
+    badge: 'Live',
+    badgeColor: 'bg-teal-50 text-teal-700 border-teal-200'
   },
   {
     id: 'monitoring-pemusnahan',

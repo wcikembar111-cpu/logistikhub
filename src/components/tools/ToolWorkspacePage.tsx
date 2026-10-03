@@ -18,7 +18,8 @@ import {
   VolumeX,
   Wrench,
   ListTodo,
-  Calculator
+  Calculator,
+  FlaskConical
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
@@ -101,6 +102,12 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'Buat, Cetak & Rekap SJ',
     icon: <FileText size={18} className="text-white" />,
     iconBg: 'bg-blue-900'
+  },
+  'sample': {
+    title: 'Sample',
+    category: 'Monitoring Pengambilan Gudang',
+    icon: <FlaskConical size={18} className="text-white" />,
+    iconBg: 'bg-teal-700'
   },
   'retur-inventory': {
     title: 'Retur Inventory',

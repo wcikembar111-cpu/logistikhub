@@ -84,6 +84,65 @@ async function startServer() {
     }
   });
 
+  // Google Apps Script Proxy for Sample Module (Write / Sync)
+  app.post("/api/sample/sync", async (req, res) => {
+    try {
+      const defaultWebhook = "https://script.google.com/macros/s/AKfycby5KFkXtBiXWEJ1G7CSLhRippGbA-k8WbV4QQFyNfur1ktnS6oNbcnsboFrBCLVXlxN/exec";
+      const webhookUrl = (req.body?.webhookUrl || defaultWebhook).trim();
+      const payload = {
+        sheetName: (req.body?.sheetName || "Sample").trim(),
+        spreadsheetId: (req.body?.spreadsheetId || "1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4").trim(),
+        mode: req.body?.mode || "overwrite",
+        headers: req.body?.headers || [
+          "STATUS", "TANGGAL", "NO. SPPJ", "ID", "DESKRIPSI", "QTY", "UNIT", "WMS", "SAP", "PIC", "NOTE"
+        ],
+        rows: req.body?.rows || []
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        redirect: "follow"
+      });
+
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        return res.json(json);
+      } catch {
+        return res.json({ status: "success", raw: text });
+      }
+    } catch (err: any) {
+      console.error("[Sample Sync Proxy Error]:", err?.message || err);
+      return res.status(500).json({
+        status: "error",
+        message: err?.message || "Gagal menghubungi Apps Script Webhook."
+      });
+    }
+  });
+
+  // Google Visualization Proxy for Sample Module (Read)
+  app.get("/api/sample/fetch", async (req, res) => {
+    try {
+      const spreadsheetId = (req.query.spreadsheetId as string) || "1o8hWUAK6DO1rmggbiRaRNfT7On4c9RhrHR6X07nqZm4";
+      const sheetName = (req.query.sheetName as string) || "Sample";
+      const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+
+      const response = await fetch(gvizUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+
+      const text = await response.text();
+      return res.type("application/javascript").send(text);
+    } catch (err: any) {
+      return res.status(500).json({
+        status: "error",
+        message: err?.message || "Gagal membaca Google Sheets GViz."
+      });
+    }
+  });
+
   // Google Sheets Proxy for Match GRFG Repack Master Konversi
   let cachedKonversiCsv: string | null = null;
   let cachedKonversiTime = 0;
