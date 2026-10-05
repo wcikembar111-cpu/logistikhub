@@ -1,6 +1,7 @@
-import React from 'react';
-import { Download, Smartphone, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Download, Smartphone, CheckCircle, RefreshCw } from 'lucide-react';
 import { usePwa } from '../../context/PwaContext';
+import { forceUpdatePwa } from '../../pwa';
 
 interface InstallPwaButtonProps {
   variant?: 'header' | 'sidebar' | 'banner' | 'pill';
@@ -14,18 +15,26 @@ export function InstallPwaButton({
   showInstalledStatus = false,
 }: InstallPwaButtonProps) {
   const { isStandalone, canInstall, promptInstall } = usePwa();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleForceUpdate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsUpdating(true);
+    await forceUpdatePwa();
+  };
 
   // If app is already installed & running in standalone mode
   if (isStandalone) {
-    if (!showInstalledStatus) return null;
     return (
-      <div
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 shadow-2xs ${className}`}
-        title="Aplikasi CKBLogistic terpasang (Mode Standalone)"
+      <button
+        type="button"
+        onClick={handleForceUpdate}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-2xs cursor-pointer transition-all active:scale-95 ${className}`}
+        title="Klik untuk membersihkan cache & memuat ulang versi terbaru PWA"
       >
-        <CheckCircle size={12} className="text-emerald-600" />
-        <span>App Terpasang</span>
-      </div>
+        <RefreshCw size={11} className={isUpdating ? 'animate-spin text-emerald-600' : 'text-emerald-600'} />
+        <span>PWA Aktif &bull; Cek Update</span>
+      </button>
     );
   }
 

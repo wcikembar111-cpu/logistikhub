@@ -67,6 +67,13 @@
       "description": "Pembuatan surat jalan pengiriman gudang",
       "url": "/?tool=surat-jalan",
       "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Monitoring Pengambilan Sample",
+      "short_name": "Sample",
+      "description": "Monitoring dan kontrol siklus hidup barang sample QC & lab",
+      "url": "/?tool=sample",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
     }
   ]
 }

@@ -31,7 +31,8 @@ import {
   Cloud,
   Radio,
   Calculator,
-  FlaskConical
+  FlaskConical,
+  RefreshCw
 } from 'lucide-react';
 import { MainToolTab, BroadcastMessage } from '../types';
 import { InitialDLogo } from './common/InitialDLogo';
@@ -292,6 +293,7 @@ interface SidebarProps {
   onOpenBroadcast?: () => void;
   onMenuSelectWithBroadcast?: (toolId: MainToolTab, toolTitle: string) => void;
   onNavigateHomeWithBroadcast?: () => void;
+  onForceUpdatePwa?: () => void;
 }
 
 export function Sidebar({
@@ -309,7 +311,8 @@ export function Sidebar({
   broadcastCount = 0,
   onOpenBroadcast,
   onMenuSelectWithBroadcast,
-  onNavigateHomeWithBroadcast
+  onNavigateHomeWithBroadcast,
+  onForceUpdatePwa
 }: SidebarProps) {
   const { onlineCount } = useOnlineUsers();
   const [searchQuery, setSearchQuery] = useState('');
@@ -527,7 +530,7 @@ export function Sidebar({
         </div>
 
         {/* Sidebar Footer: User Status & System Info */}
-        <div className="p-2.5 border-t border-blue-100/70 bg-gradient-to-r from-white via-blue-50/30 to-sky-50/30 shrink-0">
+        <div className="p-2.5 border-t border-blue-100/70 bg-gradient-to-r from-white via-blue-50/30 to-sky-50/30 shrink-0 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-white to-blue-100 text-blue-900 border border-blue-200 flex items-center justify-center text-[11px] font-bold shrink-0 shadow-2xs">
               {currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
@@ -542,6 +545,17 @@ export function Sidebar({
               </div>
             </div>
           </div>
+
+          {onForceUpdatePwa && (
+            <button
+              type="button"
+              onClick={onForceUpdatePwa}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white/90 hover:bg-white text-slate-500 hover:text-blue-700 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              title="Perbarui Cache PWA & Muat Ulang Versi Terbaru"
+            >
+              <RefreshCw size={12} />
+            </button>
+          )}
         </div>
       </aside>
     </>

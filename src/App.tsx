@@ -5,9 +5,11 @@ import { FloatingRobotBroadcast } from './components/broadcast/FloatingRobotBroa
 import { FloatingTodoBroadcast } from './components/todo/FloatingTodoBroadcast';
 import { Hero } from './components/Hero';
 import { LinkGrid } from './components/LinkGrid';
+import { ToolsGrid } from './components/ToolsGrid';
 import { ToolWorkspacePage } from './components/tools/ToolWorkspacePage';
 import { QrItem } from './components/BatchQrSection';
 import { Sidebar } from './components/Sidebar';
+import { forceUpdatePwa } from './pwa';
 import { PublicTodoDrawer } from './components/todo/PublicTodoDrawer';
 import { LoginPage } from './components/auth/LoginPage';
 import { LoginModal } from './components/auth/LoginModal';
@@ -124,6 +126,18 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isTodoDrawerOpen, setIsTodoDrawerOpen] = useState(false);
 
+  // Check URL query param ?tool= on load (e.g. from PWA shortcut or direct link)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const toolParam = params.get('tool') as MainToolTab | null;
+      if (toolParam) {
+        setActiveWorkspaceTool(toolParam);
+        setCurrentView('tool-workspace');
+      }
+    }
+  }, []);
+
   const handleReplyPopupBroadcast = (senderName: string) => {
     dismissIncomingBroadcast();
     setReplyRecipient(senderName);
@@ -235,6 +249,7 @@ export default function App() {
           onOpenBroadcast={() => setShowBroadcastModal(true)}
           onMenuSelectWithBroadcast={(toolId) => handleOpenTool(toolId)}
           onNavigateHomeWithBroadcast={handleNavigateHome}
+          onForceUpdatePwa={forceUpdatePwa}
         />
 
         {/* Main Content Area (Bergeser mulus saat Sidebar Kiri terbuka dan Todo Kanan aktif) */}
@@ -294,7 +309,15 @@ export default function App() {
                 />
               </div>
 
-              {/* 2. Daftar Aplikasi & Sistem (Menu Grid di Halaman Utama) */}
+              {/* 2. Daftar Tools & Utilitas Gudang (Termasuk Sample, Surat Jalan, Promosi, dll) */}
+              <ToolsGrid 
+                activeTool={activeWorkspaceTool}
+                onSelectTool={(tool) => handleOpenTool(tool)}
+                hiddenMenuIds={hiddenMenuIds}
+                onOpenMenuVisibility={handleOpenMenuVisibility}
+              />
+
+              {/* 3. Daftar Aplikasi & Sistem (Menu Grid di Halaman Utama) */}
               <LinkGrid 
                 links={links} 
                 loading={linksLoading}
