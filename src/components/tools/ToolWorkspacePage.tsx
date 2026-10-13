@@ -19,7 +19,8 @@ import {
   Wrench,
   ListTodo,
   Calculator,
-  FlaskConical
+  FlaskConical,
+  Type
 } from 'lucide-react';
 import { EmbeddedToolsWorkspace } from '../EmbeddedToolsWorkspace';
 import { QrItem } from '../BatchQrSection';
@@ -66,6 +67,12 @@ const toolMetadata: Record<MainToolTab, { title: string; category: string; icon:
     category: 'Satuan & Massal',
     icon: <QrCode size={18} className="text-white" />,
     iconBg: 'bg-blue-900'
+  },
+  'pm42-text-print': {
+    title: 'Print Teks PM42',
+    category: 'Label Teks Honeywell PM42',
+    icon: <Type size={18} className="text-white" />,
+    iconBg: 'bg-blue-700'
   },
   'ed-checker': {
     title: 'Cek Expired Date',

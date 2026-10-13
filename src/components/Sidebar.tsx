@@ -32,7 +32,8 @@ import {
   Radio,
   Calculator,
   FlaskConical,
-  RefreshCw
+  RefreshCw,
+  Type
 } from 'lucide-react';
 import { MainToolTab, BroadcastMessage } from '../types';
 import { InitialDLogo } from './common/InitialDLogo';
@@ -132,10 +133,23 @@ export const TOOLS_LIST: ToolItemDef[] = [
     group: 'barcode',
     hasDatabase: false,
     desc: 'Pembuat label QR code satuan & massal Honeywell, export PNG & PDF (Offline/Generator)',
-    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell offline mandiri',
+    keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell offline mandiri pm42',
     icon: <QrCode size={15} className="text-white" />,
     iconBg: 'bg-blue-600',
     badge: 'Generator',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
+  },
+  {
+    id: 'pm42-text-print',
+    title: 'Print Teks PM42',
+    category: 'Label Teks Honeywell',
+    group: 'barcode',
+    hasDatabase: false,
+    desc: 'Cetak teks bebas & batch pada kertas label Honeywell PM42 (80x100mm)',
+    keywords: 'print teks text label honeywell pm42 cetak kertas memo rak karantina hold font batch',
+    icon: <Type size={15} className="text-white" />,
+    iconBg: 'bg-blue-700',
+    badge: 'PM42 Text',
     badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
   },
   {

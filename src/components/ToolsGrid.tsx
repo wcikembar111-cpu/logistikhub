@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud, Calculator, FlaskConical } from 'lucide-react';
+import { QrCode, Wrench, Sparkles, Layers, Calendar, Barcode, ArrowRightLeft, PackageCheck, FileText, Undo2, Flame, Search, X, Truck, EyeOff, FileSpreadsheet, Cloud, Calculator, FlaskConical, Type } from 'lucide-react';
 import { MainToolTab } from '../types';
 
 interface ToolsGridProps {
@@ -29,9 +29,17 @@ export function ToolsGrid({
       id: 'qr-generator',
       title: 'Generator QR Code',
       category: 'Satuan & Massal',
-      keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf',
+      keywords: 'qr code barcode generator cetak buat link scanner bulk export png pdf honeywell pm42',
       icon: <QrCode size={20} className="text-white" />,
       iconBg: 'bg-blue-600'
+    },
+    {
+      id: 'pm42-text-print',
+      title: 'Print Teks PM42',
+      category: 'Label Teks Honeywell',
+      keywords: 'print teks text label honeywell pm42 cetak kertas memo rak karantina hold font batch',
+      icon: <Type size={20} className="text-white" />,
+      iconBg: 'bg-blue-700'
     },
     {
       id: 'voice-calculator',

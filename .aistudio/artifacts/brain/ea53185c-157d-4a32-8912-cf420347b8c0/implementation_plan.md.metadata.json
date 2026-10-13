@@ -1,0 +1,6 @@
+{
+  "summary": "Rencana implementasi menu baru 'Print Teks PM42' untuk cetak teks pada kertas label Honeywell PM42 (80x100 mm) yang presisi dan kompatibel dengan area cetak menu QR PM42. Mendukung teks bebas multi-baris, input satuan & batch, pengaturan font/margin, preview cetak real-time, dan integrasi penuh ke Sidebar serta Tools Grid.",
+  "updatedAt": "2026-10-13T09:32:57.525084536Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

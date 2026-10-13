@@ -154,6 +154,7 @@ export interface ReturInventoryItem {
 
 export type LogisticsTab = 
   | 'voice-calculator'
+  | 'pm42-text-print'
   | 'ed-checker' 
   | 'stock-opname' 
   | 'sn-generator' 

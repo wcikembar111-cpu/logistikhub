@@ -18,6 +18,7 @@ import { GoogleSpreadsheetDashboardModule } from './logistics/GoogleSpreadsheetD
 import { VoiceCalculatorModule } from './logistics/VoiceCalculatorModule';
 import { SheetSplitterModule } from './logistics/SheetSplitterModule';
 import { SampleMonitoringModule } from './logistics/SampleMonitoringModule';
+import { Pm42TextPrintModule } from './logistics/Pm42TextPrintModule';
 
 export type { MainToolTab, LogisticsTab };
 
@@ -46,6 +47,7 @@ export function EmbeddedToolsWorkspace({
             {activeTool === 'qr-generator' && (
               <QrGeneratorHoneywellModule onExportBatchItems={onSetBatchItems} />
             )}
+            {activeTool === 'pm42-text-print' && <Pm42TextPrintModule />}
             {activeTool === 'ed-checker' && <EdCheckerModule />}
             {activeTool === 'stock-opname' && <StockOpnameModule />}
             {activeTool === 'sn-generator' && <SnGeneratorModule />}
