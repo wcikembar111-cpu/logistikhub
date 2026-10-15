@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { 
   Printer, 
@@ -28,9 +27,7 @@ import { useNotification } from '../../context/NotificationContext';
 
 export interface TextLabelItem {
   id: string;
-  header?: string;
   body: string;
-  footer?: string;
   copies?: number;
 }
 
@@ -43,7 +40,6 @@ export type LabelRotation = 0 | 90;
 const QUICK_TEMPLATES = [
   {
     name: 'HOLD / KARANTINA',
-    header: 'STATUS QUALITY CONTROL',
     body: 'HOLD / KARANTINA\nJANGAN DILETAKKAN DI RAK\nMENUNGGU KEPUTUSAN QA',
     align: 'center' as TextAlignment,
     fontSize: 26,
@@ -52,7 +48,6 @@ const QUICK_TEMPLATES = [
   },
   {
     name: 'LOKASI RAK',
-    header: 'AREA PENYIMPANAN GUDANG',
     body: 'RAK A-04-12\nLEVEL 2 · SLOT B',
     align: 'center' as TextAlignment,
     fontSize: 34,
@@ -61,7 +56,6 @@ const QUICK_TEMPLATES = [
   },
   {
     name: 'REPACKING AREA',
-    header: 'PROSES PRODUKSI / REPACK',
     body: 'BARANG REPACKING\nSTATUS: DALAM PROSES\nPIC: OPERATOR REPACK',
     align: 'center' as TextAlignment,
     fontSize: 24,
@@ -70,7 +64,6 @@ const QUICK_TEMPLATES = [
   },
   {
     name: 'FRAGILE / HATI-HATI',
-    header: 'PERINGATAN PENANGANAN',
     body: 'FRAGILE\nMUDAH PECAH!\nJANGAN DIBANTING\nMAKSIMAL TUMPUKAN 4 CTN',
     align: 'center' as TextAlignment,
     fontSize: 26,
@@ -79,7 +72,6 @@ const QUICK_TEMPLATES = [
   },
   {
     name: 'SAMPLE RETENSI',
-    header: 'SAMPEL QC / AUDIT',
     body: 'SAMPLE RETENSI LAB\nNO SPPJ: SPPJ-2026-X\nTIDAK UNTUK DIJUAL',
     align: 'left' as TextAlignment,
     fontSize: 22,
@@ -88,7 +80,6 @@ const QUICK_TEMPLATES = [
   },
   {
     name: 'PALET TRANSIT',
-    header: 'DISTRIBUSI ANTAR CABANG',
     body: 'PALET TRANSIT CABANG\nTUJUAN: DC SURABAYA\nJML: 45 CARTON',
     align: 'center' as TextAlignment,
     fontSize: 26,
@@ -103,16 +94,14 @@ export function Pm42TextPrintModule() {
   // Mode: Satuan (Single) vs Massal (Batch)
   const [mode, setMode] = useState<'single' | 'batch'>('single');
 
-  // Input Data - Mode Satuan (Hanya Judul & Isi Teks yang di-input user)
-  const [singleHeader, setSingleHeader] = useState<string>('GUDANG LOGISTIK');
+  // Input Data - Mode Satuan (Murni Isi Teks Label)
   const [singleBody, setSingleBody] = useState<string>('CONTOH TEKS LABEL PM42\nNOMOR RAK: A-01-01');
   const [singleCopies, setSingleCopies] = useState<number>(1);
 
-  // Input Data - Mode Batch
+  // Input Data - Mode Batch (Murni Isi Teks per Baris)
   const [batchRawText, setBatchRawText] = useState<string>(
     'LOKASI RAK A-01-01\nLOKASI RAK A-01-02\nLOKASI RAK A-01-03\nLOKASI RAK A-01-04\nLOKASI RAK A-01-05'
   );
-  const [batchHeaderPrefix, setBatchHeaderPrefix] = useState<string>('');
   const [batchDelimiter, setBatchDelimiter] = useState<'newline' | 'separator'>('newline');
   const [activePreviewIndex, setActivePreviewIndex] = useState<number>(0);
   const [selectedBatchIndices, setSelectedBatchIndices] = useState<Set<number>>(new Set());
@@ -121,16 +110,10 @@ export function Pm42TextPrintModule() {
   // Orientasi Landscape (100x80 mm) vs Portrait (80x100 mm)
   const [orientation, setOrientation] = useState<Orientation>('landscape');
 
-  // =========================================================================
-  // PILIHAN PUTAR 90 DERAJAT
-  // 0 = Normal / Tanpa Rotasi
-  // 90 = Putar 90 Derajat (Searah jarum jam)
-  // =========================================================================
+  // Pilihan Putar 90 Derajat (0 = Normal, 90 = Putar 90 Derajat searah jarum jam)
   const [rotation, setRotation] = useState<LabelRotation>(0);
 
-  // =========================================================================
-  // TANPA BORDER LUAR (Default: none)
-  // =========================================================================
+  // Tanpa Border Luar
   const [borderStyle, setBorderStyle] = useState<LabelBorderStyle>('none');
 
   // Margin ruang aman cetak
@@ -140,7 +123,6 @@ export function Pm42TextPrintModule() {
   const [bottomMarginMm, setBottomMarginMm] = useState<number>(6);
 
   const [fontSize, setFontSize] = useState<number>(26);
-  const [headerFontSize, setHeaderFontSize] = useState<number>(13);
   const [alignment, setAlignment] = useState<TextAlignment>('center');
   const [fontWeight, setFontWeight] = useState<TextWeight>('700');
   const [lineHeight, setLineHeight] = useState<number>(1.3);
@@ -148,8 +130,6 @@ export function Pm42TextPrintModule() {
   const [fontFamily, setFontFamily] = useState<'sans' | 'mono'>('sans');
 
   // Modal Dialogs & States
-  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
-  const [activePrintTargetItems, setActivePrintTargetItems] = useState<TextLabelItem[] | undefined>(undefined);
   const [showZplModal, setShowZplModal] = useState<boolean>(false);
   const [showGuide, setShowGuide] = useState<boolean>(false);
   const [copiedZpl, setCopiedZpl] = useState<boolean>(false);
@@ -158,7 +138,7 @@ export function Pm42TextPrintModule() {
   const paperWidthMm = orientation === 'landscape' ? 100 : 80;
   const paperHeightMm = orientation === 'landscape' ? 80 : 100;
 
-  // Parsing Data Batch menjadi item terstruktur (Hanya Judul dan Isi Teks)
+  // Parsing Data Batch menjadi item terstruktur (Murni Isi Teks)
   const batchItems = useMemo<TextLabelItem[]>(() => {
     if (!batchRawText.trim()) return [];
 
@@ -177,11 +157,10 @@ export function Pm42TextPrintModule() {
 
     return entries.map((entry, idx) => ({
       id: `batch-${idx + 1}`,
-      header: batchHeaderPrefix.trim() || undefined,
       body: entry,
       copies: 1
     }));
-  }, [batchRawText, batchDelimiter, batchHeaderPrefix]);
+  }, [batchRawText, batchDelimiter]);
 
   // Sync selected indices when batch items count changes
   React.useEffect(() => {
@@ -196,12 +175,11 @@ export function Pm42TextPrintModule() {
     }
   }, [batchItems.length]);
 
-  // Mendapatkan label yang aktif di preview saat ini (Hanya input user)
+  // Mendapatkan label yang aktif di preview saat ini (Murni Teks)
   const currentPreviewItem: TextLabelItem = useMemo(() => {
     if (mode === 'single') {
       return {
         id: 'single-1',
-        header: singleHeader.trim() || undefined,
         body: singleBody || 'Ketik teks di panel editor sebelah kiri',
         copies: singleCopies
       };
@@ -214,7 +192,7 @@ export function Pm42TextPrintModule() {
         body: 'Belum ada data batch teks'
       };
     }
-  }, [mode, singleHeader, singleBody, singleCopies, batchItems, activePreviewIndex]);
+  }, [mode, singleBody, singleCopies, batchItems, activePreviewIndex]);
 
   // Mengumpulkan seluruh daftar label yang akan dicetak
   const getItemsToPrint = (specificItems?: TextLabelItem[]): TextLabelItem[] => {
@@ -229,7 +207,6 @@ export function Pm42TextPrintModule() {
       for (let i = 0; i < copies; i++) {
         items.push({
           id: `single-${i + 1}`,
-          header: singleHeader.trim() || undefined,
           body: textToPrint,
           copies: 1
         });
@@ -260,7 +237,7 @@ export function Pm42TextPrintModule() {
       .join('<br/>');
   };
 
-  // Menghasilkan Dokumen HTML Cetak Bersih: Tanpa Border Luar, Tanpa "Dicetak", Mendukung Putar 90 Derajat
+  // Menghasilkan Dokumen HTML Cetak Bersih: Murni Teks, Tanpa Header, Tanpa Border Luar, Tanpa "Dicetak"
   const generatePrintHtml = (items: TextLabelItem[]): string => {
     const fontFamCss = fontFamily === 'mono' 
       ? 'ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace' 
@@ -270,12 +247,10 @@ export function Pm42TextPrintModule() {
 
     const labelsHtml = items.map((item) => {
       const formattedBody = formatBodyHtml(item.body);
-      const formattedHeader = item.header ? `<div class="lbl-header">${escapeHtml(item.header)}</div>` : '';
 
       return `
         <div class="label-page">
           <div class="label-box ${rotation === 90 ? 'rot-90' : 'rot-0'}">
-            ${formattedHeader}
             <div class="lbl-body">
               ${formattedBody}
             </div>
@@ -341,7 +316,7 @@ export function Pm42TextPrintModule() {
       padding: 1mm;
       margin: 0;
       overflow: hidden;
-      border: none !important; /* JANGAN PAKAI BORDER LUAR */
+      border: none !important; /* TANPA BORDER LUAR */
     }
     .label-box.rot-0 {
       width: 100%;
@@ -355,19 +330,6 @@ export function Pm42TextPrintModule() {
       width: calc(${paperHeightMm}mm - ${topMarginMm + bottomMarginMm}mm);
       height: calc(${paperWidthMm}mm - ${leftMarginMm + rightMarginMm}mm);
       flex-shrink: 0;
-    }
-    .lbl-header {
-      font-size: ${headerFontSize}px;
-      font-weight: 800;
-      text-align: ${alignment};
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      line-height: 1.25;
-      word-break: break-word;
-      flex-shrink: 0;
-      padding-bottom: 2mm;
-      border-bottom: 1.5px solid #000000;
-      margin-bottom: 2mm;
     }
     .lbl-body {
       font-size: ${fontSize}px;
@@ -467,20 +429,25 @@ export function Pm42TextPrintModule() {
   </div>
   ${labelsHtml}
   <script>
-    function runAutoPrint() {
+    // Trigger window.print() TEPAT 1 KALI SAJA (mencegah dialog terbuka berulang kali / sampai 4 kali)
+    var isPrintInvoked = false;
+    function runSinglePrint() {
+      if (isPrintInvoked) return;
+      isPrintInvoked = true;
       try {
         window.focus();
         window.print();
       } catch (err) {
-        console.error('Print auto-trigger error:', err);
+        console.error('Print trigger error:', err);
       }
     }
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      setTimeout(runAutoPrint, 250);
+
+    if (document.readyState === 'complete') {
+      setTimeout(runSinglePrint, 250);
     } else {
-      window.addEventListener('DOMContentLoaded', function() { setTimeout(runAutoPrint, 250); });
-      window.addEventListener('load', function() { setTimeout(runAutoPrint, 300); });
-      setTimeout(runAutoPrint, 600);
+      window.addEventListener('load', function() {
+        setTimeout(runSinglePrint, 250);
+      });
     }
   </script>
 </body>
@@ -488,31 +455,20 @@ export function Pm42TextPrintModule() {
   };
 
   // =========================================================================
-  // SISTEM EKSEKUSI CETAK (MODAL OPSI + FALLBACK TAB BARU + DIRECT)
+  // SISTEM EKSEKUSI CETAK SEKALI TEKAN (LANGSUNG PRINT KE HONEYWELL PM42)
   // =========================================================================
 
-  // Buka Modal Cetak Utama
-  const openPrintOptionsDialog = (specificItems?: TextLabelItem[]) => {
+  // Eksekusi Panggilan Dialog Printer Sistem Sekali Tekan (Direct 1x Click)
+  const executeSystemPrint = (specificItems?: TextLabelItem[]) => {
     const items = getItemsToPrint(specificItems);
     if (items.length === 0) {
       showToast('Perhatian', 'Tidak ada data teks label untuk dicetak', 'info');
       return;
     }
-    setActivePrintTargetItems(specificItems);
-    setShowPrintModal(true);
-  };
-
-  // Eksekusi Panggilan Dialog Printer Sistem
-  const executeSystemPrint = (specificItems?: TextLabelItem[]) => {
-    const items = getItemsToPrint(specificItems || activePrintTargetItems);
-    if (items.length === 0) {
-      showToast('Perhatian', 'Pilih minimal 1 label teks untuk dicetak', 'info');
-      return;
-    }
 
     const htmlContent = generatePrintHtml(items);
 
-    // Metode 1: Popup Window
+    // Metode 1: Popup Window (Membuka jendela cetak yang otomatis memanggil print dialog 1 kali)
     try {
       const printWin = window.open('', '_blank', 'width=850,height=700');
       if (printWin) {
@@ -520,22 +476,14 @@ export function Pm42TextPrintModule() {
         printWin.document.write(htmlContent);
         printWin.document.close();
         printWin.focus();
-        setTimeout(() => {
-          try {
-            printWin.focus();
-            printWin.print();
-          } catch (e) {
-            console.warn('Window print invoke error', e);
-          }
-        }, 300);
-        showToast('Mencetak', `${items.length} label dikirim ke dialog printer Honeywell PM42`, 'success');
+        showToast('Mencetak PM42', `Mengirim ${items.length} label ke dialog printer Honeywell PM42`, 'success');
         return;
       }
     } catch (e) {
       console.warn('Popup print blocked, falling back to offscreen frame', e);
     }
 
-    // Metode 2: Hidden but Rendered Frame
+    // Metode 2: Hidden but Rendered Frame jika browser memblokir popup
     try {
       let printFrame = document.getElementById('pm42-direct-print-frame') as HTMLIFrameElement;
       if (!printFrame) {
@@ -558,7 +506,7 @@ export function Pm42TextPrintModule() {
         setTimeout(() => {
           printFrame.contentWindow?.focus();
           printFrame.contentWindow?.print();
-          showToast('Dialog Printer', `Membuka dialog cetak untuk ${items.length} label teks`, 'info');
+          showToast('Mencetak PM42', `Membuka dialog cetak untuk ${items.length} label teks`, 'info');
         }, 350);
         return;
       }
@@ -566,19 +514,19 @@ export function Pm42TextPrintModule() {
       console.error('Frame print failed', err);
     }
 
-    // Metode 3: Tab baru via Blob URL
-    openPrintNewTab(specificItems || activePrintTargetItems);
+    // Metode 3: Tab baru via Blob URL jika popup dan iframe dicegah
+    openPrintNewTab(specificItems);
   };
 
-  // Buka Halaman Cetak di Tab Baru
+  // Buka Halaman Cetak di Tab Baru (Opsi cadangan alternatif jika popup dicegah browser)
   const openPrintNewTab = (specificItems?: TextLabelItem[]) => {
-    const items = getItemsToPrint(specificItems || activePrintTargetItems);
+    const items = getItemsToPrint(specificItems);
     if (items.length === 0) return;
     const htmlContent = generatePrintHtml(items);
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
-    showToast('Halaman Cetak Terbuka', 'Tab cetak baru telah dibuka dengan tombol cetak siap pakai', 'success');
+    showToast('Halaman Cetak Terbuka', 'Tab cetak baru telah dibuka', 'success');
   };
 
   // Handle Import File (.txt / .csv / .xlsx)
@@ -630,7 +578,7 @@ export function Pm42TextPrintModule() {
     e.target.value = '';
   };
 
-  // Generate ZPL Command Script PM42 (Dengan Opsi Rotasi 90° & Tanpa Border)
+  // Generate ZPL Command Script PM42 (Murni Isi Teks, Rotasi 90°, Tanpa Border)
   const generateZplCode = (): string => {
     const items = getItemsToPrint();
     const dotsPerMm = 8; // 203 DPI = 8 dots/mm PM42
@@ -653,15 +601,9 @@ export function Pm42TextPrintModule() {
       zplOutput += `^MNY\n`; // Gap sensing Honeywell PM42
       zplOutput += `^PR4,4\n`; // Print speed 4 ips
 
-      // HANYA JUDUL & ISI TEKS YANG DI-INPUT USER (TANPA BORDER LUAR, TANPA DICETAK)
-      if (item.header) {
-        zplOutput += `^FO${leftMarginDots + 16},${topMarginDots + 16}^A0N,${headerFontSize * 2},${headerFontSize * 2}^FB${pageWidthDots - (leftMarginDots * 2) - 32},1,0,${alignment === 'center' ? 'C' : alignment === 'right' ? 'R' : 'L'}^FD${item.header}^FS\n`;
-        zplOutput += `^FO${leftMarginDots + 16},${topMarginDots + 36}^GB${pageWidthDots - (leftMarginDots * 2) - 32},2,2^FS\n`;
-      }
-
-      // Body lines
+      // Body lines (Murni Teks saja)
       const bodyLines = item.body.split('\n');
-      let currentY = topMarginDots + (item.header ? 55 : 25);
+      let currentY = topMarginDots + 25;
       bodyLines.forEach((line) => {
         zplOutput += `^FO${leftMarginDots + 16},${currentY}^A0N,${fontSize * 2},${fontSize * 2}^FB${pageWidthDots - (leftMarginDots * 2) - 32},1,0,${alignment === 'center' ? 'C' : alignment === 'right' ? 'R' : 'L'}^FD${line}^FS\n`;
         currentY += fontSize * 2 + 10;
@@ -696,16 +638,14 @@ export function Pm42TextPrintModule() {
 
   const applyTemplate = (tpl: typeof QUICK_TEMPLATES[0]) => {
     if (mode === 'single') {
-      setSingleHeader(tpl.header);
       setSingleBody(tpl.body);
       setAlignment(tpl.align);
       setFontSize(tpl.fontSize);
       setFontWeight(tpl.weight);
-      setBorderStyle('none'); // JANGAN PAKAI BORDER
+      setBorderStyle('none');
       showToast('Template Diterapkan', `Template "${tpl.name}" berhasil dimuat`, 'success');
     } else {
       setBatchRawText(tpl.body);
-      setBatchHeaderPrefix(tpl.header);
       setAlignment(tpl.align);
       setFontSize(tpl.fontSize);
       setFontWeight(tpl.weight);
@@ -737,9 +677,7 @@ export function Pm42TextPrintModule() {
   const filteredBatchItems = useMemo(() => {
     if (!batchSearchTerm.trim()) return batchItems;
     const term = batchSearchTerm.toLowerCase();
-    return batchItems.filter(
-      item => item.body.toLowerCase().includes(term) || (item.header && item.header.toLowerCase().includes(term))
-    );
+    return batchItems.filter(item => item.body.toLowerCase().includes(term));
   }, [batchItems, batchSearchTerm]);
 
   return (
@@ -771,7 +709,7 @@ export function Pm42TextPrintModule() {
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Cetak teks label murni (Judul & Isi Teks) pada kertas stiker roll PM42 ({paperWidthMm}x{paperHeightMm} mm)
+                Cetak isi teks murni pada stiker roll PM42 ({paperWidthMm}x{paperHeightMm} mm) &bull; Sekali tekan langsung cetak
               </p>
             </div>
           </div>
@@ -795,10 +733,11 @@ export function Pm42TextPrintModule() {
               Raw ZPL
             </button>
 
-            {/* TOMBOL UTAMA CETAK PM42 */}
+            {/* TOMBOL UTAMA CETAK PM42 (SEKALI TEKAN LANGSUNG PRINT) */}
             <button
-              onClick={() => openPrintOptionsDialog()}
+              onClick={() => executeSystemPrint()}
               className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 active:scale-95 rounded-lg transition-all shadow-md cursor-pointer"
+              title="Sekali tekan langsung buka dialog cetak PM42"
             >
               <Printer size={16} />
               <span>PRINT PM42 ({getItemsToPrint().length} LABEL)</span>
@@ -898,12 +837,12 @@ export function Pm42TextPrintModule() {
         {/* KOLOM KIRI (7/12): INPUT TEXT & CONTROLS */}
         <div className="lg:col-span-7 space-y-5">
           
-          {/* A. TEXT INPUT CARD (Hanya yang di-input user: Judul / Header & Isi Teks) */}
+          {/* TEXT INPUT CARD (Hanya Isi Teks Label) */}
           <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <FileText size={16} className="text-blue-600" />
-                {mode === 'single' ? 'Input Teks Label (Judul & Isi Teks Saja)' : 'Input Daftar Teks Massal (Batch)'}
+                {mode === 'single' ? 'Input Isi Teks Label' : 'Input Daftar Teks Massal (Batch)'}
               </h2>
 
               {mode === 'batch' && (
@@ -934,21 +873,7 @@ export function Pm42TextPrintModule() {
               )}
             </div>
 
-            {/* 1. Judul / Header Atas (Opsional) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                Judul / Header Atas (Opsional)
-              </label>
-              <input
-                type="text"
-                value={mode === 'single' ? singleHeader : batchHeaderPrefix}
-                onChange={(e) => mode === 'single' ? setSingleHeader(e.target.value) : setBatchHeaderPrefix(e.target.value)}
-                placeholder="Contoh: STATUS QUALITY CONTROL / LOKASI GUDANG (kosongkan jika tidak perlu)"
-                className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-              />
-            </div>
-
-            {/* 2. Isi Teks Label Utama */}
+            {/* Isi Teks Label Utama */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-800">
@@ -959,7 +884,7 @@ export function Pm42TextPrintModule() {
                 </span>
               </div>
               <textarea
-                rows={mode === 'single' ? 5 : 7}
+                rows={mode === 'single' ? 6 : 8}
                 value={mode === 'single' ? singleBody : batchRawText}
                 onChange={(e) => mode === 'single' ? setSingleBody(e.target.value) : setBatchRawText(e.target.value)}
                 placeholder={mode === 'single' 
@@ -1027,7 +952,7 @@ export function Pm42TextPrintModule() {
                   type="text"
                   value={batchSearchTerm}
                   onChange={(e) => setBatchSearchTerm(e.target.value)}
-                  placeholder="Cari label di dalam daftar batch..."
+                  placeholder="Cari teks di dalam daftar batch..."
                   className="w-full text-xs pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
                 />
               </div>
@@ -1061,11 +986,6 @@ export function Pm42TextPrintModule() {
                           #{originalIndex + 1}
                         </span>
                         <div className="min-w-0 truncate">
-                          {item.header && (
-                            <span className="text-[10px] font-bold text-blue-800 block truncate">
-                              {item.header}
-                            </span>
-                          )}
                           <span className="font-semibold text-slate-800 truncate block">
                             {item.body.replace(/\n/g, ' · ')}
                           </span>
@@ -1083,9 +1003,9 @@ export function Pm42TextPrintModule() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openPrintOptionsDialog([item])}
+                          onClick={() => executeSystemPrint([item])}
                           className="px-2.5 py-1 text-[11px] rounded bg-blue-700 hover:bg-blue-800 text-white font-semibold flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
-                          title="Cetak label ini saja"
+                          title="Sekali tekan langsung cetak label ini"
                         >
                           <Printer size={11} />
                           Print Ini
@@ -1105,7 +1025,7 @@ export function Pm42TextPrintModule() {
               Format Teks, Orientasi & Rotasi 90°
             </h2>
 
-            {/* PENGATURAN PILIHAN PUTAR 90 DERAJAT (REQUEST USER #2) */}
+            {/* PENGATURAN PILIHAN PUTAR 90 DERAJAT */}
             <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-200 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-blue-950 text-xs">
@@ -1312,15 +1232,16 @@ export function Pm42TextPrintModule() {
               </div>
             </div>
 
-            {/* Konfirmasi Status: Tanpa Border Luar & Tanpa Dicetak */}
+            {/* Konfirmasi Status: Tanpa Border Luar & Tanpa Header */}
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
               <div className="font-bold text-slate-800 flex items-center gap-1.5">
                 <Check size={14} className="text-emerald-600" />
-                <span>Format Bersih Sesuai Permintaan:</span>
+                <span>Format Bersih Siap Cetak:</span>
               </div>
               <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-600 pl-1">
-                <li><strong>Tanpa Border Luar:</strong> Tidak ada garis kotak tepi yang dicetak.</li>
-                <li><strong>Tanpa Tanggal "Dicetak":</strong> Hanya teks yang Anda ketik (Judul & Isi Teks) yang masuk cetakan.</li>
+                <li><strong>Murni Teks:</strong> Hanya teks yang Anda ketik yang dicetak (tanpa header tambahan).</li>
+                <li><strong>Tanpa Border Luar:</strong> Tidak ada garis kotak tepi pada label.</li>
+                <li><strong>Sekali Tekan Langsung Cetak:</strong> Dialog printer langsung dipanggil tanpa popup ganda.</li>
                 <li><strong>Rotasi Teks:</strong> {rotation === 90 ? 'Diputar 90 Derajat (Melintang)' : 'Posisi Normal (0°)'}.</li>
               </ul>
             </div>
@@ -1336,10 +1257,10 @@ export function Pm42TextPrintModule() {
               <div>
                 <h3 className="text-xs font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
                   <Eye size={14} className="text-blue-600" />
-                  Pratinjau Kertas PM42 ({paperWidthMm}x{paperHeightMm} mm)
+                  Pratinjau Kertas PM42 ({paperWidthMm}x${paperHeightMm} mm)
                 </h3>
                 <span className="text-[11px] text-slate-500">
-                  {paperWidthMm} x {paperHeightMm} mm &bull; Rotasi: {rotation}° &bull; Tanpa Border
+                  {paperWidthMm} x {paperHeightMm} mm &bull; Rotasi: {rotation}° &bull; Murni Teks
                 </span>
               </div>
 
@@ -1368,7 +1289,7 @@ export function Pm42TextPrintModule() {
               )}
             </div>
 
-            {/* SIMULASI FISIK KERTAS LABEL PM42 (TANPA BORDER LUAR, DENGAN ROTASI 90°) */}
+            {/* SIMULASI FISIK KERTAS LABEL PM42 (MURNI TEKS, TANPA BORDER LUAR, DENGAN ROTASI 90°) */}
             <div className="my-4 p-4 bg-slate-900/90 rounded-xl flex items-center justify-center overflow-hidden min-h-[340px]">
               {/* Kontainer Lembar Kertas Stiker */}
               <div
@@ -1393,23 +1314,7 @@ export function Pm42TextPrintModule() {
                   }}
                   className="flex flex-col justify-center p-1 box-border overflow-hidden transition-transform duration-200"
                 >
-                  {/* Judul / Header Atas (Hanya jika diinput user) */}
-                  {currentPreviewItem.header && (
-                    <div className="w-full flex-shrink-0 mb-1">
-                      <div 
-                        style={{ 
-                          fontSize: `${headerFontSize * 0.9}px`,
-                          textAlign: alignment 
-                        }} 
-                        className="font-extrabold uppercase tracking-wider text-black line-clamp-2"
-                      >
-                        {currentPreviewItem.header}
-                      </div>
-                      <div className="w-full h-0 border-b-[1.5px] border-black my-1" />
-                    </div>
-                  )}
-
-                  {/* Isi Teks Label Utama */}
+                  {/* Isi Teks Label Utama Murni */}
                   <div 
                     style={{
                       fontSize: `${fontSize * 0.9}px`,
@@ -1460,11 +1365,12 @@ export function Pm42TextPrintModule() {
               </div>
             </div>
 
-            {/* Print Action: Tombol Buka Dialog Cetak Utama */}
+            {/* Print Action: Tombol Sekali Tekan Langsung Print */}
             <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
               <button
-                onClick={() => openPrintOptionsDialog()}
+                onClick={() => executeSystemPrint()}
                 className="w-full py-3 px-4 bg-blue-700 hover:bg-blue-800 active:scale-95 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer text-sm"
+                title="Sekali tekan langsung cetak ke printer Honeywell PM42"
               >
                 <Printer size={18} />
                 <span>PRINT KE HONEYWELL PM42 ({getItemsToPrint().length})</span>
@@ -1485,110 +1391,6 @@ export function Pm42TextPrintModule() {
         </div>
 
       </div>
-
-      {/* ========================================================================= */}
-      {/* MODAL DIALOG OPSI PRINT KE PRINTER */}
-      {/* ========================================================================= */}
-      {showPrintModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
-            {/* Header Modal */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-700 flex items-center justify-center">
-                  <Printer size={22} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 m-0">Opsi & Dialog Cetak Teks PM42</h3>
-                  <p className="text-[11px] text-slate-500 m-0">Honeywell PM42 Thermal Transfer / Direct Thermal</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPrintModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold cursor-pointer transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Informasi Cetak */}
-            <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 text-center">
-              <div>
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Jumlah Label</div>
-                <div className="text-sm font-extrabold text-blue-950">
-                  {getItemsToPrint(activePrintTargetItems).length} Label
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Ukuran Kertas</div>
-                <div className="text-sm font-extrabold text-blue-700">
-                  {paperWidthMm} x {paperHeightMm} mm
-                </div>
-                <div className="text-[10px] text-slate-500 font-medium">SN 8x10</div>
-              </div>
-              <div>
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Rotasi Teks</div>
-                <div className="text-sm font-extrabold text-emerald-700">
-                  {rotation === 90 ? 'Putar 90°' : 'Normal (0°)'}
-                </div>
-                <div className="text-[10px] text-slate-500">Tanpa Border Luar</div>
-              </div>
-            </div>
-
-            {/* Tombol Aksi Cetak Utama */}
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  executeSystemPrint(activePrintTargetItems);
-                }}
-                className="w-full py-3.5 px-4 rounded-2xl bg-blue-700 hover:bg-blue-800 active:scale-98 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                <Printer size={18} />
-                <span>Buka Dialog Printer (Cetak Sekarang)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  openPrintNewTab(activePrintTargetItems);
-                }}
-                className="w-full py-2.5 px-4 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-blue-200"
-              >
-                <ExternalLink size={14} />
-                <span>Buka Halaman Cetak di Tab Baru (100% Berhasil jika dialog terhalang)</span>
-              </button>
-            </div>
-
-            {/* Checklist Pengaturan Dialog Browser untuk Honeywell PM42 */}
-            <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/90 space-y-2 text-xs text-amber-950">
-              <div className="flex items-center gap-1.5 font-bold text-amber-900 text-[11px]">
-                <Info size={14} />
-                <span>Pengaturan Wajib di Layar Printer PM42 & Dialog Browser:</span>
-              </div>
-              <ul className="space-y-1 text-[11px] text-amber-900/90 pl-5 list-disc m-0">
-                <li><strong>Mode Perintah di Layar PM42:</strong> Pastikan di LCD PM42 <em>Command Language</em> disetel ke <strong className="text-emerald-800">Autosense</strong> atau <strong>Direct Protocol</strong>.</li>
-                <li><strong>Destination (Tujuan):</strong> Pilih <strong>Honeywell PM42</strong> di daftar printer.</li>
-                <li><strong>Paper Size:</strong> Pilih <strong>80 x 100 mm</strong> (atau User-Defined Label 8x10 cm).</li>
-                <li><strong>Margins:</strong> Atur ke <strong>None / Tidak Ada (0)</strong>.</li>
-                <li><strong>Scale (Skala):</strong> Atur ke <strong>100% / Default</strong>.</li>
-              </ul>
-            </div>
-
-            {/* Footer Modal */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowPrintModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
 
       {/* ========================================================================= */}
       {/* MODAL ZPL / DIRECT PROTOCOL COMMAND PM42 */}
